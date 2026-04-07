@@ -40,7 +40,11 @@ class RegistrationTest extends TestCase
         $this->assertDatabaseHas('users', [
             'email' => 'test@example.com',
             'role' => UserRole::Staff->value,
+            'primary_team_id' => null,
         ]);
+
+        $this->get(route('dashboard'))
+            ->assertRedirect(route('teams.select.create'));
     }
 
     public function test_registration_rejects_email_outside_company_domain(): void

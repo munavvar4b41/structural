@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Middleware\EnsureCanManageCompanySettings;
+use App\Http\Middleware\EnsureHasPrimaryTeam;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
@@ -11,11 +11,11 @@ use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__ . '/../routes/web.php',
-        commands: __DIR__ . '/../routes/console.php',
+        web: __DIR__.'/../routes/web.php',
+        commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function (): void {
-            Route::middleware(['web', 'auth', 'verified'])->prefix('admin')
+            Route::middleware(['web', 'auth', 'verified', EnsureHasPrimaryTeam::class])->prefix('admin')
                 ->name('admin.')->group(base_path('routes/admin.php'));
         },
     )

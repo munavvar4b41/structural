@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { edit as adminCompanyEdit } from '@/routes/admin/company/index';
+import { index as adminTeamsIndex } from '@/routes/admin/teams/index';
 import { index as adminUsersIndex } from '@/routes/admin/users/index';
 import type { NavItem } from '@/types';
 
@@ -42,6 +43,11 @@ const mainNavItems = computed((): NavItem[] => {
         items.push({
             title: 'Users',
             href: adminUsersIndex(),
+            icon: Users,
+        });
+        items.push({
+            title: 'Teams',
+            href: adminTeamsIndex(),
             icon: Users,
         });
     }

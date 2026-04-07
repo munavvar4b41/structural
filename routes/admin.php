@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CompanySettingsController;
+use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Middleware\EnsureCanManageCompanySettings;
 use App\Http\Middleware\EnsureCanManageUsers;
@@ -15,4 +16,5 @@ Route::middleware(EnsureCanManageCompanySettings::class)
 Route::middleware(EnsureCanManageUsers::class)
     ->group(function (): void {
         Route::resource('users', UserController::class)->except(['show']);
+        Route::resource('teams', TeamController::class)->except(['show']);
     });

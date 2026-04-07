@@ -23,8 +23,14 @@ type AssignableRole = {
     label: string;
 };
 
+type TeamOption = {
+    value: number;
+    label: string;
+};
+
 type Props = {
     assignableRoles: AssignableRole[];
+    teams: TeamOption[];
 };
 
 defineOptions({
@@ -99,6 +105,46 @@ defineProps<Props>();
                             </option>
                         </select>
                         <InputError :message="errors.role" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="primary_team_id">Primary team</Label>
+                        <select
+                            id="primary_team_id"
+                            name="primary_team_id"
+                            required
+                            class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+                        >
+                            <option
+                                v-for="opt in teams"
+                                :key="opt.value"
+                                :value="opt.value"
+                            >
+                                {{ opt.label }}
+                            </option>
+                        </select>
+                        <InputError :message="errors.primary_team_id" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="team_ids">Additional team assignments</Label>
+                        <select
+                            id="team_ids"
+                            name="team_ids[]"
+                            multiple
+                            required
+                            class="min-h-28 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+                        >
+                            <option
+                                v-for="opt in teams"
+                                :key="opt.value"
+                                :value="opt.value"
+                            >
+                                {{ opt.label }}
+                            </option>
+                        </select>
+                        <p class="text-xs text-muted-foreground">
+                            Hold Ctrl/Cmd to select multiple teams.
+                        </p>
+                        <InputError :message="errors.team_ids" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="password">Password</Label>
