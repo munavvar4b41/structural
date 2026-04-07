@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Building2, LayoutGrid } from 'lucide-vue-next';
+import { Building2, LayoutGrid, Users } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { edit as adminCompanyEdit } from '@/routes/admin/company/index';
+import { index as adminUsersIndex } from '@/routes/admin/users/index';
 import type { NavItem } from '@/types';
 
 const page = usePage();
@@ -34,6 +35,14 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Company settings',
             href: adminCompanyEdit(),
             icon: Building2,
+        });
+    }
+
+    if (page.props.auth.user?.can_manage_users) {
+        items.push({
+            title: 'Users',
+            href: adminUsersIndex(),
+            icon: Users,
         });
     }
 

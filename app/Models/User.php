@@ -24,6 +24,7 @@ class User extends Authenticatable
      */
     protected $appends = [
         'can_manage_company_settings',
+        'can_manage_users',
     ];
 
     /**
@@ -46,6 +47,11 @@ class User extends Authenticatable
         return $this->role->canManageCompanySettings();
     }
 
+    public function canManageUsers(): bool
+    {
+        return $this->role->canManageUsers();
+    }
+
     public function isClient(): bool
     {
         return $this->role->isClient();
@@ -59,5 +65,10 @@ class User extends Authenticatable
     public function getCanManageCompanySettingsAttribute(): bool
     {
         return $this->canManageCompanySettings();
+    }
+
+    public function getCanManageUsersAttribute(): bool
+    {
+        return $this->canManageUsers();
     }
 }
