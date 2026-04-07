@@ -18,6 +18,10 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             auth: Auth;
+            companyRegistration: {
+                name: string;
+                registration_email_domain: string;
+            };
             sidebarOpen: boolean;
             [key: string]: unknown;
         };
