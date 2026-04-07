@@ -2,11 +2,25 @@
 
 namespace App\Http\Middleware;
 
+use App\Settings\CompanySettings;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
+    /**
+     * @return array{name: string, registration_email_domain: string}
+     */
+    protected function companyRegistrationProps(): array
+    {
+        $settings = app(CompanySettings::class);
+
+        return [
+            'name' => $settings->name,
+            'registration_email_domain' => $settings->email_domain,
+        ];
+    }
+
     /**
      * The root template that's loaded on the first page visit.
      *
@@ -41,6 +55,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'companyRegistration' => $this->companyRegistrationProps(),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
