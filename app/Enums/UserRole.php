@@ -39,6 +39,11 @@ enum UserRole: string
         return $this->canManageCompanySettings();
     }
 
+    public function canManageProjects(): bool
+    {
+        return in_array($this, [self::SuperAdmin, self::Admin, self::TeamHead], true);
+    }
+
     public function label(): string
     {
         return Str::title(str_replace('_', ' ', $this->value));

@@ -2,27 +2,21 @@
 
 namespace App\Models;
 
-use Database\Factories\TeamFactory;
+use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 #[Fillable(['name', 'code', 'description'])]
-class Team extends Model
+class Project extends Model
 {
-    /** @use HasFactory<TeamFactory> */
+    /** @use HasFactory<ProjectFactory> */
     use HasFactory;
 
-    public function users(): BelongsToMany
+    public function teams(): BelongsToMany
     {
-        return $this->belongsToMany(User::class)
-            ->withTimestamps();
-    }
-
-    public function projects(): BelongsToMany
-    {
-        return $this->belongsToMany(Project::class)
+        return $this->belongsToMany(Team::class)
             ->withTimestamps();
     }
 }

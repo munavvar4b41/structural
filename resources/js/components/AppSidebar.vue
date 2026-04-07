@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Building2, LayoutGrid, Users } from 'lucide-vue-next';
+import { Building2, FolderKanban, LayoutGrid, Users } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { edit as adminCompanyEdit } from '@/routes/admin/company/index';
+import { index as adminProjectsIndex } from '@/routes/admin/projects/index';
 import { index as adminTeamsIndex } from '@/routes/admin/teams/index';
 import { index as adminUsersIndex } from '@/routes/admin/users/index';
 import type { NavItem } from '@/types';
@@ -49,6 +50,14 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Teams',
             href: adminTeamsIndex(),
             icon: Users,
+        });
+    }
+
+    if (page.props.auth.user?.can_manage_projects) {
+        items.push({
+            title: 'Projects',
+            href: adminProjectsIndex(),
+            icon: FolderKanban,
         });
     }
 
