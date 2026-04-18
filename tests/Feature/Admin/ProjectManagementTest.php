@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class ProjectManagementTest extends TestCase
@@ -33,6 +34,50 @@ class ProjectManagementTest extends TestCase
         $this->assertTrue($staff->can('viewAny', Project::class));
         $this->assertTrue($staff->can('view', $visibleProject));
         $this->assertFalse($staff->can('view', $hiddenProject));
+    }
+
+    public function test_admin_can_list_and_view_all_projects_regardless_of_team(): void
+    {
+        $teamA = Team::factory()->create();
+        $teamB = Team::factory()->create();
+        $admin = User::factory()->admin()->create(['primary_team_id' => null]);
+
+        $projectA = Project::factory()->create(['name' => 'Admin Sees A']);
+        $projectA->teams()->sync([$teamA->id]);
+        $projectB = Project::factory()->create(['name' => 'Admin Sees B']);
+        $projectB->teams()->sync([$teamB->id]);
+
+        $this->assertTrue($admin->can('view', $projectA));
+        $this->assertTrue($admin->can('view', $projectB));
+
+        $this->actingAs($admin)
+            ->get(route('admin.projects.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/projects/Index')
+                ->has('projects.data', 2));
+    }
+
+    public function test_super_admin_can_list_and_view_all_projects_regardless_of_team(): void
+    {
+        $teamA = Team::factory()->create();
+        $teamB = Team::factory()->create();
+        $super = User::factory()->superAdmin()->create(['primary_team_id' => null]);
+
+        $projectA = Project::factory()->create(['name' => 'Super Sees A']);
+        $projectA->teams()->sync([$teamA->id]);
+        $projectB = Project::factory()->create(['name' => 'Super Sees B']);
+        $projectB->teams()->sync([$teamB->id]);
+
+        $this->assertTrue($super->can('view', $projectA));
+        $this->assertTrue($super->can('view', $projectB));
+
+        $this->actingAs($super)
+            ->get(route('admin.projects.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/projects/Index')
+                ->has('projects.data', 2));
     }
 
     public function test_team_head_can_create_update_and_delete_project(): void
