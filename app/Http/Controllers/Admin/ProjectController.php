@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreProjectRequest;
 use App\Http\Requests\Admin\UpdateProjectRequest;
@@ -26,23 +27,34 @@ class ProjectController extends Controller
 
         abort_if(! $actor instanceof User, 403);
 
-        $projects = Project::query();
+        $projects = Project::query()->with('clientUser');
 
-        if (! $actor->role->canViewAllProjects()) {
-            $projects->whereHas('teams.users', static fn ($query) => $query->whereKey($actor->id));
+        if ($actor->isClient()) {
+            $projects->where('client_user_id', $actor->id);
+        } elseif (! $actor->role->canViewAllProjects()) {
+            $projects->whereHas('teams.users', static fn($query) => $query->whereKey($actor->id));
         }
 
         $projects = $projects
             ->withCount('teams')
             ->orderBy('name')
             ->paginate(15)
-            ->through(static fn (Project $project): array => [
-                'id' => $project->id,
-                'name' => $project->name,
-                'code' => $project->code,
-                'description' => $project->description,
-                'teams_count' => $project->teams_count,
-            ]);
+            ->through(static function (Project $project): array {
+                $client = $project->clientUser;
+
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'code' => $project->code,
+                    'description' => $project->description,
+                    'teams_count' => $project->teams_count,
+                    'client_user' => $client === null ? null : [
+                        'id' => $client->id,
+                        'name' => $client->name,
+                        'email' => $client->email,
+                    ],
+                ];
+            });
 
         return Inertia::render('admin/projects/Index', [
             'projects' => $projects,
@@ -56,6 +68,7 @@ class ProjectController extends Controller
 
         return Inertia::render('admin/projects/Create', [
             'teams' => $this->teamsPayload(),
+            'clients' => $this->clientsPayload(),
         ]);
     }
 
@@ -80,9 +93,11 @@ class ProjectController extends Controller
                 'name' => $project->name,
                 'code' => $project->code,
                 'description' => $project->description,
+                'client_user_id' => $project->client_user_id,
                 'team_ids' => $project->teams()->pluck('teams.id')->all(),
             ],
             'teams' => $this->teamsPayload(),
+            'clients' => $this->clientsPayload(),
         ]);
     }
 
@@ -115,9 +130,25 @@ class ProjectController extends Controller
         return Team::query()
             ->orderBy('name')
             ->get(['id', 'name'])
-            ->map(static fn (Team $team): array => [
+            ->map(static fn(Team $team): array => [
                 'value' => $team->id,
                 'label' => $team->name,
+            ])
+            ->all();
+    }
+
+    /**
+     * @return list<array{value: int, label: string}>
+     */
+    private function clientsPayload(): array
+    {
+        return User::query()
+            ->where('role', UserRole::Client)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email'])
+            ->map(static fn(User $user): array => [
+                'value' => $user->id,
+                'label' => $user->name . ' (' . $user->email . ')',
             ])
             ->all();
     }
@@ -129,7 +160,7 @@ class ProjectController extends Controller
     private function normalizedTeamIds(array &$payload): array
     {
         $teamIds = collect($payload['team_ids'] ?? [])
-            ->map(static fn (mixed $value): int => (int) $value)
+            ->map(static fn(mixed $value): int => (int) $value)
             ->unique()
             ->values();
 

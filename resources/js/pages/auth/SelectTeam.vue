@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import TeamSelectionController from '@/actions/App/Http/Controllers/TeamSelectionController';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import TeamSelectionController from '@/actions/App/Http/Controllers/TeamSelectionController';
 
 type TeamOption = {
     value: number;

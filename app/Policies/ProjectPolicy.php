@@ -9,6 +9,10 @@ class ProjectPolicy
 {
     public function viewAny(User $actor): bool
     {
+        if ($actor->isClient()) {
+            return true;
+        }
+
         if ($actor->role->canViewAllProjects()) {
             return true;
         }
@@ -18,6 +22,10 @@ class ProjectPolicy
 
     public function view(User $actor, Project $project): bool
     {
+        if ($actor->isClient()) {
+            return $project->client_user_id === $actor->id;
+        }
+
         if ($actor->role->canViewAllProjects()) {
             return true;
         }

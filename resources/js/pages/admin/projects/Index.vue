@@ -9,12 +9,19 @@ import {
     index as projectsIndex,
 } from '@/routes/admin/projects/index';
 
+type ClientUserSummary = {
+    id: number;
+    name: string;
+    email: string;
+};
+
 type ProjectRow = {
     id: number;
     name: string;
     code: string | null;
     description: string | null;
     teams_count: number;
+    client_user: ClientUserSummary | null;
 };
 
 type PaginationLink = {
@@ -57,7 +64,7 @@ function confirmDelete(project: ProjectRow): void {
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <Heading
                 title="Projects"
-                description="Projects visible to your assigned teams"
+                description="Projects you can access based on your role and assignments"
             />
             <Button v-if="canManageProjects" as-child>
                 <Link :href="projectsCreate()">Add project</Link>
@@ -74,6 +81,7 @@ function confirmDelete(project: ProjectRow): void {
                     <tr>
                         <th class="px-4 py-3 font-medium">Name</th>
                         <th class="px-4 py-3 font-medium">Code</th>
+                        <th class="px-4 py-3 font-medium">Client</th>
                         <th class="px-4 py-3 font-medium">Teams</th>
                         <th
                             v-if="canManageProjects"
@@ -88,6 +96,13 @@ function confirmDelete(project: ProjectRow): void {
                         <td class="px-4 py-3">{{ project.name }}</td>
                         <td class="px-4 py-3 text-muted-foreground">
                             {{ project.code ?? '-' }}
+                        </td>
+                        <td class="px-4 py-3 text-muted-foreground">
+                            <template v-if="project.client_user">
+                                {{ project.client_user.name }}
+                                <span class="text-xs">({{ project.client_user.email }})</span>
+                            </template>
+                            <template v-else>—</template>
                         </td>
                         <td class="px-4 py-3 text-muted-foreground">
                             {{ project.teams_count }}

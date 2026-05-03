@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -21,6 +22,7 @@ class ProjectFactory extends Factory
             'name' => fake()->unique()->catchPhrase(),
             'code' => strtoupper(fake()->unique()->bothify('PRJ-###')),
             'description' => fake()->optional()->sentence(),
+            'client_user_id' => User::factory()->client(),
         ];
     }
 }
