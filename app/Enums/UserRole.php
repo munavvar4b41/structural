@@ -44,6 +44,14 @@ enum UserRole: string
         return in_array($this, [self::SuperAdmin, self::Admin, self::TeamHead], true);
     }
 
+    /**
+     * Whether this role may list and view every project (not limited by team membership).
+     */
+    public function canViewAllProjects(): bool
+    {
+        return $this === self::SuperAdmin || $this === self::Admin;
+    }
+
     public function label(): string
     {
         return Str::title(str_replace('_', ' ', $this->value));

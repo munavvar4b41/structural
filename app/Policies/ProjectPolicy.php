@@ -9,11 +9,19 @@ class ProjectPolicy
 {
     public function viewAny(User $actor): bool
     {
+        if ($actor->role->canViewAllProjects()) {
+            return true;
+        }
+
         return $actor->teams()->exists();
     }
 
     public function view(User $actor, Project $project): bool
     {
+        if ($actor->role->canViewAllProjects()) {
+            return true;
+        }
+
         return $project->teams()
             ->whereIn('teams.id', $actor->teams()->select('teams.id'))
             ->exists();

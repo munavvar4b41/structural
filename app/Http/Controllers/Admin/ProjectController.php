@@ -26,8 +26,13 @@ class ProjectController extends Controller
 
         abort_if(! $actor instanceof User, 403);
 
-        $projects = Project::query()
-            ->whereHas('teams.users', static fn ($query) => $query->whereKey($actor->id))
+        $projects = Project::query();
+
+        if (! $actor->role->canViewAllProjects()) {
+            $projects->whereHas('teams.users', static fn ($query) => $query->whereKey($actor->id));
+        }
+
+        $projects = $projects
             ->withCount('teams')
             ->orderBy('name')
             ->paginate(15)
