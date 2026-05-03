@@ -80,6 +80,23 @@ class ProjectManagementTest extends TestCase
                 ->has('projects.data', 2));
     }
 
+    public function test_project_lead_must_be_team_head_or_staff_on_assigned_teams(): void
+    {
+        $team = Team::factory()->create();
+        $admin = User::factory()->admin()->create();
+        $client = User::factory()->client()->create();
+        $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+
+        $this->actingAs($teamHead)
+            ->post(route('admin.projects.store'), [
+                'name' => 'Invalid lead role',
+                'client_user_id' => $client->id,
+                'team_ids' => [$team->id],
+                'lead_user_id' => $admin->id,
+            ])
+            ->assertSessionHasErrors('lead_user_id');
+    }
+
     public function test_team_head_can_create_update_and_delete_project(): void
     {
         $teamA = Team::factory()->create();
@@ -101,6 +118,7 @@ class ProjectManagementTest extends TestCase
         $project = Project::query()->where('name', 'Platform Revamp')->firstOrFail();
         $this->assertSame($clientUser->id, $project->client_user_id);
         $this->assertSame(2, $project->teams()->count());
+        $this->assertSame($teamHead->id, $project->lead_user_id);
 
         $this->actingAs($teamHead)
             ->put(route('admin.projects.update', $project), [
@@ -115,6 +133,7 @@ class ProjectManagementTest extends TestCase
         $project = $project->fresh();
         $this->assertSame('Platform Revamp Updated', $project?->name);
         $this->assertSame(1, $project?->teams()->count());
+        $this->assertSame($teamHead->id, $project?->lead_user_id);
 
         $this->actingAs($teamHead)
             ->delete(route('admin.projects.destroy', $project))

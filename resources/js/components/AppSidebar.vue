@@ -53,7 +53,7 @@ const mainNavItems = computed((): NavItem[] => {
         });
     }
 
-    if (page.props.auth.user?.can_manage_projects) {
+    if (page.props.auth.user?.can_view_projects) {
         items.push({
             title: 'Projects',
             href: adminProjectsIndex(),

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
 import { ChevronDown } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import ProjectController from '@/actions/App/Http/Controllers/Admin/ProjectController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -44,13 +44,39 @@ type ClientOption = {
     label: string;
 };
 
-const props = defineProps<{
-    teams: TeamOption[];
-    clients: ClientOption[];
-}>();
+type LeadCandidate = {
+    value: number;
+    label: string;
+    team_ids: number[];
+};
+
+const props = withDefaults(
+    defineProps<{
+        teams: TeamOption[];
+        clients: ClientOption[];
+        lead_candidates?: LeadCandidate[];
+    }>(),
+    { lead_candidates: () => [] },
+);
 
 const clientUserId = ref<string | undefined>(undefined);
 const selectedTeamIds = ref<number[]>([]);
+const leadUserId = ref('');
+
+const viableLeadCandidates = computed(() =>
+    props.lead_candidates.filter((c) =>
+        c.team_ids.some((tid) => selectedTeamIds.value.includes(tid)),
+    ),
+);
+
+watch(selectedTeamIds, () => {
+    if (
+        leadUserId.value !== '' &&
+        !viableLeadCandidates.value.some((c) => String(c.value) === leadUserId.value)
+    ) {
+        leadUserId.value = '';
+    }
+});
 
 const teamButtonLabel = computed(() => {
     if (props.teams.length === 0) {
@@ -111,6 +137,12 @@ defineOptions({
         >
             <input type="hidden" name="client_user_id" :value="clientUserId ?? ''" />
             <input
+                v-if="leadUserId !== ''"
+                type="hidden"
+                name="lead_user_id"
+                :value="leadUserId"
+            />
+            <input
                 v-for="id in selectedTeamIds"
                 :key="id"
                 type="hidden"
@@ -167,6 +199,34 @@ defineOptions({
                             </SelectContent>
                         </Select>
                         <InputError :message="errors.client_user_id" />
+                    </div>
+                    <div v-if="viableLeadCandidates.length > 0" class="grid gap-2">
+                        <Label id="lead_user_id-label">Project lead</Label>
+                        <Select v-model="leadUserId">
+                            <SelectTrigger
+                                id="lead_user_id"
+                                class="w-full min-w-0"
+                                aria-labelledby="lead_user_id-label"
+                            >
+                                <SelectValue placeholder="Use first team head (default)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="">First team head (default)</SelectItem>
+                                <SelectItem
+                                    v-for="opt in viableLeadCandidates"
+                                    :key="opt.value"
+                                    :value="String(opt.value)"
+                                >
+                                    {{ opt.label }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p class="text-xs text-muted-foreground">
+                            Must be a team head or staff on an assigned team. If you do not choose
+                            one, the first team head on those teams becomes the project lead and
+                            default owner for new requirements.
+                        </p>
+                        <InputError :message="errors.lead_user_id" />
                     </div>
                     <div class="grid gap-2">
                         <Label id="team_ids-label">Assigned teams</Label>

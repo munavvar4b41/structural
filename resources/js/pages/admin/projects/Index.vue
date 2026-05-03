@@ -8,6 +8,7 @@ import {
     edit as projectsEdit,
     index as projectsIndex,
 } from '@/routes/admin/projects/index';
+import { index as projectRequirementsIndex } from '@/routes/admin/projects/requirements/index';
 
 type ClientUserSummary = {
     id: number;
@@ -42,7 +43,7 @@ type Props = {
 
 defineOptions({
     layout: {
-        breadcrumbs: [{ title: 'Projects', href: projectsIndex() }],
+        breadcrumbs: [{ title: 'Projects', href: projectsIndex.url() }],
     },
 });
 
@@ -83,6 +84,7 @@ function confirmDelete(project: ProjectRow): void {
                         <th class="px-4 py-3 font-medium">Code</th>
                         <th class="px-4 py-3 font-medium">Client</th>
                         <th class="px-4 py-3 font-medium">Teams</th>
+                        <th class="px-4 py-3 font-medium">Requirements</th>
                         <th
                             v-if="canManageProjects"
                             class="px-4 py-3 font-medium text-right"
@@ -106,6 +108,11 @@ function confirmDelete(project: ProjectRow): void {
                         </td>
                         <td class="px-4 py-3 text-muted-foreground">
                             {{ project.teams_count }}
+                        </td>
+                        <td class="px-4 py-3">
+                            <Button variant="link" class="h-auto p-0" as-child>
+                                <Link :href="projectRequirementsIndex.url(project.id)">View</Link>
+                            </Button>
                         </td>
                         <td v-if="canManageProjects" class="px-4 py-3 text-right">
                             <div class="flex justify-end gap-2">

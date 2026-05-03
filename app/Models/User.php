@@ -21,6 +21,7 @@ class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory;
+
     use Notifiable;
     use TwoFactorAuthenticatable;
 
@@ -31,6 +32,7 @@ class User extends Authenticatable
         'can_manage_company_settings',
         'can_manage_users',
         'can_manage_projects',
+        'can_view_projects',
     ];
 
     /**
@@ -88,6 +90,11 @@ class User extends Authenticatable
         return $this->canManageProjects();
     }
 
+    public function getCanViewProjectsAttribute(): bool
+    {
+        return $this->can('viewAny', Project::class);
+    }
+
     public function primaryTeam(): BelongsTo
     {
         return $this->belongsTo(Team::class, 'primary_team_id');
@@ -107,5 +114,25 @@ class User extends Authenticatable
     public function clientProjects(): HasMany
     {
         return $this->hasMany(Project::class, 'client_user_id');
+    }
+
+    /**
+     * Projects where this user is the internal lead.
+     *
+     * @return HasMany<Project, $this>
+     */
+    public function leadProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'lead_user_id');
+    }
+
+    /**
+     * Requirements this user created.
+     *
+     * @return HasMany<ProjectRequirement, $this>
+     */
+    public function createdProjectRequirements(): HasMany
+    {
+        return $this->hasMany(ProjectRequirement::class, 'created_by_user_id');
     }
 }

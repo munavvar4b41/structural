@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreProjectRequest extends FormRequest
 {
@@ -18,6 +19,13 @@ class StoreProjectRequest extends FormRequest
     public function authorize(): bool
     {
         return $this->user()?->can('create', Project::class) ?? false;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('lead_user_id') && $this->input('lead_user_id') === '') {
+            $this->merge(['lead_user_id' => null]);
+        }
     }
 
     /**
@@ -38,6 +46,51 @@ class StoreProjectRequest extends FormRequest
             ],
             'team_ids' => ['required', 'array', 'min:1'],
             'team_ids.*' => ['required', 'integer', Rule::exists(Team::class, 'id')],
+            'lead_user_id' => ['nullable', 'integer', Rule::exists(User::class, 'id')],
+        ];
+    }
+
+    /**
+     * @return array<int, callable(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                $leadId = $this->input('lead_user_id');
+                if ($leadId === null || $leadId === '') {
+                    return;
+                }
+
+                $leadId = (int) $leadId;
+                $teamIds = collect($this->input('team_ids', []))
+                    ->map(static fn (mixed $value): int => (int) $value)
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                $user = User::query()->find($leadId);
+                if ($user === null) {
+                    return;
+                }
+
+                if (! in_array($user->role, [UserRole::TeamHead, UserRole::Staff], true)) {
+                    $validator->errors()->add(
+                        'lead_user_id',
+                        __('The project lead must be a team head or staff member.'),
+                    );
+
+                    return;
+                }
+
+                $userTeamIds = $user->teams()->pluck('teams.id')->all();
+                if (count(array_intersect($teamIds, $userTeamIds)) === 0) {
+                    $validator->errors()->add(
+                        'lead_user_id',
+                        __('The project lead must belong to at least one assigned team.'),
+                    );
+                }
+            },
         ];
     }
 }

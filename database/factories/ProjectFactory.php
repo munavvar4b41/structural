@@ -23,6 +23,7 @@ class ProjectFactory extends Factory
             'code' => strtoupper(fake()->unique()->bothify('PRJ-###')),
             'description' => fake()->optional()->sentence(),
             'client_user_id' => User::factory()->client(),
+            'lead_user_id' => null,
         ];
     }
 }
