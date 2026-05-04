@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
+import { ChevronDown } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -11,11 +13,20 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    index as usersIndex,
     create as usersCreate,
+    index as usersIndex,
 } from '@/routes/admin/users/index';
 
 type AssignableRole = {
@@ -33,6 +44,77 @@ type Props = {
     teams: TeamOption[];
 };
 
+const props = defineProps<Props>();
+
+const roleId = ref(props.assignableRoles[0]?.value ?? '');
+const primaryTeamId = ref(
+    props.teams[0] !== undefined ? String(props.teams[0].value) : '',
+);
+const selectedTeamIds = ref<number[]>(
+    props.teams[0] !== undefined ? [props.teams[0].value] : [],
+);
+
+watch(primaryTeamId, (idStr) => {
+    const id = Number(idStr);
+
+    if (!Number.isFinite(id)) {
+        return;
+    }
+
+    if (!selectedTeamIds.value.includes(id)) {
+        selectedTeamIds.value = [...selectedTeamIds.value, id];
+    }
+});
+
+const roleLabel = computed(
+    () =>
+        props.assignableRoles.find((r) => r.value === roleId.value)?.label ??
+        'Select role',
+);
+
+const primaryTeamLabel = computed(
+    () =>
+        props.teams.find((t) => String(t.value) === primaryTeamId.value)?.label ??
+        'Select primary team',
+);
+
+const additionalTeamsLabel = computed(() => {
+    if (props.teams.length === 0) {
+        return 'No teams available';
+    }
+
+    const extraIds = selectedTeamIds.value.filter(
+        (id) => id !== Number(primaryTeamId.value),
+    );
+
+    if (extraIds.length === 0) {
+        return 'No additional teams';
+    }
+
+    if (extraIds.length <= 2) {
+        return props.teams
+            .filter((t) => extraIds.includes(t.value))
+            .map((t) => t.label)
+            .join(', ');
+    }
+
+    return `${extraIds.length} additional teams`;
+});
+
+function setTeamChecked(teamId: number, checked: boolean): void {
+    if (teamId === Number(primaryTeamId.value) && !checked) {
+        return;
+    }
+
+    if (checked) {
+        if (!selectedTeamIds.value.includes(teamId)) {
+            selectedTeamIds.value = [...selectedTeamIds.value, teamId];
+        }
+    } else {
+        selectedTeamIds.value = selectedTeamIds.value.filter((id) => id !== teamId);
+    }
+}
+
 defineOptions({
     layout: {
         breadcrumbs: [
@@ -41,8 +123,6 @@ defineOptions({
         ],
     },
 });
-
-defineProps<Props>();
 </script>
 
 <template>
@@ -56,6 +136,16 @@ defineProps<Props>();
             class="flex max-w-xl flex-col gap-8"
             v-slot="{ errors, processing, recentlySuccessful }"
         >
+            <input type="hidden" name="role" :value="roleId" />
+            <input type="hidden" name="primary_team_id" :value="primaryTeamId" />
+            <input
+                v-for="id in selectedTeamIds"
+                :key="id"
+                type="hidden"
+                name="team_ids[]"
+                :value="id"
+            />
+
             <Card>
                 <CardHeader>
                     <CardTitle>Account</CardTitle>
@@ -89,60 +179,108 @@ defineProps<Props>();
                         <InputError :message="errors.email" />
                     </div>
                     <div class="grid gap-2">
-                        <Label for="role">Role</Label>
-                        <select
-                            id="role"
-                            name="role"
-                            required
-                            class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
-                        >
-                            <option
-                                v-for="opt in assignableRoles"
-                                :key="opt.value"
-                                :value="opt.value"
-                            >
-                                {{ opt.label }}
-                            </option>
-                        </select>
+                        <Label id="role-label">Role</Label>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger as-child>
+                                <Button
+                                    id="role"
+                                    type="button"
+                                    variant="outline"
+                                    class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
+                                    aria-labelledby="role-label"
+                                >
+                                    <span class="truncate text-left">{{ roleLabel }}</span>
+                                    <ChevronDown class="size-4 shrink-0 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width)">
+                                <DropdownMenuLabel>Role</DropdownMenuLabel>
+                                <DropdownMenuRadioGroup v-model="roleId">
+                                    <DropdownMenuRadioItem
+                                        v-for="opt in assignableRoles"
+                                        :key="opt.value"
+                                        :value="opt.value"
+                                    >
+                                        {{ opt.label }}
+                                    </DropdownMenuRadioItem>
+                                </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <InputError :message="errors.role" />
                     </div>
                     <div class="grid gap-2">
-                        <Label for="primary_team_id">Primary team</Label>
-                        <select
-                            id="primary_team_id"
-                            name="primary_team_id"
-                            required
-                            class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
-                        >
-                            <option
-                                v-for="opt in teams"
-                                :key="opt.value"
-                                :value="opt.value"
-                            >
-                                {{ opt.label }}
-                            </option>
-                        </select>
+                        <Label id="primary_team_id-label">Primary team</Label>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger as-child>
+                                <Button
+                                    id="primary_team_id"
+                                    type="button"
+                                    variant="outline"
+                                    class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
+                                    aria-labelledby="primary_team_id-label"
+                                >
+                                    <span class="truncate text-left">{{
+                                        primaryTeamLabel
+                                    }}</span>
+                                    <ChevronDown class="size-4 shrink-0 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width)">
+                                <DropdownMenuLabel>Primary team</DropdownMenuLabel>
+                                <DropdownMenuRadioGroup v-model="primaryTeamId">
+                                    <DropdownMenuRadioItem
+                                        v-for="opt in teams"
+                                        :key="opt.value"
+                                        :value="String(opt.value)"
+                                    >
+                                        {{ opt.label }}
+                                    </DropdownMenuRadioItem>
+                                </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <InputError :message="errors.primary_team_id" />
                     </div>
                     <div class="grid gap-2">
-                        <Label for="team_ids">Additional team assignments</Label>
-                        <select
-                            id="team_ids"
-                            name="team_ids[]"
-                            multiple
-                            required
-                            class="min-h-28 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
-                        >
-                            <option
-                                v-for="opt in teams"
-                                :key="opt.value"
-                                :value="opt.value"
-                            >
-                                {{ opt.label }}
-                            </option>
-                        </select>
+                        <Label id="team_ids-label">Additional team assignments</Label>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger as-child>
+                                <Button
+                                    id="team_ids"
+                                    type="button"
+                                    variant="outline"
+                                    class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
+                                    aria-labelledby="team_ids-label"
+                                >
+                                    <span class="truncate text-left">{{
+                                        additionalTeamsLabel
+                                    }}</span>
+                                    <ChevronDown class="size-4 shrink-0 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width)">
+                                <DropdownMenuLabel>Teams</DropdownMenuLabel>
+                                <DropdownMenuCheckboxItem
+                                    v-for="opt in teams"
+                                    :key="opt.value"
+                                    :disabled="opt.value === Number(primaryTeamId)"
+                                    :model-value="selectedTeamIds.includes(opt.value)"
+                                    @update:model-value="
+                                        (v: boolean | string) =>
+                                            setTeamChecked(opt.value, v === true)
+                                    "
+                                >
+                                    {{ opt.label }}
+                                    <span
+                                        v-if="opt.value === Number(primaryTeamId)"
+                                        class="text-xs text-muted-foreground"
+                                    >
+                                        (primary)
+                                    </span>
+                                </DropdownMenuCheckboxItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <p class="text-xs text-muted-foreground">
-                            Hold Ctrl/Cmd to select multiple teams.
+                            Open the menu to assign teams. The primary team is always included.
                         </p>
                         <InputError :message="errors.team_ids" />
                     </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { ChevronDown } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -14,15 +15,23 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
+import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
 import {
     edit as requirementsEdit,
     index as requirementsIndex,
     show as requirementsShow,
 } from '@/routes/admin/projects/requirements/index';
-import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
 
 type UserBrief = {
     id: number;
@@ -66,6 +75,39 @@ const props = defineProps<{
 const descriptionJson = ref(
     props.requirement.description ?? emptyTipTapDocumentJson(),
 );
+
+const responsibleUserId = ref(
+    props.requirement.responsible_user_id !== null
+        ? String(props.requirement.responsible_user_id)
+        : '',
+);
+const reviewerUserId = ref(
+    props.requirement.reviewer_user_id !== null
+        ? String(props.requirement.reviewer_user_id)
+        : '',
+);
+
+const responsibleLabel = computed(() => {
+    if (responsibleUserId.value === '') {
+        return 'Unassigned';
+    }
+
+    const u = props.assignable_responsibles.find(
+        (x) => String(x.id) === responsibleUserId.value,
+    );
+
+    return u ? `${u.name} (${u.email})` : 'Unassigned';
+});
+
+const reviewerLabel = computed(() => {
+    if (reviewerUserId.value === '') {
+        return 'None';
+    }
+
+    const u = props.assignable_staff.find((x) => String(x.id) === reviewerUserId.value);
+
+    return u ? `${u.name} (${u.email})` : 'None';
+});
 
 watch(
     () => props.requirement.description,
@@ -139,6 +181,10 @@ defineOptions({
                     :value="requirement.responsible_user_id ?? ''"
                 />
             </template>
+            <template v-else>
+                <input type="hidden" name="reviewer_user_id" :value="reviewerUserId" />
+                <input type="hidden" name="responsible_user_id" :value="responsibleUserId" />
+            </template>
             <input
                 v-if="!can_mark_reviewed"
                 type="hidden"
@@ -196,22 +242,34 @@ defineOptions({
                     <CardDescription>Who owns triage for this requirement</CardDescription>
                 </CardHeader>
                 <CardContent class="grid gap-2">
-                    <Label for="responsible_user_id">Responsible user</Label>
-                    <select
-                        id="responsible_user_id"
-                        name="responsible_user_id"
-                        class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
-                    >
-                        <option value="">Unassigned</option>
-                        <option
-                            v-for="u in assignable_responsibles"
-                            :key="u.id"
-                            :value="String(u.id)"
-                            :selected="u.id === requirement.responsible_user_id"
-                        >
-                            {{ u.name }} ({{ u.email }})
-                        </option>
-                    </select>
+                    <Label id="responsible_user_id-label">Responsible user</Label>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                            <Button
+                                id="responsible_user_id"
+                                type="button"
+                                variant="outline"
+                                class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
+                                aria-labelledby="responsible_user_id-label"
+                            >
+                                <span class="truncate text-left">{{ responsibleLabel }}</span>
+                                <ChevronDown class="size-4 shrink-0 opacity-50" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width)">
+                            <DropdownMenuLabel>Responsible</DropdownMenuLabel>
+                            <DropdownMenuRadioGroup v-model="responsibleUserId">
+                                <DropdownMenuRadioItem value="">Unassigned</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem
+                                    v-for="u in assignable_responsibles"
+                                    :key="u.id"
+                                    :value="String(u.id)"
+                                >
+                                    {{ u.name }} ({{ u.email }})
+                                </DropdownMenuRadioItem>
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <InputError :message="errors.responsible_user_id" />
                 </CardContent>
             </Card>
@@ -222,22 +280,34 @@ defineOptions({
                     <CardDescription>Assign a staff member on this project to check the requirement</CardDescription>
                 </CardHeader>
                 <CardContent class="grid gap-2">
-                    <Label for="reviewer_user_id">Reviewer (staff)</Label>
-                    <select
-                        id="reviewer_user_id"
-                        name="reviewer_user_id"
-                        class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
-                    >
-                        <option value="">None</option>
-                        <option
-                            v-for="u in assignable_staff"
-                            :key="u.id"
-                            :value="String(u.id)"
-                            :selected="u.id === requirement.reviewer_user_id"
-                        >
-                            {{ u.name }} ({{ u.email }})
-                        </option>
-                    </select>
+                    <Label id="reviewer_user_id-label">Reviewer (staff)</Label>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                            <Button
+                                id="reviewer_user_id"
+                                type="button"
+                                variant="outline"
+                                class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
+                                aria-labelledby="reviewer_user_id-label"
+                            >
+                                <span class="truncate text-left">{{ reviewerLabel }}</span>
+                                <ChevronDown class="size-4 shrink-0 opacity-50" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width)">
+                            <DropdownMenuLabel>Reviewer</DropdownMenuLabel>
+                            <DropdownMenuRadioGroup v-model="reviewerUserId">
+                                <DropdownMenuRadioItem value="">None</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem
+                                    v-for="u in assignable_staff"
+                                    :key="u.id"
+                                    :value="String(u.id)"
+                                >
+                                    {{ u.name }} ({{ u.email }})
+                                </DropdownMenuRadioItem>
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <p v-if="assignable_staff.length === 0" class="text-xs text-muted-foreground">
                         No staff on this project's teams yet.
                     </p>

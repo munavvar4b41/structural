@@ -18,17 +18,12 @@ import {
     DropdownMenuCheckboxItem,
     DropdownMenuContent,
     DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import {
     create as projectsCreate,
     index as projectsIndex,
@@ -59,7 +54,7 @@ const props = withDefaults(
     { lead_candidates: () => [] },
 );
 
-const clientUserId = ref<string | undefined>(undefined);
+const clientUserId = ref('');
 const selectedTeamIds = ref<number[]>([]);
 const leadUserId = ref('');
 
@@ -97,11 +92,29 @@ const teamButtonLabel = computed(() => {
     return `${selectedTeamIds.value.length} teams selected`;
 });
 
-function setTeamChecked(teamId: number, checked: boolean | 'indeterminate'): void {
-    if (checked === 'indeterminate') {
-        return;
+const clientContactLabel = computed(() => {
+    if (clientUserId.value === '') {
+        return 'Select a client user';
     }
 
+    const opt = props.clients.find((c) => String(c.value) === clientUserId.value);
+
+    return opt?.label ?? 'Select a client user';
+});
+
+const leadUserLabel = computed(() => {
+    if (leadUserId.value === '') {
+        return 'Use first team head (default)';
+    }
+
+    const opt = viableLeadCandidates.value.find(
+        (c) => String(c.value) === leadUserId.value,
+    );
+
+    return opt?.label ?? 'Use first team head (default)';
+});
+
+function setTeamChecked(teamId: number, checked: boolean): void {
     if (checked) {
         if (!selectedTeamIds.value.includes(teamId)) {
             selectedTeamIds.value = [...selectedTeamIds.value, teamId];
@@ -135,7 +148,7 @@ defineOptions({
             class="flex max-w-xl flex-col gap-8"
             v-slot="{ errors, processing, recentlySuccessful }"
         >
-            <input type="hidden" name="client_user_id" :value="clientUserId ?? ''" />
+            <input type="hidden" name="client_user_id" :value="clientUserId" />
             <input
                 v-if="leadUserId !== ''"
                 type="hidden"
@@ -180,47 +193,67 @@ defineOptions({
                     </div>
                     <div class="grid gap-2">
                         <Label id="client_user_id-label">Client contact</Label>
-                        <Select v-model="clientUserId">
-                            <SelectTrigger
-                                id="client_user_id"
-                                class="w-full min-w-0"
-                                aria-labelledby="client_user_id-label"
-                            >
-                                <SelectValue placeholder="Select a client user" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem
-                                    v-for="opt in clients"
-                                    :key="opt.value"
-                                    :value="String(opt.value)"
+                        <DropdownMenu>
+                            <DropdownMenuTrigger as-child>
+                                <Button
+                                    id="client_user_id"
+                                    type="button"
+                                    variant="outline"
+                                    class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
+                                    aria-labelledby="client_user_id-label"
                                 >
-                                    {{ opt.label }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
+                                    <span class="truncate text-left">{{
+                                        clientContactLabel
+                                    }}</span>
+                                    <ChevronDown class="size-4 shrink-0 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width)">
+                                <DropdownMenuLabel>Client user</DropdownMenuLabel>
+                                <DropdownMenuRadioGroup v-model="clientUserId">
+                                    <DropdownMenuRadioItem
+                                        v-for="opt in clients"
+                                        :key="opt.value"
+                                        :value="String(opt.value)"
+                                    >
+                                        {{ opt.label }}
+                                    </DropdownMenuRadioItem>
+                                </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <InputError :message="errors.client_user_id" />
                     </div>
                     <div v-if="viableLeadCandidates.length > 0" class="grid gap-2">
                         <Label id="lead_user_id-label">Project lead</Label>
-                        <Select v-model="leadUserId">
-                            <SelectTrigger
-                                id="lead_user_id"
-                                class="w-full min-w-0"
-                                aria-labelledby="lead_user_id-label"
-                            >
-                                <SelectValue placeholder="Use first team head (default)" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="">First team head (default)</SelectItem>
-                                <SelectItem
-                                    v-for="opt in viableLeadCandidates"
-                                    :key="opt.value"
-                                    :value="String(opt.value)"
+                        <DropdownMenu>
+                            <DropdownMenuTrigger as-child>
+                                <Button
+                                    id="lead_user_id"
+                                    type="button"
+                                    variant="outline"
+                                    class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
+                                    aria-labelledby="lead_user_id-label"
                                 >
-                                    {{ opt.label }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
+                                    <span class="truncate text-left">{{ leadUserLabel }}</span>
+                                    <ChevronDown class="size-4 shrink-0 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width)">
+                                <DropdownMenuLabel>Project lead</DropdownMenuLabel>
+                                <DropdownMenuRadioGroup v-model="leadUserId">
+                                    <DropdownMenuRadioItem value="">
+                                        First team head (default)
+                                    </DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem
+                                        v-for="opt in viableLeadCandidates"
+                                        :key="opt.value"
+                                        :value="String(opt.value)"
+                                    >
+                                        {{ opt.label }}
+                                    </DropdownMenuRadioItem>
+                                </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <p class="text-xs text-muted-foreground">
                             Must be a team head or staff on an assigned team. If you do not choose
                             one, the first team head on those teams becomes the project lead and
@@ -248,10 +281,10 @@ defineOptions({
                                 <DropdownMenuCheckboxItem
                                     v-for="opt in teams"
                                     :key="opt.value"
-                                    :checked="selectedTeamIds.includes(opt.value)"
-                                    @update:checked="
-                                        (v: boolean | 'indeterminate') =>
-                                            setTeamChecked(opt.value, v)
+                                    :model-value="selectedTeamIds.includes(opt.value)"
+                                    @update:model-value="
+                                        (v: boolean | string) =>
+                                            setTeamChecked(opt.value, v === true)
                                     "
                                 >
                                     {{ opt.label }}
