@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import TeamController from '@/actions/App/Http/Controllers/Admin/TeamController';
+import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -44,17 +46,45 @@ defineOptions({
 
 defineProps<Props>();
 
-function confirmDelete(team: TeamRow): void {
-    if (!confirm(`Delete team "${team.name}"? This cannot be undone.`)) {
+const deleteDialogOpen = ref(false);
+const teamPendingDelete = ref<TeamRow | null>(null);
+
+function openDeleteDialog(team: TeamRow): void {
+    teamPendingDelete.value = team;
+    deleteDialogOpen.value = true;
+}
+
+function executeDelete(): void {
+    const team = teamPendingDelete.value;
+
+    if (team === null) {
         return;
     }
 
     router.delete(TeamController.destroy.url(team.id));
+    teamPendingDelete.value = null;
 }
+
+const deleteTeamDescription = computed(() => {
+    const team = teamPendingDelete.value;
+
+    if (team === null) {
+        return '';
+    }
+
+    return `Delete "${team.name}"? This cannot be undone.`;
+});
 </script>
 
 <template>
     <Head title="Teams" />
+
+    <ConfirmDestructiveDialog
+        v-model:open="deleteDialogOpen"
+        title="Delete team?"
+        :description="deleteTeamDescription"
+        @confirm="executeDelete"
+    />
 
     <div class="flex flex-col gap-8">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -102,7 +132,7 @@ function confirmDelete(team: TeamRow): void {
                                     size="sm"
                                     class="text-destructive hover:bg-destructive/10"
                                     type="button"
-                                    @click="confirmDelete(team)"
+                                    @click="openDeleteDialog(team)"
                                 >
                                     Delete
                                 </Button>

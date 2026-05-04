@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -76,7 +77,13 @@ class UserManagementTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('admin/users/Index')
                 ->has('users.data', fn (Assert $users) => $users
-                    ->etc()));
+                    ->etc())
+                ->where(
+                    'users.data',
+                    fn (Collection $rows) => ! $rows->contains(
+                        fn (array $row): bool => (int) ($row['id'] ?? 0) === $user->id,
+                    ),
+                ));
     }
 
     public function test_admin_can_view_users_index(): void
@@ -147,6 +154,7 @@ class UserManagementTest extends TestCase
                 'email' => 'another-super@example.com',
                 'role' => UserRole::SuperAdmin->value,
             ]))
+            ->assertSessionHas('toast', 'User created.')
             ->assertRedirect(route('admin.users.index'));
 
         $this->assertDatabaseHas('users', [

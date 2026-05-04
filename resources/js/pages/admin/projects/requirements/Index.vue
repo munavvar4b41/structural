@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementController';
+import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
+import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
 import {
     create as requirementsCreate,
     edit as requirementsEdit,
     index as requirementsIndex,
     show as requirementsShow,
 } from '@/routes/admin/projects/requirements/index';
-import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
 
 type UserBrief = {
     id: number;
@@ -75,8 +77,18 @@ defineOptions({
     }),
 });
 
-function confirmDelete(row: RequirementRow): void {
-    if (!confirm(`Delete requirement "${row.title}"? This cannot be undone.`)) {
+const deleteDialogOpen = ref(false);
+const requirementPendingDelete = ref<RequirementRow | null>(null);
+
+function openDeleteDialog(row: RequirementRow): void {
+    requirementPendingDelete.value = row;
+    deleteDialogOpen.value = true;
+}
+
+function executeDelete(): void {
+    const row = requirementPendingDelete.value;
+
+    if (row === null) {
         return;
     }
 
@@ -86,11 +98,29 @@ function confirmDelete(row: RequirementRow): void {
             requirement: row.id,
         }),
     );
+    requirementPendingDelete.value = null;
 }
+
+const deleteRequirementDescription = computed(() => {
+    const row = requirementPendingDelete.value;
+
+    if (row === null) {
+        return '';
+    }
+
+    return `Delete "${row.title}"? This cannot be undone.`;
+});
 </script>
 
 <template>
     <Head :title="`Requirements · ${project.name}`" />
+
+    <ConfirmDestructiveDialog
+        v-model:open="deleteDialogOpen"
+        title="Delete requirement?"
+        :description="deleteRequirementDescription"
+        @confirm="executeDelete"
+    />
 
     <div class="flex flex-col gap-8">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -175,7 +205,7 @@ function confirmDelete(row: RequirementRow): void {
                                     size="sm"
                                     class="text-destructive"
                                     type="button"
-                                    @click="confirmDelete(row)"
+                                    @click="openDeleteDialog(row)"
                                 >
                                     Delete
                                 </Button>

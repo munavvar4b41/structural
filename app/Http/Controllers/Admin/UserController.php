@@ -22,7 +22,10 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
+        $actor = $request->user();
+
         $users = User::query()
+            ->when($actor !== null, static fn ($query) => $query->whereKeyNot($actor->id))
             ->orderBy('name')
             ->paginate(15)
             ->through(static fn (User $user): array => [
@@ -56,7 +59,7 @@ class UserController extends Controller
         $user = User::query()->create($payload);
         $user->teams()->sync($teamIds);
 
-        return to_route('admin.users.index');
+        return to_route('admin.users.index')->with('toast', 'User created.');
     }
 
     public function edit(Request $request, User $user): Response
@@ -91,7 +94,7 @@ class UserController extends Controller
         $user->update($payload);
         $user->teams()->sync($teamIds);
 
-        return to_route('admin.users.index');
+        return to_route('admin.users.index')->with('toast', 'User updated.');
     }
 
     public function destroy(Request $request, User $user): RedirectResponse
@@ -100,7 +103,7 @@ class UserController extends Controller
 
         $user->delete();
 
-        return to_route('admin.users.index');
+        return to_route('admin.users.index')->with('toast', 'User deleted.');
     }
 
     /**

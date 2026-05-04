@@ -89,7 +89,7 @@ class ProjectController extends Controller
             }
         }
 
-        return to_route('admin.projects.index');
+        return to_route('admin.projects.index')->with('toast', 'Project created.');
     }
 
     public function edit(Project $project): Response
@@ -128,7 +128,7 @@ class ProjectController extends Controller
             }
         }
 
-        return to_route('admin.projects.index');
+        return to_route('admin.projects.index')->with('toast', 'Project updated.');
     }
 
     public function destroy(Project $project): RedirectResponse
@@ -138,7 +138,7 @@ class ProjectController extends Controller
         $project->teams()->detach();
         $project->delete();
 
-        return to_route('admin.projects.index');
+        return to_route('admin.projects.index')->with('toast', 'Project deleted.');
     }
 
     /**

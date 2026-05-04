@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import ProjectController from '@/actions/App/Http/Controllers/Admin/ProjectController';
+import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -49,17 +51,45 @@ defineOptions({
 
 defineProps<Props>();
 
-function confirmDelete(project: ProjectRow): void {
-    if (!confirm(`Delete project "${project.name}"? This cannot be undone.`)) {
+const deleteDialogOpen = ref(false);
+const projectPendingDelete = ref<ProjectRow | null>(null);
+
+function openDeleteDialog(project: ProjectRow): void {
+    projectPendingDelete.value = project;
+    deleteDialogOpen.value = true;
+}
+
+function executeDelete(): void {
+    const project = projectPendingDelete.value;
+
+    if (project === null) {
         return;
     }
 
     router.delete(ProjectController.destroy.url(project.id));
+    projectPendingDelete.value = null;
 }
+
+const deleteProjectDescription = computed(() => {
+    const project = projectPendingDelete.value;
+
+    if (project === null) {
+        return '';
+    }
+
+    return `Delete "${project.name}"? This cannot be undone.`;
+});
 </script>
 
 <template>
     <Head title="Projects" />
+
+    <ConfirmDestructiveDialog
+        v-model:open="deleteDialogOpen"
+        title="Delete project?"
+        :description="deleteProjectDescription"
+        @confirm="executeDelete"
+    />
 
     <div class="flex flex-col gap-8">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -124,7 +154,7 @@ function confirmDelete(project: ProjectRow): void {
                                     size="sm"
                                     class="text-destructive hover:bg-destructive/10"
                                     type="button"
-                                    @click="confirmDelete(project)"
+                                    @click="openDeleteDialog(project)"
                                 >
                                     Delete
                                 </Button>

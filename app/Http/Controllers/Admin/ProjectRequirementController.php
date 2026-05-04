@@ -99,7 +99,7 @@ class ProjectRequirementController extends Controller
             'description' => $request->validated('description'),
         ]);
 
-        return to_route('admin.projects.requirements.index', $project);
+        return to_route('admin.projects.requirements.index', $project)->with('toast', 'Requirement created.');
     }
 
     public function edit(Request $request, Project $project, ProjectRequirement $requirement): Response
@@ -148,7 +148,7 @@ class ProjectRequirementController extends Controller
                 : null,
         ]);
 
-        return to_route('admin.projects.requirements.index', $project);
+        return to_route('admin.projects.requirements.index', $project)->with('toast', 'Requirement updated.');
     }
 
     public function destroy(Request $request, Project $project, ProjectRequirement $requirement): RedirectResponse
@@ -158,7 +158,7 @@ class ProjectRequirementController extends Controller
 
         $requirement->delete();
 
-        return to_route('admin.projects.requirements.index', $project);
+        return to_route('admin.projects.requirements.index', $project)->with('toast', 'Requirement deleted.');
     }
 
     /**
