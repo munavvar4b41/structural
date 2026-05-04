@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import RequirementRichTextEditor from '@/components/RequirementRichTextEditor.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -13,6 +15,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
 import {
     create as requirementsCreate,
     index as requirementsIndex,
@@ -25,10 +28,19 @@ type ProjectSummary = {
     code: string | null;
 };
 
+type AssignableUser = {
+    id: number;
+    name: string;
+    email: string;
+};
+
 const props = defineProps<{
     project: ProjectSummary;
     canManageProject: boolean;
+    assignable_responsibles: AssignableUser[];
 }>();
+
+const descriptionJson = ref(emptyTipTapDocumentJson());
 
 defineOptions({
     layout: (pageProps: {
@@ -64,13 +76,13 @@ defineOptions({
 
         <Form
             v-bind="ProjectRequirementController.store.form({ project: project.id })"
-            class="flex max-w-xl flex-col gap-8"
+            class="flex max-w-2xl flex-col gap-8"
             v-slot="{ errors, processing, recentlySuccessful }"
         >
             <Card>
                 <CardHeader>
                     <CardTitle>Requirement</CardTitle>
-                    <CardDescription>Title and optional details for your team</CardDescription>
+                    <CardDescription>Title and optional rich-text details for your team</CardDescription>
                 </CardHeader>
                 <CardContent class="grid gap-6">
                     <div class="grid gap-2">
@@ -79,14 +91,30 @@ defineOptions({
                         <InputError :message="errors.title" />
                     </div>
                     <div class="grid gap-2">
-                        <Label for="description">Description</Label>
-                        <textarea
-                            id="description"
-                            name="description"
-                            rows="5"
-                            class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+                        <Label for="requirement-description">Description</Label>
+                        <RequirementRichTextEditor
+                            id="requirement-description"
+                            v-model="descriptionJson"
+                            input-name="description"
                         />
                         <InputError :message="errors.description" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="responsible_user_id">Responsible (optional)</Label>
+                        <select
+                            id="responsible_user_id"
+                            name="responsible_user_id"
+                            class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+                        >
+                            <option value="">Use default (project lead / first team head)</option>
+                            <option v-for="u in assignable_responsibles" :key="u.id" :value="String(u.id)">
+                                {{ u.name }} ({{ u.email }})
+                            </option>
+                        </select>
+                        <p class="text-xs text-muted-foreground">
+                            Leave blank to use the project lead or the first team head on this project.
+                        </p>
+                        <InputError :message="errors.responsible_user_id" />
                     </div>
                 </CardContent>
             </Card>

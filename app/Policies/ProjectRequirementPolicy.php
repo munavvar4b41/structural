@@ -72,6 +72,12 @@ class ProjectRequirementPolicy
             return $actor->can('view', $requirement->project);
         }
 
+        $requirement->loadMissing('project');
+        $project = $requirement->project;
+        if ($project->lead_user_id !== null && $project->lead_user_id === $actor->id) {
+            return true;
+        }
+
         return $requirement->responsible_user_id === $actor->id;
     }
 
@@ -81,12 +87,16 @@ class ProjectRequirementPolicy
             return false;
         }
 
-        if ($this->updateAssignments($actor, $requirement)) {
+        if ($requirement->reviewer_user_id !== null) {
+            return $requirement->reviewer_user_id === $actor->id
+                && $actor->role === UserRole::Staff;
+        }
+
+        if ($actor->role === UserRole::SuperAdmin || $actor->role === UserRole::Admin) {
             return true;
         }
 
-        return $requirement->reviewer_user_id === $actor->id
-            && $actor->role === UserRole::Staff;
+        return $actor->role === UserRole::TeamHead && $actor->can('view', $requirement->project);
     }
 
     public function delete(User $actor, ProjectRequirement $requirement): bool

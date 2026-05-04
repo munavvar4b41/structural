@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
+import { ref, watch } from 'vue';
 import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import RequirementRichTextEditor from '@/components/RequirementRichTextEditor.vue';
+import RequirementRichTextViewer from '@/components/RequirementRichTextViewer.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -13,9 +16,11 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
 import {
     edit as requirementsEdit,
     index as requirementsIndex,
+    show as requirementsShow,
 } from '@/routes/admin/projects/requirements/index';
 import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
 
@@ -58,6 +63,17 @@ const props = defineProps<{
     can_manage_project: boolean;
 }>();
 
+const descriptionJson = ref(
+    props.requirement.description ?? emptyTipTapDocumentJson(),
+);
+
+watch(
+    () => props.requirement.description,
+    (v) => {
+        descriptionJson.value = v ?? emptyTipTapDocumentJson();
+    },
+);
+
 defineOptions({
     layout: (pageProps: {
         project: ProjectSummary;
@@ -78,6 +94,13 @@ defineOptions({
             },
             {
                 title: pageProps.requirement.title,
+                href: requirementsShow.url({
+                    project: pageProps.project.id,
+                    requirement: pageProps.requirement.id,
+                }),
+            },
+            {
+                title: 'Edit',
                 href: requirementsEdit.url({
                     project: pageProps.project.id,
                     requirement: pageProps.requirement.id,
@@ -101,7 +124,7 @@ defineOptions({
                     requirement: requirement.id,
                 })
             "
-            class="flex max-w-xl flex-col gap-8"
+            class="flex max-w-2xl flex-col gap-8"
             v-slot="{ errors, processing, recentlySuccessful }"
         >
             <template v-if="!can_update_assignments">
@@ -145,15 +168,22 @@ defineOptions({
                         <InputError :message="errors.title" />
                     </div>
                     <div class="grid gap-2">
-                        <Label for="description">Description</Label>
-                        <textarea
-                            id="description"
+                        <Label for="requirement-description">Description</Label>
+                        <RequirementRichTextEditor
+                            v-if="can_update_content"
+                            id="requirement-description"
+                            v-model="descriptionJson"
+                            input-name="description"
+                        />
+                        <input
+                            v-else
+                            type="hidden"
                             name="description"
-                            rows="5"
-                            :default-value="requirement.description ?? ''"
-                            :readonly="!can_update_content"
-                            class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
-                            :class="{ 'opacity-80': !can_update_content }"
+                            :value="requirement.description ?? emptyTipTapDocumentJson()"
+                        />
+                        <RequirementRichTextViewer
+                            v-if="!can_update_content"
+                            :json="requirement.description"
                         />
                         <InputError :message="errors.description" />
                     </div>
@@ -234,6 +264,18 @@ defineOptions({
 
             <div class="flex items-center gap-4">
                 <Button type="submit" :disabled="processing">Save</Button>
+                <Button variant="outline" as-child>
+                    <Link
+                        :href="
+                            requirementsShow.url({
+                                project: project.id,
+                                requirement: requirement.id,
+                            })
+                        "
+                    >
+                        View
+                    </Link>
+                </Button>
                 <Button variant="outline" as-child>
                     <Link :href="requirementsIndex.url(project.id)">Cancel</Link>
                 </Button>

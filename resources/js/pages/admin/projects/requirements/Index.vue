@@ -7,6 +7,7 @@ import {
     create as requirementsCreate,
     edit as requirementsEdit,
     index as requirementsIndex,
+    show as requirementsShow,
 } from '@/routes/admin/projects/requirements/index';
 import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
 
@@ -19,7 +20,7 @@ type UserBrief = {
 type RequirementRow = {
     id: number;
     title: string;
-    description: string | null;
+    description_preview: string | null;
     reviewed_at: string | null;
     created_at: string | null;
     creator: UserBrief;
@@ -127,10 +128,10 @@ function confirmDelete(row: RequirementRow): void {
                         <td class="px-4 py-3 align-top">
                             <div class="font-medium">{{ row.title }}</div>
                             <p
-                                v-if="row.description"
+                                v-if="row.description_preview"
                                 class="mt-1 line-clamp-2 text-xs text-muted-foreground"
                             >
-                                {{ row.description }}
+                                {{ row.description_preview }}
                             </p>
                         </td>
                         <td class="px-4 py-3 text-muted-foreground">
@@ -144,6 +145,18 @@ function confirmDelete(row: RequirementRow): void {
                         </td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex justify-end gap-2">
+                                <Button variant="ghost" size="sm" as-child>
+                                    <Link
+                                        :href="
+                                            requirementsShow.url({
+                                                project: project.id,
+                                                requirement: row.id,
+                                            })
+                                        "
+                                    >
+                                        View
+                                    </Link>
+                                </Button>
                                 <Button v-if="row.can_update" variant="ghost" size="sm" as-child>
                                     <Link
                                         :href="

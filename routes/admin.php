@@ -22,4 +22,4 @@ Route::middleware(EnsureCanManageUsers::class)
     });
 
 Route::resource('projects', ProjectController::class)->except(['show']);
-Route::resource('projects.requirements', ProjectRequirementController::class)->except(['show']);
+Route::resource('projects.requirements', ProjectRequirementController::class);

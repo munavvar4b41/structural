@@ -9,6 +9,8 @@ use App\Http\Requests\Admin\UpdateProjectRequirementRequest;
 use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\User;
+use App\Support\ProjectRequirementAssignableUsers;
+use App\Support\TipTapDocument;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -42,6 +44,24 @@ class ProjectRequirementController extends Controller
         ]);
     }
 
+    public function show(Request $request, Project $project, ProjectRequirement $requirement): Response
+    {
+        $this->ensureRequirementBelongsToProject($project, $requirement);
+        $this->authorize('view', $requirement);
+
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
+        $requirement->loadMissing(['creator', 'responsibleUser', 'reviewer', 'project']);
+
+        return Inertia::render('admin/projects/requirements/Show', [
+            'project' => $this->projectSummary($project),
+            'requirement' => $this->requirementDetailPayload($requirement),
+            'can_update' => $actor->can('update', $requirement),
+            'can_manage_project' => $actor->can('update', $project),
+        ]);
+    }
+
     public function create(Request $request, Project $project): Response
     {
         $this->authorize('create', [ProjectRequirement::class, $project]);
@@ -49,9 +69,16 @@ class ProjectRequirementController extends Controller
         $actor = $request->user();
         abort_if(! $actor instanceof User, 403);
 
+        $project->loadMissing('teams');
+
         return Inertia::render('admin/projects/requirements/Create', [
             'project' => $this->projectSummary($project),
             'canManageProject' => $actor->can('update', $project),
+            'assignable_responsibles' => $this->assignableResponsibleUsers($project)->map(fn (User $u): array => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+            ])->all(),
         ]);
     }
 
@@ -59,12 +86,15 @@ class ProjectRequirementController extends Controller
     {
         $project->loadMissing('teams');
 
-        $responsible = $project->defaultResponsibleUser();
+        $responsibleId = $request->validated('responsible_user_id');
+        if ($responsibleId === null) {
+            $responsibleId = $project->defaultResponsibleUser()?->id;
+        }
 
         ProjectRequirement::query()->create([
             'project_id' => $project->id,
             'created_by_user_id' => $request->user()->id,
-            'responsible_user_id' => $responsible?->id,
+            'responsible_user_id' => $responsibleId,
             'title' => $request->validated('title'),
             'description' => $request->validated('description'),
         ]);
@@ -151,7 +181,7 @@ class ProjectRequirementController extends Controller
         return [
             'id' => $r->id,
             'title' => $r->title,
-            'description' => $r->description,
+            'description_preview' => TipTapDocument::previewFromStored($r->description),
             'reviewed_at' => $r->reviewed_at?->toIso8601String(),
             'created_at' => $r->created_at?->toIso8601String(),
             'creator' => $this->userBrief($r->creator),
@@ -159,6 +189,24 @@ class ProjectRequirementController extends Controller
             'reviewer' => $this->userBrief($r->reviewer),
             'can_update' => $actor->can('update', $r),
             'can_delete' => $actor->can('delete', $r),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function requirementDetailPayload(ProjectRequirement $r): array
+    {
+        return [
+            'id' => $r->id,
+            'title' => $r->title,
+            'description' => $r->description,
+            'reviewed_at' => $r->reviewed_at?->toIso8601String(),
+            'created_at' => $r->created_at?->toIso8601String(),
+            'updated_at' => $r->updated_at?->toIso8601String(),
+            'creator' => $this->userBrief($r->creator),
+            'responsible_user' => $this->userBrief($r->responsibleUser),
+            'reviewer' => $this->userBrief($r->reviewer),
         ];
     }
 
@@ -220,21 +268,16 @@ class ProjectRequirementController extends Controller
      */
     private function assignableResponsibleUsers(Project $project): Collection
     {
-        $teamIds = $project->teams()->pluck('teams.id');
+        $ids = ProjectRequirementAssignableUsers::responsibleUserIds($project);
 
-        $heads = User::query()
-            ->where('role', UserRole::TeamHead)
-            ->whereHas('teams', static function ($query) use ($teamIds): void {
-                $query->whereIn('teams.id', $teamIds);
-            })
+        if ($ids === []) {
+            return collect();
+        }
+
+        return User::query()
+            ->whereIn('id', $ids)
             ->orderBy('name')
-            ->get(['id', 'name', 'email']);
-
-        $admins = User::query()
-            ->whereIn('role', [UserRole::Admin, UserRole::SuperAdmin])
-            ->orderBy('name')
-            ->get(['id', 'name', 'email']);
-
-        return $heads->merge($admins)->unique('id')->values();
+            ->get(['id', 'name', 'email'])
+            ->values();
     }
 }

@@ -25,7 +25,17 @@ class ProjectRequirementFactory extends Factory
             'responsible_user_id' => null,
             'reviewer_user_id' => null,
             'title' => fake()->sentence(4),
-            'description' => fake()->optional()->paragraph(),
+            'description' => (string) json_encode([
+                'type' => 'doc',
+                'content' => [
+                    [
+                        'type' => 'paragraph',
+                        'content' => [
+                            ['type' => 'text', 'text' => fake()->paragraph()],
+                        ],
+                    ],
+                ],
+            ]),
             'reviewed_at' => null,
         ];
     }

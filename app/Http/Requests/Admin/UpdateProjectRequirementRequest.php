@@ -2,9 +2,10 @@
 
 namespace App\Http\Requests\Admin;
 
-use App\Enums\UserRole;
 use App\Models\ProjectRequirement;
 use App\Models\User;
+use App\Support\ProjectRequirementAssignableUsers;
+use App\Support\TipTapDocument;
 use Carbon\Carbon;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -37,6 +38,20 @@ class UpdateProjectRequirementRequest extends FormRequest
         if ($this->has('reviewed_at') && $this->input('reviewed_at') === '') {
             $merge['reviewed_at'] = null;
         }
+        $desc = $this->input('description');
+        if (is_string($desc) && $desc !== '' && ! TipTapDocument::isValidDocumentJson($desc)) {
+            $merge['description'] = (string) json_encode([
+                'type' => 'doc',
+                'content' => [
+                    [
+                        'type' => 'paragraph',
+                        'content' => [
+                            ['type' => 'text', 'text' => $desc],
+                        ],
+                    ],
+                ],
+            ]);
+        }
         if ($merge !== []) {
             $this->merge($merge);
         }
@@ -50,34 +65,26 @@ class UpdateProjectRequirementRequest extends FormRequest
         /** @var ProjectRequirement $requirement */
         $requirement = $this->route('requirement');
         $project = $requirement->project;
-        $teamIds = $project->teams()->pluck('teams.id');
+        $project->loadMissing('teams');
 
-        $allowedReviewerIds = User::query()
-            ->where('role', UserRole::Staff)
-            ->whereHas('teams', static function ($query) use ($teamIds): void {
-                $query->whereIn('teams.id', $teamIds);
-            })
-            ->pluck('id')
-            ->all();
-
-        $allowedResponsibleIds = User::query()
-            ->whereIn('role', [UserRole::SuperAdmin, UserRole::Admin])
-            ->pluck('id')
-            ->merge(
-                User::query()
-                    ->where('role', UserRole::TeamHead)
-                    ->whereHas('teams', static function ($query) use ($teamIds): void {
-                        $query->whereIn('teams.id', $teamIds);
-                    })
-                    ->pluck('id')
-            )
-            ->unique()
-            ->values()
-            ->all();
+        $allowedReviewerIds = ProjectRequirementAssignableUsers::reviewerUserIds($project);
+        $allowedResponsibleIds = ProjectRequirementAssignableUsers::responsibleUserIds($project);
 
         return [
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:5000'],
+            'description' => [
+                'nullable',
+                'string',
+                'max:'.ProjectRequirementAssignableUsers::DESCRIPTION_MAX_LENGTH,
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value === null || $value === '') {
+                        return;
+                    }
+                    if (! is_string($value) || ! TipTapDocument::isValidDocumentJson($value)) {
+                        $fail(__('The description must be valid rich text.'));
+                    }
+                },
+            ],
             'reviewer_user_id' => ['nullable', 'integer', Rule::in($allowedReviewerIds)],
             'responsible_user_id' => ['nullable', 'integer', Rule::in($allowedResponsibleIds)],
             'reviewed_at' => ['nullable', 'date'],
