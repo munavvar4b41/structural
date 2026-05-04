@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import type { HTMLAttributes } from 'vue';
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -12,14 +13,16 @@ import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
 
 type Props = {
     breadcrumbs: BreadcrumbItemType[];
+    /** Merged into `BreadcrumbList` (e.g. `flex-nowrap` for a single-line trail). */
+    listClass?: HTMLAttributes['class'];
 };
 
 defineProps<Props>();
 </script>
 
 <template>
-    <Breadcrumb>
-        <BreadcrumbList>
+    <Breadcrumb class="min-w-0">
+        <BreadcrumbList :class="listClass">
             <template v-for="(item, index) in breadcrumbs" :key="index">
                 <BreadcrumbItem>
                     <template v-if="index === breadcrumbs.length - 1">

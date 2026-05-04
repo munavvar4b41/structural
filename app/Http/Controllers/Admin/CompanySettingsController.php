@@ -44,6 +44,6 @@ class CompanySettingsController extends Controller
 
         $settings->save();
 
-        return to_route('admin.company.edit');
+        return to_route('admin.company.edit')->with('toast', 'Company settings saved.');
     }
 }

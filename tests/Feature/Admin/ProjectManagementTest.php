@@ -80,10 +80,28 @@ class ProjectManagementTest extends TestCase
                 ->has('projects.data', 2));
     }
 
+    public function test_project_lead_must_be_team_head_or_staff_on_assigned_teams(): void
+    {
+        $team = Team::factory()->create();
+        $admin = User::factory()->admin()->create();
+        $client = User::factory()->client()->create();
+        $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+
+        $this->actingAs($teamHead)
+            ->post(route('admin.projects.store'), [
+                'name' => 'Invalid lead role',
+                'client_user_id' => $client->id,
+                'team_ids' => [$team->id],
+                'lead_user_id' => $admin->id,
+            ])
+            ->assertSessionHasErrors('lead_user_id');
+    }
+
     public function test_team_head_can_create_update_and_delete_project(): void
     {
         $teamA = Team::factory()->create();
         $teamB = Team::factory()->create();
+        $clientUser = User::factory()->client()->create();
         $teamHead = User::factory()->teamHead()->withPrimaryTeam($teamA)->create();
         $teamHead->teams()->syncWithoutDetaching([$teamB->id]);
 
@@ -92,18 +110,22 @@ class ProjectManagementTest extends TestCase
                 'name' => 'Platform Revamp',
                 'code' => 'PRJ-100',
                 'description' => 'Delivery milestone one',
+                'client_user_id' => $clientUser->id,
                 'team_ids' => [$teamA->id, $teamB->id],
             ])
             ->assertRedirect(route('admin.projects.index'));
 
         $project = Project::query()->where('name', 'Platform Revamp')->firstOrFail();
+        $this->assertSame($clientUser->id, $project->client_user_id);
         $this->assertSame(2, $project->teams()->count());
+        $this->assertSame($teamHead->id, $project->lead_user_id);
 
         $this->actingAs($teamHead)
             ->put(route('admin.projects.update', $project), [
                 'name' => 'Platform Revamp Updated',
                 'code' => 'PRJ-101',
                 'description' => 'Updated milestone',
+                'client_user_id' => $clientUser->id,
                 'team_ids' => [$teamA->id],
             ])
             ->assertRedirect(route('admin.projects.index'));
@@ -111,6 +133,7 @@ class ProjectManagementTest extends TestCase
         $project = $project->fresh();
         $this->assertSame('Platform Revamp Updated', $project?->name);
         $this->assertSame(1, $project?->teams()->count());
+        $this->assertSame($teamHead->id, $project?->lead_user_id);
 
         $this->actingAs($teamHead)
             ->delete(route('admin.projects.destroy', $project))
@@ -124,12 +147,14 @@ class ProjectManagementTest extends TestCase
         $team = Team::factory()->create();
         $staff = User::factory()->withPrimaryTeam($team)->create();
         $client = User::factory()->client()->create();
-        $project = Project::factory()->create();
+        $projectClient = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $projectClient->id]);
         $project->teams()->sync([$team->id]);
 
         $this->actingAs($staff)
             ->post(route('admin.projects.store'), [
                 'name' => 'Blocked Project',
+                'client_user_id' => $client->id,
                 'team_ids' => [$team->id],
             ])
             ->assertForbidden();
@@ -137,6 +162,7 @@ class ProjectManagementTest extends TestCase
         $this->actingAs($staff)
             ->put(route('admin.projects.update', $project), [
                 'name' => 'Blocked Update',
+                'client_user_id' => $projectClient->id,
                 'team_ids' => [$team->id],
             ])
             ->assertForbidden();
@@ -144,16 +170,26 @@ class ProjectManagementTest extends TestCase
         $this->actingAs($client)
             ->delete(route('admin.projects.destroy', $project))
             ->assertForbidden();
+
+        $this->actingAs($client)
+            ->post(route('admin.projects.store'), [
+                'name' => 'Client Blocked',
+                'client_user_id' => $client->id,
+                'team_ids' => [$team->id],
+            ])
+            ->assertForbidden();
     }
 
     public function test_project_requires_at_least_one_valid_team_assignment(): void
     {
         $team = Team::factory()->create();
+        $clientUser = User::factory()->client()->create();
         $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
 
         $this->actingAs($teamHead)
             ->post(route('admin.projects.store'), [
                 'name' => 'Invalid Project',
+                'client_user_id' => $clientUser->id,
                 'team_ids' => [],
             ])
             ->assertSessionHasErrors('team_ids');
@@ -161,9 +197,56 @@ class ProjectManagementTest extends TestCase
         $this->actingAs($teamHead)
             ->post(route('admin.projects.store'), [
                 'name' => 'Invalid Team Id',
+                'client_user_id' => $clientUser->id,
                 'team_ids' => [999999],
             ])
             ->assertSessionHasErrors('team_ids.0');
+    }
+
+    public function test_project_requires_client_user_with_client_role(): void
+    {
+        $team = Team::factory()->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+
+        $this->actingAs($teamHead)
+            ->post(route('admin.projects.store'), [
+                'name' => 'Bad Client Ref',
+                'client_user_id' => $staff->id,
+                'team_ids' => [$team->id],
+            ])
+            ->assertSessionHasErrors('client_user_id');
+    }
+
+    public function test_client_user_sees_only_assigned_projects_on_index(): void
+    {
+        $team = Team::factory()->create();
+        $clientA = User::factory()->client()->create();
+        $clientB = User::factory()->client()->create();
+
+        $projectForA = Project::factory()->create([
+            'name' => 'Alpha Build',
+            'client_user_id' => $clientA->id,
+        ]);
+        $projectForA->teams()->sync([$team->id]);
+
+        $projectForB = Project::factory()->create([
+            'name' => 'Beta Build',
+            'client_user_id' => $clientB->id,
+        ]);
+        $projectForB->teams()->sync([$team->id]);
+
+        $this->assertTrue($clientA->can('viewAny', Project::class));
+        $this->assertTrue($clientA->can('view', $projectForA));
+        $this->assertFalse($clientA->can('view', $projectForB));
+
+        $this->actingAs($clientA)
+            ->get(route('admin.projects.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/projects/Index')
+                ->has('projects.data', 1)
+                ->where('projects.data.0.name', 'Alpha Build'));
     }
 
     public function test_deleting_project_detaches_related_teams(): void

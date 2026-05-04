@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreProjectRequest;
 use App\Http\Requests\Admin\UpdateProjectRequest;
@@ -26,23 +27,30 @@ class ProjectController extends Controller
 
         abort_if(! $actor instanceof User, 403);
 
-        $projects = Project::query();
+        $projects = Project::query()->with('clientUser');
 
-        if (! $actor->role->canViewAllProjects()) {
-            $projects->whereHas('teams.users', static fn ($query) => $query->whereKey($actor->id));
-        }
+        $projects->visibleToUser($actor);
 
         $projects = $projects
             ->withCount('teams')
             ->orderBy('name')
             ->paginate(15)
-            ->through(static fn (Project $project): array => [
-                'id' => $project->id,
-                'name' => $project->name,
-                'code' => $project->code,
-                'description' => $project->description,
-                'teams_count' => $project->teams_count,
-            ]);
+            ->through(static function (Project $project): array {
+                $client = $project->clientUser;
+
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'code' => $project->code,
+                    'description' => $project->description,
+                    'teams_count' => $project->teams_count,
+                    'client_user' => $client === null ? null : [
+                        'id' => $client->id,
+                        'name' => $client->name,
+                        'email' => $client->email,
+                    ],
+                ];
+            });
 
         return Inertia::render('admin/projects/Index', [
             'projects' => $projects,
@@ -56,6 +64,8 @@ class ProjectController extends Controller
 
         return Inertia::render('admin/projects/Create', [
             'teams' => $this->teamsPayload(),
+            'clients' => $this->clientsPayload(),
+            'lead_candidates' => $this->leadCandidatesPayload(),
         ]);
     }
 
@@ -66,8 +76,16 @@ class ProjectController extends Controller
 
         $project = Project::query()->create($payload);
         $project->teams()->sync($teamIds);
+        $project->refresh();
 
-        return to_route('admin.projects.index');
+        if ($project->lead_user_id === null) {
+            $defaultLeadId = $project->defaultTeamHeadUserId();
+            if ($defaultLeadId !== null) {
+                $project->update(['lead_user_id' => $defaultLeadId]);
+            }
+        }
+
+        return to_route('admin.projects.index')->with('toast', 'Project created.');
     }
 
     public function edit(Project $project): Response
@@ -80,9 +98,14 @@ class ProjectController extends Controller
                 'name' => $project->name,
                 'code' => $project->code,
                 'description' => $project->description,
+                'client_user_id' => $project->client_user_id,
+                'lead_user_id' => $project->lead_user_id,
                 'team_ids' => $project->teams()->pluck('teams.id')->all(),
+                'estimation_required' => $project->estimation_required,
             ],
             'teams' => $this->teamsPayload(),
+            'clients' => $this->clientsPayload(),
+            'lead_candidates' => $this->leadCandidatesPayload(),
         ]);
     }
 
@@ -93,8 +116,16 @@ class ProjectController extends Controller
 
         $project->update($payload);
         $project->teams()->sync($teamIds);
+        $project->refresh();
 
-        return to_route('admin.projects.index');
+        if ($project->lead_user_id === null) {
+            $defaultLeadId = $project->defaultTeamHeadUserId();
+            if ($defaultLeadId !== null) {
+                $project->update(['lead_user_id' => $defaultLeadId]);
+            }
+        }
+
+        return to_route('admin.projects.index')->with('toast', 'Project updated.');
     }
 
     public function destroy(Project $project): RedirectResponse
@@ -104,7 +135,7 @@ class ProjectController extends Controller
         $project->teams()->detach();
         $project->delete();
 
-        return to_route('admin.projects.index');
+        return to_route('admin.projects.index')->with('toast', 'Project deleted.');
     }
 
     /**
@@ -119,6 +150,46 @@ class ProjectController extends Controller
                 'value' => $team->id,
                 'label' => $team->name,
             ])
+            ->all();
+    }
+
+    /**
+     * @return list<array{value: int, label: string}>
+     */
+    private function clientsPayload(): array
+    {
+        return User::query()
+            ->where('role', UserRole::Client)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email'])
+            ->map(static fn (User $user): array => [
+                'value' => $user->id,
+                'label' => $user->name.' ('.$user->email.')',
+            ])
+            ->all();
+    }
+
+    /**
+     * Project leads: team heads or staff on at least one team (team_ids for UI filtering by assignment).
+     *
+     * @return list<array{value: int, label: string, team_ids: list<int>}>
+     */
+    private function leadCandidatesPayload(): array
+    {
+        return User::query()
+            ->whereIn('role', [UserRole::TeamHead, UserRole::Staff])
+            ->with(['teams:id'])
+            ->orderBy('name')
+            ->get()
+            ->map(static function (User $user): array {
+                return [
+                    'value' => $user->id,
+                    'label' => $user->name.' ('.$user->email.')',
+                    'team_ids' => $user->teams->pluck('id')->map(static fn (int $id): int => $id)->values()->all(),
+                ];
+            })
+            ->unique('value')
+            ->values()
             ->all();
     }
 

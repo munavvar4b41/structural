@@ -7,10 +7,12 @@ import type { User } from '@/types';
 type Props = {
     user: User;
     showEmail?: boolean;
+    showRole?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
     showEmail: false,
+    showRole: false,
 });
 
 const { getInitials } = useInitials();
@@ -18,6 +20,12 @@ const { getInitials } = useInitials();
 // Compute whether we should show the avatar image
 const showAvatar = computed(
     () => props.user.avatar && props.user.avatar !== '',
+);
+
+const roleLabel = computed(() =>
+    props.user.role
+        .replaceAll('_', ' ')
+        .replace(/\b\w/g, (c: string) => c.toUpperCase()),
 );
 </script>
 
@@ -34,5 +42,9 @@ const showAvatar = computed(
         <span v-if="showEmail" class="truncate text-xs text-muted-foreground">{{
             user.email
         }}</span>
+        <span
+            v-if="showRole"
+            class="truncate text-xs text-muted-foreground"
+        >{{ roleLabel }}</span>
     </div>
 </template>

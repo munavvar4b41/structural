@@ -45,6 +45,22 @@ enum UserRole: string
     }
 
     /**
+     * Whether this role may create project requirements (project policy still applies).
+     */
+    public function canCreateProjectRequirements(): bool
+    {
+        return in_array($this, [self::SuperAdmin, self::Admin, self::TeamHead, self::Client], true);
+    }
+
+    /**
+     * Whether this role may assign requirement reviewers by default (plus responsible user in policy).
+     */
+    public function canAssignRequirementReviewersByRole(): bool
+    {
+        return in_array($this, [self::SuperAdmin, self::Admin, self::TeamHead], true);
+    }
+
+    /**
      * Whether this role may list and view every project (not limited by team membership).
      */
     public function canViewAllProjects(): bool

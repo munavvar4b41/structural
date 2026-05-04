@@ -23,6 +23,9 @@ declare module '@inertiajs/core' {
                 registration_email_domain: string;
             };
             sidebarOpen: boolean;
+            flash: {
+                toast: string | null;
+            };
             [key: string]: unknown;
         };
     }

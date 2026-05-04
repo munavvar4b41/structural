@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -19,7 +20,10 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use HasFactory;
+
+    use Notifiable;
+    use TwoFactorAuthenticatable;
 
     /**
      * @var list<string>
@@ -28,6 +32,7 @@ class User extends Authenticatable
         'can_manage_company_settings',
         'can_manage_users',
         'can_manage_projects',
+        'can_view_projects',
     ];
 
     /**
@@ -85,6 +90,11 @@ class User extends Authenticatable
         return $this->canManageProjects();
     }
 
+    public function getCanViewProjectsAttribute(): bool
+    {
+        return $this->can('viewAny', Project::class);
+    }
+
     public function primaryTeam(): BelongsTo
     {
         return $this->belongsTo(Team::class, 'primary_team_id');
@@ -94,5 +104,35 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Team::class)
             ->withTimestamps();
+    }
+
+    /**
+     * Projects for which this user is the designated client contact.
+     *
+     * @return HasMany<Project, $this>
+     */
+    public function clientProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'client_user_id');
+    }
+
+    /**
+     * Projects where this user is the internal lead.
+     *
+     * @return HasMany<Project, $this>
+     */
+    public function leadProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'lead_user_id');
+    }
+
+    /**
+     * Requirements this user created.
+     *
+     * @return HasMany<ProjectRequirement, $this>
+     */
+    public function createdProjectRequirements(): HasMany
+    {
+        return $this->hasMany(ProjectRequirement::class, 'created_by_user_id');
     }
 }

@@ -49,7 +49,7 @@ class TeamController extends Controller
     {
         Team::query()->create($request->validated());
 
-        return to_route('admin.teams.index');
+        return to_route('admin.teams.index')->with('toast', 'Team created.');
     }
 
     public function edit(Team $team): Response
@@ -70,7 +70,7 @@ class TeamController extends Controller
     {
         $team->update($request->validated());
 
-        return to_route('admin.teams.index');
+        return to_route('admin.teams.index')->with('toast', 'Team updated.');
     }
 
     public function destroy(Team $team): RedirectResponse
@@ -86,6 +86,6 @@ class TeamController extends Controller
         $team->users()->detach();
         $team->delete();
 
-        return to_route('admin.teams.index');
+        return to_route('admin.teams.index')->with('toast', 'Team deleted.');
     }
 }

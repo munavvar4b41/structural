@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
+import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,13 +47,34 @@ defineOptions({
 
 defineProps<Props>();
 
-function confirmDelete(row: UserRow): void {
-    if (!confirm(`Delete user "${row.name}"? This cannot be undone.`)) {
+const deleteDialogOpen = ref(false);
+const userPendingDelete = ref<UserRow | null>(null);
+
+function openDeleteDialog(row: UserRow): void {
+    userPendingDelete.value = row;
+    deleteDialogOpen.value = true;
+}
+
+function executeDelete(): void {
+    const row = userPendingDelete.value;
+
+    if (row === null) {
         return;
     }
 
     router.delete(UserController.destroy.url(row.id));
+    userPendingDelete.value = null;
 }
+
+const deleteUserDescription = computed(() => {
+    const row = userPendingDelete.value;
+
+    if (row === null) {
+        return '';
+    }
+
+    return `Delete "${row.name}"? This cannot be undone.`;
+});
 
 function roleLabel(role: string): string {
     return role.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -60,6 +83,13 @@ function roleLabel(role: string): string {
 
 <template>
     <Head title="Users" />
+
+    <ConfirmDestructiveDialog
+        v-model:open="deleteDialogOpen"
+        title="Delete user?"
+        :description="deleteUserDescription"
+        @confirm="executeDelete"
+    />
 
     <div class="flex flex-col gap-8">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -105,7 +135,7 @@ function roleLabel(role: string): string {
                                     size="sm"
                                     class="text-destructive hover:bg-destructive/10"
                                     type="button"
-                                    @click="confirmDelete(row)"
+                                    @click="openDeleteDialog(row)"
                                 >
                                     Delete
                                 </Button>
