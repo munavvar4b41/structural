@@ -57,6 +57,7 @@ const props = withDefaults(
 const clientUserId = ref('');
 const selectedTeamIds = ref<number[]>([]);
 const leadUserId = ref('');
+const estimationRequired = ref(false);
 
 const viableLeadCandidates = computed(() =>
     props.lead_candidates.filter((c) =>
@@ -161,6 +162,11 @@ defineOptions({
                 type="hidden"
                 name="team_ids[]"
                 :value="id"
+            />
+            <input
+                type="hidden"
+                name="estimation_required"
+                :value="estimationRequired ? '1' : '0'"
             />
 
             <Card>
@@ -295,6 +301,24 @@ defineOptions({
                             Open the menu and tick each team that should work on this project.
                         </p>
                         <InputError :message="errors.team_ids" />
+                    </div>
+                    <div class="flex gap-3 rounded-lg border border-border p-4">
+                        <input
+                            id="estimation_required"
+                            v-model="estimationRequired"
+                            type="checkbox"
+                            class="mt-1 size-4 shrink-0 rounded border border-input text-primary focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                        />
+                        <div class="grid gap-1">
+                            <Label for="estimation_required" class="cursor-pointer font-medium">
+                                Require time estimate for every task
+                            </Label>
+                            <p class="text-sm text-muted-foreground">
+                                When enabled, new and updated tasks must include an estimate
+                                (minutes) to complete the work.
+                            </p>
+                            <InputError :message="errors.estimation_required" />
+                        </div>
                     </div>
                 </CardContent>
             </Card>

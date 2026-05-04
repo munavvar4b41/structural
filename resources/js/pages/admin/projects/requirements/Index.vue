@@ -48,6 +48,7 @@ type ProjectSummary = {
     id: number;
     name: string;
     code: string | null;
+    estimation_required: boolean;
 };
 
 const props = defineProps<{

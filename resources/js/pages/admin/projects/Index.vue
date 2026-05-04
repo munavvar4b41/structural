@@ -11,6 +11,7 @@ import {
     index as projectsIndex,
 } from '@/routes/admin/projects/index';
 import { index as projectRequirementsIndex } from '@/routes/admin/projects/requirements/index';
+import { index as projectTasksIndex } from '@/routes/admin/projects/tasks/index';
 
 type ClientUserSummary = {
     id: number;
@@ -115,6 +116,7 @@ const deleteProjectDescription = computed(() => {
                         <th class="px-4 py-3 font-medium">Client</th>
                         <th class="px-4 py-3 font-medium">Teams</th>
                         <th class="px-4 py-3 font-medium">Requirements</th>
+                        <th class="px-4 py-3 font-medium">Tasks</th>
                         <th
                             v-if="canManageProjects"
                             class="px-4 py-3 font-medium text-right"
@@ -142,6 +144,11 @@ const deleteProjectDescription = computed(() => {
                         <td class="px-4 py-3">
                             <Button variant="link" class="h-auto p-0" as-child>
                                 <Link :href="projectRequirementsIndex.url(project.id)">View</Link>
+                            </Button>
+                        </td>
+                        <td class="px-4 py-3">
+                            <Button variant="link" class="h-auto p-0" as-child>
+                                <Link :href="projectTasksIndex.url(project.id)">View</Link>
                             </Button>
                         </td>
                         <td v-if="canManageProjects" class="px-4 py-3 text-right">

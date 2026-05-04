@@ -26,6 +26,10 @@ class StoreProjectRequest extends FormRequest
         if ($this->has('lead_user_id') && $this->input('lead_user_id') === '') {
             $this->merge(['lead_user_id' => null]);
         }
+
+        if (! $this->has('estimation_required')) {
+            $this->merge(['estimation_required' => false]);
+        }
     }
 
     /**
@@ -47,6 +51,7 @@ class StoreProjectRequest extends FormRequest
             'team_ids' => ['required', 'array', 'min:1'],
             'team_ids.*' => ['required', 'integer', Rule::exists(Team::class, 'id')],
             'lead_user_id' => ['nullable', 'integer', Rule::exists(User::class, 'id')],
+            'estimation_required' => ['sometimes', 'boolean'],
         ];
     }
 

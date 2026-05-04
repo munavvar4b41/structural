@@ -5,17 +5,28 @@ namespace App\Models;
 use App\Enums\UserRole;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'code', 'description', 'client_user_id', 'lead_user_id'])]
+#[Fillable(['name', 'code', 'description', 'client_user_id', 'lead_user_id', 'estimation_required'])]
 class Project extends Model
 {
     /** @use HasFactory<ProjectFactory> */
     use HasFactory;
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'estimation_required' => 'boolean',
+        ];
+    }
 
     public function clientUser(): BelongsTo
     {
@@ -39,6 +50,32 @@ class Project extends Model
     public function requirements(): HasMany
     {
         return $this->hasMany(ProjectRequirement::class);
+    }
+
+    /**
+     * @return HasMany<ProjectTask, $this>
+     */
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(ProjectTask::class);
+    }
+
+    /**
+     * @param  Builder<Project>  $query
+     */
+    public function scopeVisibleToUser(Builder $query, User $user): void
+    {
+        if ($user->isClient()) {
+            $query->where('client_user_id', $user->id);
+
+            return;
+        }
+
+        if (! $user->role->canViewAllProjects()) {
+            $query->whereHas('teams.users', function (Builder $teamsUsers) use ($user): void {
+                $teamsUsers->whereKey($user->id);
+            });
+        }
     }
 
     /**

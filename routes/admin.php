@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\Admin\CompanySettingsController;
+use App\Http\Controllers\Admin\MyWorkController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\ProjectRequirementController;
 use App\Http\Controllers\Admin\ProjectRequirementMessageController;
+use App\Http\Controllers\Admin\ProjectTaskController;
 use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Middleware\EnsureCanManageCompanySettings;
@@ -22,7 +24,11 @@ Route::middleware(EnsureCanManageUsers::class)
         Route::resource('teams', TeamController::class)->except(['show']);
     });
 
+Route::get('my-work', [MyWorkController::class, 'index'])->name('my-work.index');
 Route::resource('projects', ProjectController::class)->except(['show']);
+Route::resource('projects.tasks', ProjectTaskController::class)
+    ->only(['index', 'show', 'store', 'update', 'destroy'])
+    ->scoped();
 Route::patch('projects/{project}/requirements/{requirement}/review', [ProjectRequirementController::class, 'markReviewed'])
     ->name('projects.requirements.review');
 Route::patch('projects/{project}/requirements/{requirement}/confirm-understanding', [ProjectRequirementController::class, 'confirmUnderstanding'])

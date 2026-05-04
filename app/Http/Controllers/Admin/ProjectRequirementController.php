@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\ProjectTaskStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ConfirmProjectRequirementUnderstandingRequest;
@@ -11,8 +12,10 @@ use App\Http\Requests\Admin\UpdateProjectRequirementRequest;
 use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectRequirementMessage;
+use App\Models\ProjectTask;
 use App\Models\User;
 use App\Support\ProjectRequirementAssignableUsers;
+use App\Support\ProjectTaskDisplayOrder;
 use App\Support\TipTapDocument;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -62,11 +65,15 @@ class ProjectRequirementController extends Controller
             'project' => $this->projectSummary($project),
             'requirement' => $this->requirementDetailPayload($requirement),
             'requirement_chat_messages' => $this->requirementChatMessagesPayload($request, $requirement),
+            'requirement_tasks' => $this->requirementTaskSummaries($requirement, $actor),
+            'task_status_options' => $this->taskStatusOptions(),
+            'task_assignable_users' => $this->taskAssignableUserOptions($project),
             'can_post_requirement_chat' => $actor->can('create', [ProjectRequirementMessage::class, $requirement]),
             'can_update' => $actor->can('update', $requirement),
             'can_mark_reviewed' => $actor->can('markReviewed', $requirement),
             'can_confirm_understanding' => $actor->can('confirmUnderstanding', $requirement),
             'can_manage_project' => $actor->can('update', $project),
+            'can_create_tasks' => $actor->can('create', [ProjectTask::class, $project]),
         ]);
     }
 
@@ -211,7 +218,76 @@ class ProjectRequirementController extends Controller
             'id' => $project->id,
             'name' => $project->name,
             'code' => $project->code,
+            'estimation_required' => $project->estimation_required,
         ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function requirementTaskSummaries(ProjectRequirement $requirement, User $actor): array
+    {
+        $tasks = $requirement->tasks()
+            ->with(['assignee:id,name,email'])
+            ->withCount('children')
+            ->get();
+
+        $rows = [];
+        foreach (ProjectTaskDisplayOrder::depthFirstWithDepth($tasks) as ['task' => $task, 'depth' => $depth]) {
+            $rows[] = [
+                'id' => $task->id,
+                'title' => $task->title,
+                'description' => $task->description,
+                'status' => $task->status->value,
+                'status_label' => $task->status->label(),
+                'assignee_user_id' => $task->assignee_user_id,
+                'assignee' => $this->userBrief($task->assignee),
+                'project_requirement_id' => $task->project_requirement_id,
+                'requirement_title' => $requirement->title,
+                'parent_project_task_id' => $task->parent_project_task_id,
+                'estimated_minutes' => $task->estimated_minutes,
+                'children_count' => $task->children_count,
+                'tree_depth' => $depth,
+                'can_update' => $actor->can('update', $task),
+                'can_delete' => $actor->can('delete', $task),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    private function taskStatusOptions(): array
+    {
+        return collect(ProjectTaskStatus::cases())
+            ->map(static fn (ProjectTaskStatus $s): array => [
+                'value' => $s->value,
+                'label' => $s->label(),
+            ])
+            ->all();
+    }
+
+    /**
+     * @return list<array{value: int, label: string}>
+     */
+    private function taskAssignableUserOptions(Project $project): array
+    {
+        $ids = ProjectRequirementAssignableUsers::responsibleUserIds($project);
+        if ($ids === []) {
+            return [];
+        }
+
+        return User::query()
+            ->whereIn('id', $ids)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email'])
+            ->map(static fn (User $u): array => [
+                'value' => $u->id,
+                'label' => $u->name.' ('.$u->email.')',
+            ])
+            ->all();
     }
 
     /**

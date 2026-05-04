@@ -29,11 +29,7 @@ class ProjectController extends Controller
 
         $projects = Project::query()->with('clientUser');
 
-        if ($actor->isClient()) {
-            $projects->where('client_user_id', $actor->id);
-        } elseif (! $actor->role->canViewAllProjects()) {
-            $projects->whereHas('teams.users', static fn ($query) => $query->whereKey($actor->id));
-        }
+        $projects->visibleToUser($actor);
 
         $projects = $projects
             ->withCount('teams')
@@ -105,6 +101,7 @@ class ProjectController extends Controller
                 'client_user_id' => $project->client_user_id,
                 'lead_user_id' => $project->lead_user_id,
                 'team_ids' => $project->teams()->pluck('teams.id')->all(),
+                'estimation_required' => $project->estimation_required,
             ],
             'teams' => $this->teamsPayload(),
             'clients' => $this->clientsPayload(),
