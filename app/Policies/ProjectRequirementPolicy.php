@@ -38,6 +38,10 @@ class ProjectRequirementPolicy
 
     public function update(User $actor, ProjectRequirement $requirement): bool
     {
+        if ($actor->role === UserRole::Staff) {
+            return false;
+        }
+
         return $this->updateContent($actor, $requirement)
             || $this->updateAssignments($actor, $requirement)
             || $this->markReviewed($actor, $requirement);

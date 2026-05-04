@@ -198,11 +198,12 @@ class ProjectRequirementTest extends TestCase
         $this->assertSame($lead->id, ProjectRequirement::query()->value('responsible_user_id'));
     }
 
-    public function test_staff_project_lead_can_assign_reviewer(): void
+    public function test_team_head_can_assign_reviewer_when_project_lead_is_staff(): void
     {
         $team = Team::factory()->create();
         $staffLead = User::factory()->withPrimaryTeam($team)->create();
         $staffReviewer = User::factory()->withPrimaryTeam($team)->create();
+        $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
         $client = User::factory()->client()->create();
         $project = Project::factory()->create([
             'client_user_id' => $client->id,
@@ -217,7 +218,7 @@ class ProjectRequirementTest extends TestCase
             'title' => 'Needs reviewer',
         ]);
 
-        $this->actingAs($staffLead)
+        $this->actingAs($teamHead)
             ->put(route('admin.projects.requirements.update', [$project, $requirement]), [
                 'title' => 'Needs reviewer',
                 'description' => $requirement->description,
@@ -288,7 +289,7 @@ class ProjectRequirementTest extends TestCase
             ->assertSessionHasErrors('reviewer_user_id');
     }
 
-    public function test_assigned_reviewer_can_set_reviewed_at(): void
+    public function test_assigned_reviewer_can_set_reviewed_at_via_review_route(): void
     {
         $team = Team::factory()->create();
         $staff = User::factory()->withPrimaryTeam($team)->create();
@@ -304,14 +305,96 @@ class ProjectRequirementTest extends TestCase
         ]);
 
         $this->actingAs($staff)
+            ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
+                'reviewed_at' => '2026-01-15T10:00',
+            ])
+            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
+
+        $this->assertNotNull($requirement->fresh()->reviewed_at);
+    }
+
+    public function test_staff_cannot_access_requirement_edit(): void
+    {
+        $team = Team::factory()->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'reviewer_user_id' => $staff->id,
+        ]);
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.requirements.edit', [$project, $requirement]))
+            ->assertForbidden();
+    }
+
+    public function test_staff_cannot_update_requirement_via_full_form(): void
+    {
+        $team = Team::factory()->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'reviewer_user_id' => $staff->id,
+        ]);
+
+        $this->actingAs($staff)
             ->put(route('admin.projects.requirements.update', [$project, $requirement]), [
-                'title' => $requirement->title,
+                'title' => 'Changed title',
                 'description' => $requirement->description,
                 'reviewer_user_id' => $staff->id,
                 'responsible_user_id' => $requirement->responsible_user_id,
+                'reviewed_at' => null,
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_staff_not_assigned_as_reviewer_cannot_patch_review(): void
+    {
+        $team = Team::factory()->create();
+        $staffReviewer = User::factory()->withPrimaryTeam($team)->create();
+        $staffOther = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'reviewer_user_id' => $staffReviewer->id,
+        ]);
+
+        $this->actingAs($staffOther)
+            ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
                 'reviewed_at' => '2026-01-15T10:00',
             ])
-            ->assertRedirect(route('admin.projects.requirements.index', $project));
+            ->assertForbidden();
+    }
+
+    public function test_team_head_can_patch_review_when_no_reviewer_assigned(): void
+    {
+        $team = Team::factory()->create();
+        $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'reviewer_user_id' => null,
+            'reviewed_at' => null,
+        ]);
+
+        $this->actingAs($teamHead)
+            ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
+                'reviewed_at' => '2026-02-01T14:00',
+            ])
+            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
 
         $this->assertNotNull($requirement->fresh()->reviewed_at);
     }

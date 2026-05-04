@@ -22,4 +22,6 @@ Route::middleware(EnsureCanManageUsers::class)
     });
 
 Route::resource('projects', ProjectController::class)->except(['show']);
+Route::patch('projects/{project}/requirements/{requirement}/review', [ProjectRequirementController::class, 'markReviewed'])
+    ->name('projects.requirements.review');
 Route::resource('projects.requirements', ProjectRequirementController::class);

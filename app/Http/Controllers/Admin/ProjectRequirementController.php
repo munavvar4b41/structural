@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\MarkProjectRequirementReviewedRequest;
 use App\Http\Requests\Admin\StoreProjectRequirementRequest;
 use App\Http\Requests\Admin\UpdateProjectRequirementRequest;
 use App\Models\Project;
@@ -58,8 +59,27 @@ class ProjectRequirementController extends Controller
             'project' => $this->projectSummary($project),
             'requirement' => $this->requirementDetailPayload($requirement),
             'can_update' => $actor->can('update', $requirement),
+            'can_mark_reviewed' => $actor->can('markReviewed', $requirement),
             'can_manage_project' => $actor->can('update', $project),
         ]);
+    }
+
+    public function markReviewed(
+        MarkProjectRequirementReviewedRequest $request,
+        Project $project,
+        ProjectRequirement $requirement,
+    ): RedirectResponse {
+        $this->ensureRequirementBelongsToProject($project, $requirement);
+
+        $validated = $request->validated();
+
+        $requirement->update([
+            'reviewed_at' => isset($validated['reviewed_at']) && $validated['reviewed_at'] !== null && $validated['reviewed_at'] !== ''
+                ? $validated['reviewed_at']
+                : null,
+        ]);
+
+        return to_route('admin.projects.requirements.show', [$project, $requirement]);
     }
 
     public function create(Request $request, Project $project): Response
@@ -207,6 +227,7 @@ class ProjectRequirementController extends Controller
             'creator' => $this->userBrief($r->creator),
             'responsible_user' => $this->userBrief($r->responsibleUser),
             'reviewer' => $this->userBrief($r->reviewer),
+            'reviewed_at_for_input' => $r->reviewed_at?->format('Y-m-d\TH:i'),
         ];
     }
 
