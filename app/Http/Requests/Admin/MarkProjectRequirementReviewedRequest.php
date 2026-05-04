@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\ProjectRequirement;
+use App\Support\ProjectRequirementAssignableUsers;
+use App\Support\TipTapDocument;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -22,8 +24,23 @@ class MarkProjectRequirementReviewedRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        if ($this->has('reviewed_at') && $this->input('reviewed_at') === '') {
-            $this->merge(['reviewed_at' => null]);
+        $merge = [];
+        $raw = $this->input('review_understanding');
+        if (is_string($raw) && $raw !== '' && ! TipTapDocument::isValidDocumentJson($raw)) {
+            $merge['review_understanding'] = (string) json_encode([
+                'type' => 'doc',
+                'content' => [
+                    [
+                        'type' => 'paragraph',
+                        'content' => [
+                            ['type' => 'text', 'text' => $raw],
+                        ],
+                    ],
+                ],
+            ]);
+        }
+        if ($merge !== []) {
+            $this->merge($merge);
         }
     }
 
@@ -33,7 +50,16 @@ class MarkProjectRequirementReviewedRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'reviewed_at' => ['nullable', 'date'],
+            'review_understanding' => [
+                'required',
+                'string',
+                'max:'.ProjectRequirementAssignableUsers::DESCRIPTION_MAX_LENGTH,
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! is_string($value) || ! TipTapDocument::isSubstantiveDocumentJson($value)) {
+                        $fail(__('Enter your understanding of this requirement using the editor.'));
+                    }
+                },
+            ],
         ];
     }
 }

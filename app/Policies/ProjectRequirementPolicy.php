@@ -103,6 +103,32 @@ class ProjectRequirementPolicy
         return $actor->role === UserRole::TeamHead && $actor->can('view', $requirement->project);
     }
 
+    public function confirmUnderstanding(User $actor, ProjectRequirement $requirement): bool
+    {
+        if (! $actor->can('view', $requirement->project)) {
+            return false;
+        }
+
+        if ($requirement->understanding_confirmed_at !== null) {
+            return false;
+        }
+
+        if ($requirement->review_understanding === null || $requirement->review_understanding === ''
+            || $requirement->reviewed_at === null) {
+            return false;
+        }
+
+        if ($requirement->created_by_user_id === $actor->id) {
+            return true;
+        }
+
+        if ($requirement->responsible_user_id !== null && $requirement->responsible_user_id === $actor->id) {
+            return true;
+        }
+
+        return false;
+    }
+
     public function delete(User $actor, ProjectRequirement $requirement): bool
     {
         if (! $actor->can('view', $requirement->project)) {

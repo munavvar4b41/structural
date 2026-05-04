@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import RequirementRichTextEditor from '@/components/RequirementRichTextEditor.vue';
 import RequirementRichTextViewer from '@/components/RequirementRichTextViewer.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,8 +23,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
 import {
     edit as requirementsEdit,
     index as requirementsIndex,
@@ -47,8 +48,10 @@ type RequirementDetail = {
     id: number;
     title: string;
     description: string | null;
+    review_understanding: string | null;
     reviewed_at: string | null;
-    reviewed_at_for_input: string | null;
+    understanding_confirmed_at: string | null;
+    understanding_confirmed_by: UserBrief;
     created_at: string | null;
     updated_at: string | null;
     creator: UserBrief;
@@ -61,10 +64,29 @@ const props = defineProps<{
     requirement: RequirementDetail;
     can_update: boolean;
     can_mark_reviewed: boolean;
+    can_confirm_understanding: boolean;
     can_manage_project: boolean;
 }>();
 
 const reviewDialogOpen = ref(false);
+
+const reviewUnderstandingJson = ref(
+    props.requirement.review_understanding ?? emptyTipTapDocumentJson(),
+);
+
+watch(
+    () => props.requirement.review_understanding,
+    (v) => {
+        reviewUnderstandingJson.value = v ?? emptyTipTapDocumentJson();
+    },
+);
+
+watch(reviewDialogOpen, (open) => {
+    if (open) {
+        reviewUnderstandingJson.value =
+            props.requirement.review_understanding ?? emptyTipTapDocumentJson();
+    }
+});
 
 defineOptions({
     layout: (pageProps: {
@@ -118,7 +140,7 @@ defineOptions({
                     variant="secondary"
                     @click="reviewDialogOpen = true"
                 >
-                    Set review time
+                    {{ requirement.review_understanding ? 'Update review understanding' : 'Submit review understanding' }}
                 </Button>
                 <Button variant="outline" as-child>
                     <Link :href="requirementsIndex.url(project.id)">Back to list</Link>
@@ -146,18 +168,61 @@ defineOptions({
                         {{ requirement.reviewer?.name ?? '—' }}
                     </div>
                     <div>
-                        <span class="text-muted-foreground">Reviewed</span>
+                        <span class="text-muted-foreground">Reviewed at</span>
                         {{
                             requirement.reviewed_at
                                 ? new Date(requirement.reviewed_at).toLocaleString()
                                 : '—'
                         }}
                     </div>
+                    <div>
+                        <span class="text-muted-foreground">Understanding confirmed</span>
+                        <template v-if="requirement.understanding_confirmed_at">
+                            {{ new Date(requirement.understanding_confirmed_at).toLocaleString() }}
+                            <span class="text-muted-foreground">
+                                ({{ requirement.understanding_confirmed_by?.name ?? '—' }})
+                            </span>
+                        </template>
+                        <template v-else>—</template>
+                    </div>
                     <div class="text-muted-foreground">
                         Created {{ requirement.created_at ? new Date(requirement.created_at).toLocaleString() : '—' }}
                         · Updated
                         {{ requirement.updated_at ? new Date(requirement.updated_at).toLocaleString() : '—' }}
                     </div>
+                </CardContent>
+            </Card>
+
+            <Card v-if="requirement.review_understanding">
+                <CardHeader>
+                    <CardTitle>Review understanding</CardTitle>
+                    <CardDescription>What the reviewing party recorded about this requirement</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <RequirementRichTextViewer :json="requirement.review_understanding" />
+                </CardContent>
+            </Card>
+
+            <Card v-if="can_confirm_understanding">
+                <CardHeader>
+                    <CardTitle>Confirm understanding</CardTitle>
+                    <CardDescription>
+                        Confirm that this matches your intent as creator or responsible person.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form
+                        v-bind="
+                            ProjectRequirementController.confirmUnderstanding.form({
+                                project: project.id,
+                                requirement: requirement.id,
+                            })
+                        "
+                        class="flex flex-col gap-3"
+                        v-slot="{ processing }"
+                    >
+                        <Button type="submit" :disabled="processing">Confirm understanding</Button>
+                    </Form>
                 </CardContent>
             </Card>
 
@@ -173,12 +238,12 @@ defineOptions({
         </div>
 
         <Dialog v-if="can_mark_reviewed" v-model:open="reviewDialogOpen">
-            <DialogContent class="sm:max-w-md" :show-close-button="true">
+            <DialogContent class="sm:max-w-2xl" :show-close-button="true">
                 <DialogHeader>
-                    <DialogTitle>Review status</DialogTitle>
+                    <DialogTitle>Review understanding</DialogTitle>
                     <DialogDescription>
-                        Set when this requirement was checked. Leave the field empty and save to clear the
-                        review time.
+                        Describe how you interpret this requirement. Saving records the time of review and clears any
+                        prior confirmation until the owner confirms again.
                     </DialogDescription>
                 </DialogHeader>
                 <Form
@@ -193,14 +258,13 @@ defineOptions({
                     v-slot="{ errors, processing }"
                 >
                     <div class="grid gap-2">
-                        <Label for="review-dialog-reviewed-at">Reviewed at</Label>
-                        <Input
-                            id="review-dialog-reviewed-at"
-                            name="reviewed_at"
-                            type="datetime-local"
-                            :default-value="requirement.reviewed_at_for_input ?? ''"
+                        <Label for="review-understanding-editor">Your understanding</Label>
+                        <RequirementRichTextEditor
+                            id="review-understanding-editor"
+                            v-model="reviewUnderstandingJson"
+                            input-name="review_understanding"
                         />
-                        <InputError :message="errors.reviewed_at" />
+                        <InputError :message="errors.review_understanding" />
                     </div>
                     <DialogFooter class="gap-2 sm:justify-end">
                         <DialogClose as-child>

@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\Team;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -224,7 +225,6 @@ class ProjectRequirementTest extends TestCase
                 'description' => $requirement->description,
                 'reviewer_user_id' => $staffReviewer->id,
                 'responsible_user_id' => $staffLead->id,
-                'reviewed_at' => null,
             ])
             ->assertRedirect(route('admin.projects.requirements.index', $project));
 
@@ -254,7 +254,6 @@ class ProjectRequirementTest extends TestCase
                 'description' => $requirement->description,
                 'reviewer_user_id' => $staff->id,
                 'responsible_user_id' => $teamHead->id,
-                'reviewed_at' => null,
             ])
             ->assertRedirect(route('admin.projects.requirements.index', $project));
 
@@ -284,13 +283,14 @@ class ProjectRequirementTest extends TestCase
                 'description' => $requirement->description,
                 'reviewer_user_id' => $staff->id,
                 'responsible_user_id' => $teamHead->id,
-                'reviewed_at' => null,
             ])
             ->assertSessionHasErrors('reviewer_user_id');
     }
 
-    public function test_assigned_reviewer_can_set_reviewed_at_via_review_route(): void
+    public function test_assigned_reviewer_can_submit_understanding_and_sets_reviewed_at(): void
     {
+        Carbon::setTestNow(Carbon::parse('2026-01-15 10:00:00', 'UTC'));
+
         $team = Team::factory()->create();
         $staff = User::factory()->withPrimaryTeam($team)->create();
         $client = User::factory()->client()->create();
@@ -304,13 +304,20 @@ class ProjectRequirementTest extends TestCase
             'reviewed_at' => null,
         ]);
 
+        $understanding = $this->tipTapJson('We will ship CSV export first.');
+
         $this->actingAs($staff)
             ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
-                'reviewed_at' => '2026-01-15T10:00',
+                'review_understanding' => $understanding,
             ])
             ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
 
-        $this->assertNotNull($requirement->fresh()->reviewed_at);
+        $fresh = $requirement->fresh();
+        $this->assertNotNull($fresh->reviewed_at);
+        $this->assertTrue($fresh->reviewed_at->equalTo(Carbon::parse('2026-01-15 10:00:00', 'UTC')));
+        $this->assertSame($understanding, $fresh->review_understanding);
+
+        Carbon::setTestNow(null);
     }
 
     public function test_staff_cannot_access_requirement_edit(): void
@@ -350,7 +357,6 @@ class ProjectRequirementTest extends TestCase
                 'description' => $requirement->description,
                 'reviewer_user_id' => $staff->id,
                 'responsible_user_id' => $requirement->responsible_user_id,
-                'reviewed_at' => null,
             ])
             ->assertForbidden();
     }
@@ -371,13 +377,15 @@ class ProjectRequirementTest extends TestCase
 
         $this->actingAs($staffOther)
             ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
-                'reviewed_at' => '2026-01-15T10:00',
+                'review_understanding' => $this->tipTapJson('Not my review'),
             ])
             ->assertForbidden();
     }
 
     public function test_team_head_can_patch_review_when_no_reviewer_assigned(): void
     {
+        Carbon::setTestNow(Carbon::parse('2026-02-01 14:00:00', 'UTC'));
+
         $team = Team::factory()->create();
         $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
         $client = User::factory()->client()->create();
@@ -392,14 +400,18 @@ class ProjectRequirementTest extends TestCase
 
         $this->actingAs($teamHead)
             ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
-                'reviewed_at' => '2026-02-01T14:00',
+                'review_understanding' => $this->tipTapJson('Team interpretation as lead.'),
             ])
             ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
 
-        $this->assertNotNull($requirement->fresh()->reviewed_at);
+        $fresh = $requirement->fresh();
+        $this->assertNotNull($fresh->reviewed_at);
+        $this->assertTrue($fresh->reviewed_at->equalTo(Carbon::parse('2026-02-01 14:00:00', 'UTC')));
+
+        Carbon::setTestNow(null);
     }
 
-    public function test_team_head_cannot_set_reviewed_at_when_other_user_is_reviewer(): void
+    public function test_team_head_cannot_patch_review_when_staff_is_assigned_reviewer(): void
     {
         $team = Team::factory()->create();
         $staff = User::factory()->withPrimaryTeam($team)->create();
@@ -417,17 +429,13 @@ class ProjectRequirementTest extends TestCase
         ]);
 
         $this->actingAs($teamHead)
-            ->put(route('admin.projects.requirements.update', [$project, $requirement]), [
-                'title' => $requirement->title,
-                'description' => $requirement->description,
-                'reviewer_user_id' => $staff->id,
-                'responsible_user_id' => $teamHead->id,
-                'reviewed_at' => '2026-01-15T10:00',
+            ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
+                'review_understanding' => $this->tipTapJson('Trying as head'),
             ])
-            ->assertSessionHasErrors('reviewed_at');
+            ->assertForbidden();
     }
 
-    public function test_team_head_can_set_reviewed_at_when_no_reviewer(): void
+    public function test_team_head_can_update_requirement_without_touching_review_via_update_route(): void
     {
         $team = Team::factory()->create();
         $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
@@ -448,14 +456,13 @@ class ProjectRequirementTest extends TestCase
                 'description' => $requirement->description,
                 'reviewer_user_id' => null,
                 'responsible_user_id' => $requirement->responsible_user_id,
-                'reviewed_at' => '2026-01-15T10:00',
             ])
             ->assertRedirect(route('admin.projects.requirements.index', $project));
 
-        $this->assertNotNull($requirement->fresh()->reviewed_at);
+        $this->assertNull($requirement->fresh()->reviewed_at);
     }
 
-    public function test_admin_cannot_set_reviewed_at_when_other_user_is_reviewer(): void
+    public function test_admin_cannot_patch_review_when_staff_is_assigned_reviewer(): void
     {
         $team = Team::factory()->create();
         $staff = User::factory()->withPrimaryTeam($team)->create();
@@ -472,17 +479,13 @@ class ProjectRequirementTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->put(route('admin.projects.requirements.update', [$project, $requirement]), [
-                'title' => $requirement->title,
-                'description' => $requirement->description,
-                'reviewer_user_id' => $staff->id,
-                'responsible_user_id' => $requirement->responsible_user_id,
-                'reviewed_at' => '2026-01-15T10:00',
+            ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
+                'review_understanding' => $this->tipTapJson('Admin tries'),
             ])
-            ->assertSessionHasErrors('reviewed_at');
+            ->assertForbidden();
     }
 
-    public function test_client_cannot_set_reviewed_at_even_without_reviewer(): void
+    public function test_client_cannot_patch_review_even_without_reviewer(): void
     {
         $team = Team::factory()->create();
         $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
@@ -499,14 +502,210 @@ class ProjectRequirementTest extends TestCase
         ]);
 
         $this->actingAs($client)
-            ->put(route('admin.projects.requirements.update', [$project, $requirement]), [
-                'title' => $requirement->title,
-                'description' => $requirement->description,
-                'reviewer_user_id' => null,
-                'responsible_user_id' => $teamHead->id,
-                'reviewed_at' => '2026-01-15T10:00',
+            ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
+                'review_understanding' => $this->tipTapJson('Client tries'),
             ])
-            ->assertSessionHasErrors('reviewed_at');
+            ->assertForbidden();
+    }
+
+    public function test_review_route_rejects_empty_tiptap_understanding(): void
+    {
+        $team = Team::factory()->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'reviewer_user_id' => $staff->id,
+        ]);
+
+        $emptyDoc = (string) json_encode([
+            'type' => 'doc',
+            'content' => [],
+        ]);
+
+        $this->actingAs($staff)
+            ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
+                'review_understanding' => $emptyDoc,
+            ])
+            ->assertSessionHasErrors('review_understanding');
+    }
+
+    public function test_creator_can_confirm_understanding_after_review(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-10 08:00:00', 'UTC'));
+
+        $team = Team::factory()->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'reviewer_user_id' => $staff->id,
+        ]);
+
+        $this->actingAs($staff)
+            ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
+                'review_understanding' => $this->tipTapJson('Reviewer notes'),
+            ])
+            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
+
+        $this->actingAs($client)
+            ->patch(route('admin.projects.requirements.confirm-understanding', [$project, $requirement]))
+            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
+
+        $fresh = $requirement->fresh();
+        $this->assertNotNull($fresh->understanding_confirmed_at);
+        $this->assertTrue($fresh->understanding_confirmed_at->equalTo(Carbon::parse('2026-03-10 08:00:00', 'UTC')));
+        $this->assertSame($client->id, $fresh->understanding_confirmed_by_user_id);
+
+        Carbon::setTestNow(null);
+    }
+
+    public function test_responsible_can_confirm_understanding(): void
+    {
+        $team = Team::factory()->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'responsible_user_id' => $teamHead->id,
+            'reviewer_user_id' => $staff->id,
+        ]);
+
+        $this->actingAs($staff)
+            ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
+                'review_understanding' => $this->tipTapJson('Scope is clear'),
+            ])
+            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
+
+        $this->actingAs($teamHead)
+            ->patch(route('admin.projects.requirements.confirm-understanding', [$project, $requirement]))
+            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
+
+        $this->assertSame($teamHead->id, $requirement->fresh()->understanding_confirmed_by_user_id);
+    }
+
+    public function test_staff_who_is_not_owner_cannot_confirm_understanding(): void
+    {
+        $team = Team::factory()->create();
+        $staffReviewer = User::factory()->withPrimaryTeam($team)->create();
+        $staffOther = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'reviewer_user_id' => $staffReviewer->id,
+        ]);
+
+        $this->actingAs($staffReviewer)
+            ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
+                'review_understanding' => $this->tipTapJson('Done'),
+            ])
+            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
+
+        $this->actingAs($staffOther)
+            ->patch(route('admin.projects.requirements.confirm-understanding', [$project, $requirement]))
+            ->assertForbidden();
+    }
+
+    public function test_cannot_confirm_before_review_understanding_exists(): void
+    {
+        $team = Team::factory()->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'review_understanding' => null,
+            'reviewed_at' => null,
+        ]);
+
+        $this->actingAs($client)
+            ->patch(route('admin.projects.requirements.confirm-understanding', [$project, $requirement]))
+            ->assertForbidden();
+    }
+
+    public function test_resubmit_review_clears_prior_confirmation(): void
+    {
+        $team = Team::factory()->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'reviewer_user_id' => $staff->id,
+        ]);
+
+        $this->actingAs($staff)
+            ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
+                'review_understanding' => $this->tipTapJson('First pass'),
+            ])
+            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
+
+        $this->actingAs($client)
+            ->patch(route('admin.projects.requirements.confirm-understanding', [$project, $requirement]))
+            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
+
+        $this->assertNotNull($requirement->fresh()->understanding_confirmed_at);
+
+        $this->actingAs($staff)
+            ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
+                'review_understanding' => $this->tipTapJson('Updated interpretation'),
+            ])
+            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
+
+        $fresh = $requirement->fresh();
+        $this->assertNull($fresh->understanding_confirmed_at);
+        $this->assertNull($fresh->understanding_confirmed_by_user_id);
+    }
+
+    public function test_cannot_confirm_understanding_twice(): void
+    {
+        $team = Team::factory()->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'reviewer_user_id' => $staff->id,
+        ]);
+
+        $this->actingAs($staff)
+            ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
+                'review_understanding' => $this->tipTapJson('Once'),
+            ])
+            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
+
+        $this->actingAs($client)
+            ->patch(route('admin.projects.requirements.confirm-understanding', [$project, $requirement]))
+            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
+
+        $this->actingAs($client)
+            ->patch(route('admin.projects.requirements.confirm-understanding', [$project, $requirement]))
+            ->assertForbidden();
     }
 
     public function test_staff_on_project_cannot_view_requirements_for_other_project(): void

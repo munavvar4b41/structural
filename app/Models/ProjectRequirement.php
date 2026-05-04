@@ -16,6 +16,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'title',
     'description',
     'reviewed_at',
+    'review_understanding',
+    'understanding_confirmed_at',
+    'understanding_confirmed_by_user_id',
 ])]
 class ProjectRequirement extends Model
 {
@@ -29,6 +32,7 @@ class ProjectRequirement extends Model
     {
         return [
             'reviewed_at' => 'datetime',
+            'understanding_confirmed_at' => 'datetime',
         ];
     }
 
@@ -50,5 +54,10 @@ class ProjectRequirement extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewer_user_id');
+    }
+
+    public function understandingConfirmedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'understanding_confirmed_by_user_id');
     }
 }

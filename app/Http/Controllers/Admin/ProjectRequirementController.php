@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ConfirmProjectRequirementUnderstandingRequest;
 use App\Http\Requests\Admin\MarkProjectRequirementReviewedRequest;
 use App\Http\Requests\Admin\StoreProjectRequirementRequest;
 use App\Http\Requests\Admin\UpdateProjectRequirementRequest;
@@ -53,13 +54,14 @@ class ProjectRequirementController extends Controller
         $actor = $request->user();
         abort_if(! $actor instanceof User, 403);
 
-        $requirement->loadMissing(['creator', 'responsibleUser', 'reviewer', 'project']);
+        $requirement->loadMissing(['creator', 'responsibleUser', 'reviewer', 'project', 'understandingConfirmedBy']);
 
         return Inertia::render('admin/projects/requirements/Show', [
             'project' => $this->projectSummary($project),
             'requirement' => $this->requirementDetailPayload($requirement),
             'can_update' => $actor->can('update', $requirement),
             'can_mark_reviewed' => $actor->can('markReviewed', $requirement),
+            'can_confirm_understanding' => $actor->can('confirmUnderstanding', $requirement),
             'can_manage_project' => $actor->can('update', $project),
         ]);
     }
@@ -74,9 +76,28 @@ class ProjectRequirementController extends Controller
         $validated = $request->validated();
 
         $requirement->update([
-            'reviewed_at' => isset($validated['reviewed_at']) && $validated['reviewed_at'] !== null && $validated['reviewed_at'] !== ''
-                ? $validated['reviewed_at']
-                : null,
+            'review_understanding' => $validated['review_understanding'],
+            'reviewed_at' => now(),
+            'understanding_confirmed_at' => null,
+            'understanding_confirmed_by_user_id' => null,
+        ]);
+
+        return to_route('admin.projects.requirements.show', [$project, $requirement]);
+    }
+
+    public function confirmUnderstanding(
+        ConfirmProjectRequirementUnderstandingRequest $request,
+        Project $project,
+        ProjectRequirement $requirement,
+    ): RedirectResponse {
+        $this->ensureRequirementBelongsToProject($project, $requirement);
+
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
+        $requirement->update([
+            'understanding_confirmed_at' => now(),
+            'understanding_confirmed_by_user_id' => $actor->id,
         ]);
 
         return to_route('admin.projects.requirements.show', [$project, $requirement]);
@@ -147,7 +168,6 @@ class ProjectRequirementController extends Controller
             ])->all(),
             'can_update_content' => $actor->can('updateContent', $requirement),
             'can_update_assignments' => $actor->can('updateAssignments', $requirement),
-            'can_mark_reviewed' => $actor->can('markReviewed', $requirement),
             'can_manage_project' => $actor->can('update', $project),
         ]);
     }
@@ -163,9 +183,6 @@ class ProjectRequirementController extends Controller
             'description' => $validated['description'] ?? null,
             'reviewer_user_id' => $validated['reviewer_user_id'] ?? null,
             'responsible_user_id' => $validated['responsible_user_id'] ?? null,
-            'reviewed_at' => isset($validated['reviewed_at']) && $validated['reviewed_at'] !== null && $validated['reviewed_at'] !== ''
-                ? $validated['reviewed_at']
-                : null,
         ]);
 
         return to_route('admin.projects.requirements.index', $project)->with('toast', 'Requirement updated.');
@@ -203,6 +220,7 @@ class ProjectRequirementController extends Controller
             'title' => $r->title,
             'description_preview' => TipTapDocument::previewFromStored($r->description),
             'reviewed_at' => $r->reviewed_at?->toIso8601String(),
+            'understanding_confirmed_at' => $r->understanding_confirmed_at?->toIso8601String(),
             'created_at' => $r->created_at?->toIso8601String(),
             'creator' => $this->userBrief($r->creator),
             'responsible_user' => $this->userBrief($r->responsibleUser),
@@ -221,13 +239,15 @@ class ProjectRequirementController extends Controller
             'id' => $r->id,
             'title' => $r->title,
             'description' => $r->description,
+            'review_understanding' => $r->review_understanding,
             'reviewed_at' => $r->reviewed_at?->toIso8601String(),
+            'understanding_confirmed_at' => $r->understanding_confirmed_at?->toIso8601String(),
+            'understanding_confirmed_by' => $this->userBrief($r->understandingConfirmedBy),
             'created_at' => $r->created_at?->toIso8601String(),
             'updated_at' => $r->updated_at?->toIso8601String(),
             'creator' => $this->userBrief($r->creator),
             'responsible_user' => $this->userBrief($r->responsibleUser),
             'reviewer' => $this->userBrief($r->reviewer),
-            'reviewed_at_for_input' => $r->reviewed_at?->format('Y-m-d\TH:i'),
         ];
     }
 
@@ -242,7 +262,6 @@ class ProjectRequirementController extends Controller
             'description' => $r->description,
             'reviewer_user_id' => $r->reviewer_user_id,
             'responsible_user_id' => $r->responsible_user_id,
-            'reviewed_at' => $r->reviewed_at?->format('Y-m-d\TH:i'),
             'creator' => $this->userBrief($r->creator),
         ];
     }

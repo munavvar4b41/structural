@@ -6,7 +6,6 @@ use App\Models\ProjectRequirement;
 use App\Models\User;
 use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\TipTapDocument;
-use Carbon\Carbon;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -34,9 +33,6 @@ class UpdateProjectRequirementRequest extends FormRequest
         }
         if ($this->has('responsible_user_id') && $this->input('responsible_user_id') === '') {
             $merge['responsible_user_id'] = null;
-        }
-        if ($this->has('reviewed_at') && $this->input('reviewed_at') === '') {
-            $merge['reviewed_at'] = null;
         }
         $desc = $this->input('description');
         if (is_string($desc) && $desc !== '' && ! TipTapDocument::isValidDocumentJson($desc)) {
@@ -87,7 +83,6 @@ class UpdateProjectRequirementRequest extends FormRequest
             ],
             'reviewer_user_id' => ['nullable', 'integer', Rule::in($allowedReviewerIds)],
             'responsible_user_id' => ['nullable', 'integer', Rule::in($allowedResponsibleIds)],
-            'reviewed_at' => ['nullable', 'date'],
         ];
     }
 
@@ -128,24 +123,6 @@ class UpdateProjectRequirementRequest extends FormRequest
                 if (! $actor->can('updateAssignments', $requirement)) {
                     $validator->errors()->add('responsible_user_id', __('You may not change the responsible person.'));
                 }
-            }
-
-            $reviewedInput = $this->input('reviewed_at');
-            $existingReviewed = $requirement->reviewed_at;
-            $newReviewed = null;
-            if ($reviewedInput !== null && $reviewedInput !== '') {
-                try {
-                    $newReviewed = Carbon::parse((string) $reviewedInput);
-                } catch (\Throwable) {
-                    return;
-                }
-            }
-
-            $reviewedChanged = ($newReviewed === null && $existingReviewed !== null)
-                || ($newReviewed !== null && ($existingReviewed === null || ! $newReviewed->equalTo($existingReviewed)));
-
-            if ($reviewedChanged && ! $actor->can('markReviewed', $requirement)) {
-                $validator->errors()->add('reviewed_at', __('You may not change the review timestamp.'));
             }
         });
     }

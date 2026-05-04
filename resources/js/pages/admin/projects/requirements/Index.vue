@@ -24,6 +24,7 @@ type RequirementRow = {
     title: string;
     description_preview: string | null;
     reviewed_at: string | null;
+    understanding_confirmed_at: string | null;
     created_at: string | null;
     creator: UserBrief;
     responsible_user: UserBrief;
@@ -149,7 +150,7 @@ const deleteRequirementDescription = computed(() => {
                         <th class="px-4 py-3 font-medium">Title</th>
                         <th class="px-4 py-3 font-medium">Responsible</th>
                         <th class="px-4 py-3 font-medium">Reviewer</th>
-                        <th class="px-4 py-3 font-medium">Reviewed</th>
+                        <th class="px-4 py-3 font-medium">Review</th>
                         <th class="px-4 py-3 font-medium text-right">Actions</th>
                     </tr>
                 </thead>
@@ -171,7 +172,21 @@ const deleteRequirementDescription = computed(() => {
                             {{ row.reviewer?.name ?? '—' }}
                         </td>
                         <td class="px-4 py-3 text-muted-foreground">
-                            {{ row.reviewed_at ? new Date(row.reviewed_at).toLocaleString() : '—' }}
+                            <div class="flex flex-col gap-1">
+                                <span v-if="row.understanding_confirmed_at" class="inline-flex w-fit items-center rounded-md border border-transparent bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+                                    Confirmed
+                                </span>
+                                <span
+                                    v-else-if="row.reviewed_at"
+                                    class="inline-flex w-fit items-center rounded-md border border-input bg-background px-2 py-0.5 text-xs font-medium"
+                                >
+                                    Awaiting confirmation
+                                </span>
+                                <span v-else class="text-xs">—</span>
+                                <span v-if="row.reviewed_at" class="text-xs">
+                                    {{ new Date(row.reviewed_at).toLocaleString() }}
+                                </span>
+                            </div>
                         </td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex justify-end gap-2">

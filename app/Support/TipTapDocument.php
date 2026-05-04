@@ -50,4 +50,18 @@ final class TipTapDocument
 
         return is_array($decoded) && ($decoded['type'] ?? null) === 'doc';
     }
+
+    /**
+     * True when the value is valid TipTap doc JSON with non-empty visible text.
+     */
+    public static function isSubstantiveDocumentJson(?string $value): bool
+    {
+        if ($value === null || $value === '' || ! self::isValidDocumentJson($value)) {
+            return false;
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) && self::extractPlainText($decoded) !== '';
+    }
 }

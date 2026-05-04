@@ -37,6 +37,9 @@ class ProjectRequirementFactory extends Factory
                 ],
             ]),
             'reviewed_at' => null,
+            'review_understanding' => null,
+            'understanding_confirmed_at' => null,
+            'understanding_confirmed_by_user_id' => null,
         ];
     }
 }

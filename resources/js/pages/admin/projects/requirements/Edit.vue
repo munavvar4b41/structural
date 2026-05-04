@@ -57,7 +57,6 @@ type RequirementForm = {
     description: string | null;
     reviewer_user_id: number | null;
     responsible_user_id: number | null;
-    reviewed_at: string | null;
     creator: UserBrief;
 };
 
@@ -68,7 +67,6 @@ const props = defineProps<{
     assignable_responsibles: AssignableUser[];
     can_update_content: boolean;
     can_update_assignments: boolean;
-    can_mark_reviewed: boolean;
     can_manage_project: boolean;
 }>();
 
@@ -185,12 +183,6 @@ defineOptions({
                 <input type="hidden" name="reviewer_user_id" :value="reviewerUserId" />
                 <input type="hidden" name="responsible_user_id" :value="responsibleUserId" />
             </template>
-            <input
-                v-if="!can_mark_reviewed"
-                type="hidden"
-                name="reviewed_at"
-                :value="requirement.reviewed_at ?? ''"
-            />
 
             <Card>
                 <CardHeader>
@@ -312,23 +304,6 @@ defineOptions({
                         No staff on this project's teams yet.
                     </p>
                     <InputError :message="errors.reviewer_user_id" />
-                </CardContent>
-            </Card>
-
-            <Card v-if="can_mark_reviewed">
-                <CardHeader>
-                    <CardTitle>Review</CardTitle>
-                    <CardDescription>Mark when the requirement has been checked</CardDescription>
-                </CardHeader>
-                <CardContent class="grid gap-2">
-                    <Label for="reviewed_at">Reviewed at</Label>
-                    <Input
-                        id="reviewed_at"
-                        name="reviewed_at"
-                        type="datetime-local"
-                        :default-value="requirement.reviewed_at ?? ''"
-                    />
-                    <InputError :message="errors.reviewed_at" />
                 </CardContent>
             </Card>
 
