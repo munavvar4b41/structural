@@ -63,7 +63,9 @@ class ProjectRequirementTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('admin/projects/requirements/Show')
-                ->where('requirement.id', $requirement->id));
+                ->where('requirement.id', $requirement->id)
+                ->has('requirement_chat_messages.data')
+                ->has('can_post_requirement_chat'));
     }
 
     public function test_show_returns_404_when_requirement_belongs_to_other_project(): void

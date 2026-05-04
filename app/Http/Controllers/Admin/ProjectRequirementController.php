@@ -10,9 +10,11 @@ use App\Http\Requests\Admin\StoreProjectRequirementRequest;
 use App\Http\Requests\Admin\UpdateProjectRequirementRequest;
 use App\Models\Project;
 use App\Models\ProjectRequirement;
+use App\Models\ProjectRequirementMessage;
 use App\Models\User;
 use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\TipTapDocument;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -59,6 +61,8 @@ class ProjectRequirementController extends Controller
         return Inertia::render('admin/projects/requirements/Show', [
             'project' => $this->projectSummary($project),
             'requirement' => $this->requirementDetailPayload($requirement),
+            'requirement_chat_messages' => $this->requirementChatMessagesPayload($request, $requirement),
+            'can_post_requirement_chat' => $actor->can('create', [ProjectRequirementMessage::class, $requirement]),
             'can_update' => $actor->can('update', $requirement),
             'can_mark_reviewed' => $actor->can('markReviewed', $requirement),
             'can_confirm_understanding' => $actor->can('confirmUnderstanding', $requirement),
@@ -280,6 +284,34 @@ class ProjectRequirementController extends Controller
             'name' => $user->name,
             'email' => $user->email,
         ];
+    }
+
+    /**
+     * @return LengthAwarePaginator<int, array<string, mixed>>
+     */
+    private function requirementChatMessagesPayload(Request $request, ProjectRequirement $requirement): LengthAwarePaginator
+    {
+        $perPage = 50;
+        $total = $requirement->messages()->count();
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $page = (int) $request->query('chat_page', (string) $lastPage);
+        $page = min(max(1, $page), $lastPage);
+
+        $paginator = $requirement->messages()
+            ->with(['user:id,name,email'])
+            ->orderBy('created_at')
+            ->paginate($perPage, ['*'], 'chat_page', $page);
+
+        $paginator->getCollection()->transform(function (ProjectRequirementMessage $m): array {
+            return [
+                'id' => $m->id,
+                'body' => $m->body,
+                'created_at' => $m->created_at?->toIso8601String(),
+                'user' => $this->userBrief($m->user),
+            ];
+        });
+
+        return $paginator;
     }
 
     private function ensureRequirementBelongsToProject(Project $project, ProjectRequirement $requirement): void

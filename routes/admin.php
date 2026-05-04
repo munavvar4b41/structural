@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\CompanySettingsController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\ProjectRequirementController;
+use App\Http\Controllers\Admin\ProjectRequirementMessageController;
 use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Middleware\EnsureCanManageCompanySettings;
@@ -26,4 +27,6 @@ Route::patch('projects/{project}/requirements/{requirement}/review', [ProjectReq
     ->name('projects.requirements.review');
 Route::patch('projects/{project}/requirements/{requirement}/confirm-understanding', [ProjectRequirementController::class, 'confirmUnderstanding'])
     ->name('projects.requirements.confirm-understanding');
+Route::post('projects/{project}/requirements/{requirement}/messages', [ProjectRequirementMessageController::class, 'store'])
+    ->name('projects.requirements.messages.store');
 Route::resource('projects.requirements', ProjectRequirementController::class);

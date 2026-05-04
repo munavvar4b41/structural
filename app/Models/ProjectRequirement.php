@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'project_id',
@@ -59,5 +60,13 @@ class ProjectRequirement extends Model
     public function understandingConfirmedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'understanding_confirmed_by_user_id');
+    }
+
+    /**
+     * @return HasMany<int, ProjectRequirementMessage>
+     */
+    public function messages(): HasMany
+    {
+        return $this->hasMany(ProjectRequirementMessage::class);
     }
 }
