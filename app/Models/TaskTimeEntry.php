@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ProjectTaskStatus;
 use App\Enums\TimeEntrySource;
 use Database\Factories\TaskTimeEntryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'ended_at',
     'duration_seconds',
     'source',
+    'previous_task_status',
     'notes',
 ])]
 class TaskTimeEntry extends Model
@@ -35,6 +37,7 @@ class TaskTimeEntry extends Model
             'ended_at' => 'datetime',
             'duration_seconds' => 'integer',
             'source' => TimeEntrySource::class,
+            'previous_task_status' => ProjectTaskStatus::class,
         ];
     }
 

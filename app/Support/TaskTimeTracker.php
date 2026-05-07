@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\ProjectTaskStatus;
 use App\Enums\TimeEntrySource;
 use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
@@ -37,7 +38,10 @@ class TaskTimeTracker
                 $this->closeEntry($running, $now);
             }
 
-            return TaskTimeEntry::query()->create([
+            $task->refresh();
+            $previousStatus = $this->statusShouldAutoTransition($task->status) ? $task->status : null;
+
+            $entry = TaskTimeEntry::query()->create([
                 'project_task_id' => $task->id,
                 'project_id' => $task->project_id,
                 'user_id' => $user->id,
@@ -45,8 +49,15 @@ class TaskTimeTracker
                 'ended_at' => null,
                 'duration_seconds' => null,
                 'source' => TimeEntrySource::Timer,
+                'previous_task_status' => $previousStatus?->value,
                 'notes' => $notes,
             ]);
+
+            if ($previousStatus !== null) {
+                $task->forceFill(['status' => ProjectTaskStatus::InProgress])->save();
+            }
+
+            return $entry;
         });
     }
 
@@ -130,6 +141,31 @@ class TaskTimeTracker
             'ended_at' => $endedAt,
             'duration_seconds' => $entry->started_at->diffInSeconds($endedAt),
         ])->save();
+
+        $previousStatus = $entry->previous_task_status;
+        if ($previousStatus === null) {
+            return;
+        }
+
+        $task = $entry->task()->first();
+        if ($task === null) {
+            return;
+        }
+
+        // Only restore if the task is still parked at InProgress; if the user
+        // moved it elsewhere mid-run we respect their explicit choice.
+        if ($task->status === ProjectTaskStatus::InProgress) {
+            $task->forceFill(['status' => $previousStatus])->save();
+        }
+    }
+
+    private function statusShouldAutoTransition(ProjectTaskStatus $status): bool
+    {
+        return ! in_array($status, [
+            ProjectTaskStatus::InProgress,
+            ProjectTaskStatus::Done,
+            ProjectTaskStatus::Cancelled,
+        ], true);
     }
 
     private function validateRange(CarbonInterface $start, CarbonInterface $end): void

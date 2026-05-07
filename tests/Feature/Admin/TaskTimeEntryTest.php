@@ -189,4 +189,22 @@ class TaskTimeEntryTest extends TestCase
 
         $this->assertNotNull($entry->fresh());
     }
+
+    public function test_manual_entry_does_not_change_task_status(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+        Carbon::setTestNow(Carbon::parse('2026-05-07 12:00:00'));
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.tasks.time-entries.store', [$project, $task]), [
+                'started_at' => '2026-05-07 09:00:00',
+                'ended_at' => '2026-05-07 10:00:00',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(ProjectTaskStatus::ToDo, $task->fresh()->status);
+
+        $entry = TaskTimeEntry::query()->firstOrFail();
+        $this->assertNull($entry->previous_task_status);
+    }
 }

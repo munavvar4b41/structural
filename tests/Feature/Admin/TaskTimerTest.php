@@ -142,4 +142,115 @@ class TaskTimerTest extends TestCase
             ->post(route('admin.projects.tasks.timer.start', [$project, $task]))
             ->assertForbidden();
     }
+
+    public function test_starting_timer_transitions_status_to_in_progress_and_snapshots_previous(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.tasks.timer.start', [$project, $task]))
+            ->assertRedirect();
+
+        $this->assertSame(ProjectTaskStatus::InProgress, $task->fresh()->status);
+
+        $entry = TaskTimeEntry::query()->firstOrFail();
+        $this->assertSame(ProjectTaskStatus::ToDo, $entry->previous_task_status);
+    }
+
+    public function test_stopping_timer_restores_previous_status(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+        $this->actingAs($staff)
+            ->post(route('admin.time-entries.stop'))
+            ->assertRedirect();
+
+        $this->assertSame(ProjectTaskStatus::ToDo, $task->fresh()->status);
+    }
+
+    public function test_switch_auto_stop_restores_previous_status_on_old_task_and_transitions_new(): void
+    {
+        ['staff' => $staff, 'head' => $head, 'project' => $project, 'task' => $taskA] = $this->setupProjectWithTask();
+
+        $taskB = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+                'status' => ProjectTaskStatus::Review,
+            ]);
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.tasks.timer.start', [$project, $taskA]));
+        $this->actingAs($staff)
+            ->post(route('admin.projects.tasks.timer.start', [$project, $taskB]));
+
+        $this->assertSame(ProjectTaskStatus::ToDo, $taskA->fresh()->status);
+        $this->assertSame(ProjectTaskStatus::InProgress, $taskB->fresh()->status);
+
+        $entryA = TaskTimeEntry::query()->where('project_task_id', $taskA->id)->firstOrFail();
+        $entryB = TaskTimeEntry::query()->where('project_task_id', $taskB->id)->firstOrFail();
+
+        $this->assertSame(ProjectTaskStatus::ToDo, $entryA->previous_task_status);
+        $this->assertSame(ProjectTaskStatus::Review, $entryB->previous_task_status);
+    }
+
+    public function test_in_progress_task_records_no_snapshot_and_status_unchanged_on_stop(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+        $task->forceFill(['status' => ProjectTaskStatus::InProgress])->save();
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+
+        $entry = TaskTimeEntry::query()->firstOrFail();
+        $this->assertNull($entry->previous_task_status);
+        $this->assertSame(ProjectTaskStatus::InProgress, $task->fresh()->status);
+
+        $this->actingAs($staff)->post(route('admin.time-entries.stop'));
+
+        $this->assertSame(ProjectTaskStatus::InProgress, $task->fresh()->status);
+    }
+
+    public function test_done_task_is_not_transitioned(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+        $task->forceFill(['status' => ProjectTaskStatus::Done])->save();
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+
+        $entry = TaskTimeEntry::query()->firstOrFail();
+        $this->assertNull($entry->previous_task_status);
+        $this->assertSame(ProjectTaskStatus::Done, $task->fresh()->status);
+    }
+
+    public function test_cancelled_task_is_not_transitioned(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+        $task->forceFill(['status' => ProjectTaskStatus::Cancelled])->save();
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+
+        $entry = TaskTimeEntry::query()->firstOrFail();
+        $this->assertNull($entry->previous_task_status);
+        $this->assertSame(ProjectTaskStatus::Cancelled, $task->fresh()->status);
+    }
+
+    public function test_manual_status_change_during_run_is_not_overwritten_on_stop(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+
+        $task->forceFill(['status' => ProjectTaskStatus::Review])->save();
+
+        $this->actingAs($staff)->post(route('admin.time-entries.stop'));
+
+        $this->assertSame(ProjectTaskStatus::Review, $task->fresh()->status);
+    }
 }
