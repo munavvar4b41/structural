@@ -2,11 +2,26 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\TaskTimeEntry;
+use App\Settings\CompanySettings;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
+    /**
+     * @return array{name: string, registration_email_domain: string}
+     */
+    protected function companyRegistrationProps(): array
+    {
+        $settings = app(CompanySettings::class);
+
+        return [
+            'name' => $settings->name,
+            'registration_email_domain' => $settings->email_domain,
+        ];
+    }
+
     /**
      * The root template that's loaded on the first page visit.
      *
@@ -41,7 +56,44 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'companyRegistration' => $this->companyRegistrationProps(),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'flash' => [
+                'toast' => $request->session()->get('toast'),
+            ],
+            'active_time_entry' => fn () => $this->activeTimeEntryProps($request),
+        ];
+    }
+
+    /**
+     * @return array{id: int, task_id: int, project_id: int, task_title: string, project_name: string, project_code: string|null, started_at: string}|null
+     */
+    protected function activeTimeEntryProps(Request $request): ?array
+    {
+        $user = $request->user();
+        if ($user === null) {
+            return null;
+        }
+
+        $entry = TaskTimeEntry::query()
+            ->where('user_id', $user->id)
+            ->whereNull('ended_at')
+            ->with(['task:id,title', 'project:id,name,code'])
+            ->latest('started_at')
+            ->first();
+
+        if ($entry === null) {
+            return null;
+        }
+
+        return [
+            'id' => $entry->id,
+            'task_id' => $entry->project_task_id,
+            'project_id' => $entry->project_id,
+            'task_title' => $entry->task?->title ?? '',
+            'project_name' => $entry->project?->name ?? '',
+            'project_code' => $entry->project?->code,
+            'started_at' => $entry->started_at->toIso8601String(),
         ];
     }
 }

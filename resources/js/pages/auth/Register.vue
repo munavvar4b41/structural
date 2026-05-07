@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
+import { Form, Head, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import TextLink from '@/components/TextLink.vue';
@@ -16,6 +17,14 @@ defineOptions({
         description: 'Enter your details below to create your account',
     },
 });
+
+const page = usePage();
+const registrationDomain = computed(
+    () => page.props.companyRegistration.registration_email_domain,
+);
+const emailPlaceholder = computed(
+    () => `you@${registrationDomain.value || 'company.com'}`,
+);
 </script>
 
 <template>
@@ -28,6 +37,17 @@ defineOptions({
         class="flex flex-col gap-6"
     >
         <div class="grid gap-6">
+            <p
+                v-if="registrationDomain"
+                class="text-sm text-muted-foreground"
+            >
+                Use your
+                <strong class="text-foreground"
+                    >@{{ registrationDomain }}</strong
+                >
+                email address to create an account.
+            </p>
+
             <div class="grid gap-2">
                 <Label for="name">Name</Label>
                 <Input
@@ -52,7 +72,7 @@ defineOptions({
                     :tabindex="2"
                     autocomplete="email"
                     name="email"
-                    placeholder="email@example.com"
+                    :placeholder="emailPlaceholder"
                 />
                 <InputError :message="errors.email" />
             </div>
