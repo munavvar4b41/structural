@@ -127,6 +127,15 @@ class UpdateProjectTaskRequest extends FormRequest
                     return;
                 }
 
+                if ($this->parentChainContainsTask($parent, (int) $task->id)) {
+                    $validator->errors()->add(
+                        'parent_project_task_id',
+                        __('A task cannot be moved under one of its subtasks.'),
+                    );
+
+                    return;
+                }
+
                 $reqId = $this->input('project_requirement_id');
                 $parentReqId = $parent->project_requirement_id;
                 $normalizedReq = $reqId === null || $reqId === '' ? null : (int) $reqId;
@@ -138,6 +147,28 @@ class UpdateProjectTaskRequest extends FormRequest
                 }
             },
         ];
+    }
+
+    private function parentChainContainsTask(ProjectTask $start, int $taskId): bool
+    {
+        $visited = [];
+        $cursor = $start;
+
+        while ($cursor !== null) {
+            $cursorId = (int) $cursor->id;
+            if (isset($visited[$cursorId])) {
+                return false;
+            }
+
+            if ($cursorId === $taskId) {
+                return true;
+            }
+
+            $visited[$cursorId] = true;
+            $cursor = $cursor->parent;
+        }
+
+        return false;
     }
 
     private function staffAssigneeLimitedUpdate(ProjectTask $task): bool
