@@ -9,9 +9,11 @@ use App\Http\Requests\Admin\UpdateProjectTaskRequest;
 use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectTask;
+use App\Models\TaskTimeEntry;
 use App\Models\User;
 use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\ProjectTaskDisplayOrder;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -93,7 +95,62 @@ class ProjectTaskController extends Controller
             'project' => $this->projectSummary($project),
             'task' => $this->taskDetail($task, $actor, $directChildren),
             'can_manage_project' => $actor->can('update', $project),
+            'time_tracking' => $this->timeTrackingProps($task, $actor),
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function timeTrackingProps(ProjectTask $task, User $actor): array
+    {
+        $startOfToday = CarbonImmutable::today();
+        $endOfToday = $startOfToday->endOfDay();
+
+        $entries = TaskTimeEntry::query()
+            ->where('project_task_id', $task->id)
+            ->with('user:id,name,email')
+            ->orderByDesc('started_at')
+            ->limit(50)
+            ->get();
+
+        $myEntries = $entries->where('user_id', $actor->id);
+
+        $myTodayTotal = (int) $myEntries
+            ->filter(fn (TaskTimeEntry $e): bool => $e->ended_at !== null
+                && $e->started_at->between($startOfToday, $endOfToday))
+            ->sum('duration_seconds');
+
+        $myAllTimeTotal = (int) $myEntries
+            ->whereNotNull('duration_seconds')
+            ->sum('duration_seconds');
+
+        $taskAllTimeTotal = (int) $entries
+            ->whereNotNull('duration_seconds')
+            ->sum('duration_seconds');
+
+        return [
+            'can_track' => $actor->can('start', [TaskTimeEntry::class, $task]),
+            'totals' => [
+                'my_today_seconds' => $myTodayTotal,
+                'my_all_time_seconds' => $myAllTimeTotal,
+                'task_all_time_seconds' => $taskAllTimeTotal,
+            ],
+            'entries' => $entries->map(fn (TaskTimeEntry $e): array => [
+                'id' => $e->id,
+                'user_id' => $e->user_id,
+                'user_name' => $e->user?->name,
+                'started_at' => $e->started_at?->toIso8601String(),
+                'ended_at' => $e->ended_at?->toIso8601String(),
+                'duration_seconds' => $e->duration_seconds,
+                'is_running' => $e->ended_at === null,
+                'source' => $e->source->value,
+                'source_label' => $e->source->label(),
+                'notes' => $e->notes,
+                'can_update' => $actor->can('update', $e),
+                'can_delete' => $actor->can('delete', $e),
+            ])->all(),
+        ];
     }
 
     public function store(StoreProjectTaskRequest $request, Project $project): RedirectResponse

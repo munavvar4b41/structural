@@ -68,4 +68,12 @@ class ProjectTask extends Model
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
     }
+
+    /**
+     * @return HasMany<TaskTimeEntry, $this>
+     */
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TaskTimeEntry::class, 'project_task_id');
+    }
 }

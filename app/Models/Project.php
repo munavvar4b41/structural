@@ -61,6 +61,14 @@ class Project extends Model
     }
 
     /**
+     * @return HasMany<TaskTimeEntry, $this>
+     */
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TaskTimeEntry::class);
+    }
+
+    /**
      * @param  Builder<Project>  $query
      */
     public function scopeVisibleToUser(Builder $query, User $user): void

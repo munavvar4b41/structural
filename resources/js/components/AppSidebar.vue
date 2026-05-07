@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Building2, ClipboardList, FolderKanban, LayoutGrid, Users } from 'lucide-vue-next';
+import { Building2, ClipboardList, FolderKanban, LayoutGrid, Timer, Users } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -19,6 +19,7 @@ import { edit as adminCompanyEdit } from '@/routes/admin/company/index';
 import { index as adminMyWorkIndex } from '@/routes/admin/my-work/index';
 import { index as adminProjectsIndex } from '@/routes/admin/projects/index';
 import { index as adminTeamsIndex } from '@/routes/admin/teams/index';
+import { index as adminTimeReportIndex } from '@/routes/admin/time-report/index';
 import { index as adminUsersIndex } from '@/routes/admin/users/index';
 import type { NavItem } from '@/types';
 
@@ -64,6 +65,11 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'My work',
             href: adminMyWorkIndex(),
             icon: ClipboardList,
+        });
+        items.push({
+            title: 'Time report',
+            href: adminTimeReportIndex(),
+            icon: Timer,
         });
     }
 

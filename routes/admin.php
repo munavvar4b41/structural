@@ -6,7 +6,10 @@ use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\ProjectRequirementController;
 use App\Http\Controllers\Admin\ProjectRequirementMessageController;
 use App\Http\Controllers\Admin\ProjectTaskController;
+use App\Http\Controllers\Admin\TaskTimeEntryController;
+use App\Http\Controllers\Admin\TaskTimerController;
 use App\Http\Controllers\Admin\TeamController;
+use App\Http\Controllers\Admin\TimeReportController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Middleware\EnsureCanManageCompanySettings;
 use App\Http\Middleware\EnsureCanManageUsers;
@@ -36,3 +39,12 @@ Route::patch('projects/{project}/requirements/{requirement}/confirm-understandin
 Route::post('projects/{project}/requirements/{requirement}/messages', [ProjectRequirementMessageController::class, 'store'])
     ->name('projects.requirements.messages.store');
 Route::resource('projects.requirements', ProjectRequirementController::class);
+
+Route::post('projects/{project}/tasks/{task}/timer/start', [TaskTimerController::class, 'start'])
+    ->scopeBindings()
+    ->name('projects.tasks.timer.start');
+Route::post('time-entries/stop', [TaskTimerController::class, 'stop'])->name('time-entries.stop');
+Route::resource('projects.tasks.time-entries', TaskTimeEntryController::class)
+    ->only(['store', 'update', 'destroy'])
+    ->scoped();
+Route::get('time-report', [TimeReportController::class, 'index'])->name('time-report.index');

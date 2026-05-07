@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
@@ -133,6 +134,10 @@ function patchTaskStatus(task: TaskCard, status: string): void {
                                 @update:model-value="patchTaskStatus(task, $event)"
                             />
                             <div class="flex flex-wrap gap-2">
+                                <TaskTimerButton
+                                    :project-id="task.project_id"
+                                    :task-id="task.id"
+                                />
                                 <Button variant="outline" size="sm" class="h-8 flex-1 text-xs" as-child>
                                     <Link :href="task.task_show_url">Open task</Link>
                                 </Button>

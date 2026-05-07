@@ -1,0 +1,174 @@
+<?php
+
+namespace App\Support;
+
+use App\Enums\TimeEntrySource;
+use App\Models\ProjectTask;
+use App\Models\TaskTimeEntry;
+use App\Models\User;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * Single point of entry for time-tracking writes. Enforces:
+ * - one running entry per user (transactional, lockForUpdate)
+ * - non-overlapping closed entries per user (manual create/update)
+ * - duration_seconds is always populated when an entry is closed.
+ */
+class TaskTimeTracker
+{
+    /**
+     * Start a fresh timer entry for $user on $task. If the user already has a
+     * running entry it is stopped first inside the same transaction.
+     */
+    public function start(User $user, ProjectTask $task, ?string $notes = null): TaskTimeEntry
+    {
+        return DB::transaction(function () use ($user, $task, $notes): TaskTimeEntry {
+            $running = TaskTimeEntry::query()
+                ->where('user_id', $user->id)
+                ->whereNull('ended_at')
+                ->lockForUpdate()
+                ->first();
+
+            $now = now();
+
+            if ($running !== null) {
+                $this->closeEntry($running, $now);
+            }
+
+            return TaskTimeEntry::query()->create([
+                'project_task_id' => $task->id,
+                'project_id' => $task->project_id,
+                'user_id' => $user->id,
+                'started_at' => $now,
+                'ended_at' => null,
+                'duration_seconds' => null,
+                'source' => TimeEntrySource::Timer,
+                'notes' => $notes,
+            ]);
+        });
+    }
+
+    /**
+     * Stop the user's currently running entry, if any.
+     */
+    public function stop(User $user): ?TaskTimeEntry
+    {
+        return DB::transaction(function () use ($user): ?TaskTimeEntry {
+            $running = TaskTimeEntry::query()
+                ->where('user_id', $user->id)
+                ->whereNull('ended_at')
+                ->lockForUpdate()
+                ->first();
+
+            if ($running === null) {
+                return null;
+            }
+
+            $this->closeEntry($running, now());
+
+            return $running->refresh();
+        });
+    }
+
+    /**
+     * Add a closed manual time entry for $user on $task.
+     */
+    public function addManual(
+        User $user,
+        ProjectTask $task,
+        CarbonInterface $start,
+        CarbonInterface $end,
+        ?string $notes = null,
+    ): TaskTimeEntry {
+        $this->validateRange($start, $end);
+        $this->ensureNoOverlap($user->id, $start, $end, null);
+
+        return TaskTimeEntry::query()->create([
+            'project_task_id' => $task->id,
+            'project_id' => $task->project_id,
+            'user_id' => $user->id,
+            'started_at' => $start,
+            'ended_at' => $end,
+            'duration_seconds' => $start->diffInSeconds($end),
+            'source' => TimeEntrySource::Manual,
+            'notes' => $notes,
+        ]);
+    }
+
+    /**
+     * Update an existing entry (manual edits or note tweaks). The entry must be
+     * closed; running entries should be stopped before editing.
+     */
+    public function updateManual(
+        TaskTimeEntry $entry,
+        CarbonInterface $start,
+        CarbonInterface $end,
+        ?string $notes,
+    ): TaskTimeEntry {
+        $this->validateRange($start, $end);
+        $this->ensureNoOverlap($entry->user_id, $start, $end, $entry->id);
+
+        $entry->forceFill([
+            'started_at' => $start,
+            'ended_at' => $end,
+            'duration_seconds' => $start->diffInSeconds($end),
+            'notes' => $notes,
+        ])->save();
+
+        return $entry->refresh();
+    }
+
+    private function closeEntry(TaskTimeEntry $entry, CarbonInterface $endedAt): void
+    {
+        if ($endedAt->lessThan($entry->started_at)) {
+            $endedAt = $entry->started_at->copy();
+        }
+
+        $entry->forceFill([
+            'ended_at' => $endedAt,
+            'duration_seconds' => $entry->started_at->diffInSeconds($endedAt),
+        ])->save();
+    }
+
+    private function validateRange(CarbonInterface $start, CarbonInterface $end): void
+    {
+        if (! $end->greaterThan($start)) {
+            throw ValidationException::withMessages([
+                'ended_at' => __('The end time must be after the start time.'),
+            ]);
+        }
+
+        if ($end->greaterThan(now()->addMinute())) {
+            throw ValidationException::withMessages([
+                'ended_at' => __('The end time cannot be in the future.'),
+            ]);
+        }
+    }
+
+    private function ensureNoOverlap(
+        int $userId,
+        CarbonInterface $start,
+        CarbonInterface $end,
+        ?int $excludeEntryId,
+    ): void {
+        $query = TaskTimeEntry::query()
+            ->where('user_id', $userId)
+            ->where('started_at', '<', $end)
+            ->where(function ($q) use ($start): void {
+                $q->whereNull('ended_at')
+                    ->orWhere('ended_at', '>', $start);
+            });
+
+        if ($excludeEntryId !== null) {
+            $query->where('id', '!=', $excludeEntryId);
+        }
+
+        if ($query->exists()) {
+            throw ValidationException::withMessages([
+                'started_at' => __('This entry overlaps another time entry for you.'),
+            ]);
+        }
+    }
+}
