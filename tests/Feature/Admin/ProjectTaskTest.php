@@ -234,6 +234,81 @@ class ProjectTaskTest extends TestCase
             ->assertSessionHasErrors('project_requirement_id');
     }
 
+    public function test_team_head_can_store_subtask_under_existing_subtask(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $parent = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+                'title' => 'Parent',
+            ]);
+
+        $child = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::InProgress,
+                'title' => 'Child',
+            ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->post(route('admin.projects.tasks.store', $project), [
+                'title' => 'Grandchild',
+                'status' => ProjectTaskStatus::ToDo->value,
+                'parent_project_task_id' => $child->id,
+                'estimated_minutes' => 15,
+            ])
+            ->assertRedirect(route('admin.projects.tasks.index', $project));
+
+        $this->assertDatabaseHas('project_tasks', [
+            'project_id' => $project->id,
+            'title' => 'Grandchild',
+            'parent_project_task_id' => $child->id,
+        ]);
+    }
+
+    public function test_update_rejects_moving_task_under_its_descendant(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $parent = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $child = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::InProgress,
+            ]);
+
+        $grandchild = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($child)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::Done,
+            ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->patch(route('admin.projects.tasks.update', [$project, $parent]), [
+                'title' => $parent->title,
+                'status' => $parent->status->value,
+                'parent_project_task_id' => $grandchild->id,
+            ])
+            ->assertSessionHasErrors('parent_project_task_id');
+    }
+
     public function test_scoped_update_returns_404_when_task_belongs_to_other_project(): void
     {
         extract($this->projectWithTeamHead());

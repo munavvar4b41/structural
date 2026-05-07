@@ -6,6 +6,7 @@ import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectT
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -22,7 +23,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
@@ -149,15 +149,72 @@ const requirementSelectOptions = computed(() =>
     props.requirements.map((r) => ({ value: String(r.value), label: r.label })),
 );
 
+function formatParentTaskLabel(task: TaskRow): string {
+    if (task.tree_depth <= 0) {
+        return task.title;
+    }
+
+    return `${'— '.repeat(task.tree_depth)}${task.title}`;
+}
+
+const taskChildrenByParentId = computed(() => {
+    const byParent = new Map<number, number[]>();
+
+    for (const task of props.tasks) {
+        if (task.parent_project_task_id === null) {
+            continue;
+        }
+
+        const children = byParent.get(task.parent_project_task_id) ?? [];
+        children.push(task.id);
+        byParent.set(task.parent_project_task_id, children);
+    }
+
+    return byParent;
+});
+
+function collectDescendantTaskIds(taskId: number): Set<number> {
+    const descendantIds = new Set<number>();
+    const queue = [...(taskChildrenByParentId.value.get(taskId) ?? [])];
+
+    while (queue.length > 0) {
+        const currentId = queue.shift();
+
+        if (currentId === undefined || descendantIds.has(currentId)) {
+            continue;
+        }
+
+        descendantIds.add(currentId);
+
+        const children = taskChildrenByParentId.value.get(currentId) ?? [];
+        queue.push(...children);
+    }
+
+    return descendantIds;
+}
+
 const parentSelectOptions = computed(() =>
-    rootTasksForParent.value.map((t) => ({ value: String(t.id), label: t.title })),
+    props.tasks.map((task) => ({
+        value: String(task.id),
+        label: formatParentTaskLabel(task),
+    })),
 );
 
-const parentSelectOptionsForEdit = computed(() =>
-    rootTasksForParent.value
-        .filter((t) => editingTask.value === null || t.id !== editingTask.value.id)
-        .map((t) => ({ value: String(t.id), label: t.title })),
-);
+const parentSelectOptionsForEdit = computed(() => {
+    if (editingTask.value === null) {
+        return parentSelectOptions.value;
+    }
+
+    const blockedIds = collectDescendantTaskIds(editingTask.value.id);
+    blockedIds.add(editingTask.value.id);
+
+    return props.tasks
+        .filter((task) => !blockedIds.has(task.id))
+        .map((task) => ({
+            value: String(task.id),
+            label: formatParentTaskLabel(task),
+        }));
+});
 
 function setFilter(filter: string): void {
     router.get(
@@ -168,10 +225,6 @@ function setFilter(filter: string): void {
         { preserveState: true, preserveScroll: true },
     );
 }
-
-const rootTasksForParent = computed(() =>
-    props.tasks.filter((t) => t.parent_project_task_id === null),
-);
 
 const deleteDialogOpen = ref(false);
 const taskPendingDelete = ref<TaskRow | null>(null);

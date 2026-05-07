@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import ActiveTimerBadge from '@/components/ActiveTimerBadge.vue';
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItem } from '@/types';
@@ -39,6 +40,9 @@ const breadcrumbListSingleLineClass =
             >
                 {{ currentPageTitle }}
             </span>
+            <div class="ml-auto min-w-0">
+                <ActiveTimerBadge />
+            </div>
         </div>
         <div
             v-if="props.breadcrumbs.length > 1"

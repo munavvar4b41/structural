@@ -5,12 +5,12 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementController';
 import ProjectRequirementMessageController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementMessageController';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import RequirementRichTextEditor from '@/components/RequirementRichTextEditor.vue';
 import RequirementRichTextViewer from '@/components/RequirementRichTextViewer.vue';
+import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -130,9 +130,13 @@ const reviewDialogOpen = ref(false);
 const taskDeleteOpen = ref(false);
 const taskPendingDelete = ref<RequirementTaskRow | null>(null);
 
-const rootTasksForParent = computed(() =>
-    props.requirement_tasks.filter((t) => t.parent_project_task_id === null),
-);
+function formatParentTaskLabel(task: RequirementTaskRow): string {
+    if (task.tree_depth <= 0) {
+        return task.title;
+    }
+
+    return `${'— '.repeat(task.tree_depth)}${task.title}`;
+}
 
 const createTaskStatus = ref('to_do');
 const createTaskAssignee = ref('');
@@ -155,7 +159,10 @@ const taskAssigneeSelectOptions = computed(() =>
 );
 
 const taskParentSelectOptions = computed(() =>
-    rootTasksForParent.value.map((t) => ({ value: String(t.id), label: t.title })),
+    props.requirement_tasks.map((task) => ({
+        value: String(task.id),
+        label: formatParentTaskLabel(task),
+    })),
 );
 
 function openTaskDelete(row: RequirementTaskRow): void {

@@ -90,6 +90,15 @@ class StoreProjectTaskRequest extends FormRequest
                     return;
                 }
 
+                if ($this->parentChainHasCycle($parent)) {
+                    $validator->errors()->add(
+                        'parent_project_task_id',
+                        __('Selected parent task is invalid due to a circular hierarchy.'),
+                    );
+
+                    return;
+                }
+
                 $reqId = $this->input('project_requirement_id');
                 $parentReqId = $parent->project_requirement_id;
                 $normalizedReq = $reqId === null || $reqId === '' ? null : (int) $reqId;
@@ -101,5 +110,23 @@ class StoreProjectTaskRequest extends FormRequest
                 }
             },
         ];
+    }
+
+    private function parentChainHasCycle(ProjectTask $start): bool
+    {
+        $visited = [];
+        $cursor = $start;
+
+        while ($cursor !== null) {
+            $cursorId = (int) $cursor->id;
+            if (isset($visited[$cursorId])) {
+                return true;
+            }
+
+            $visited[$cursorId] = true;
+            $cursor = $cursor->parent;
+        }
+
+        return false;
     }
 }

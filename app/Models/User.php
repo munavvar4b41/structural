@@ -135,4 +135,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(ProjectRequirement::class, 'created_by_user_id');
     }
+
+    /**
+     * @return HasMany<TaskTimeEntry, $this>
+     */
+    public function taskTimeEntries(): HasMany
+    {
+        return $this->hasMany(TaskTimeEntry::class);
+    }
 }
