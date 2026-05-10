@@ -30,9 +30,9 @@ import { index as leaveRequestsIndex, manage as leaveRequestsManage } from '@/ro
 import { edit as adminLeaveSettingsEdit } from '@/routes/admin/leave-settings/index';
 import { index as adminMyWorkIndex } from '@/routes/admin/my-work/index';
 import { index as adminProjectsIndex } from '@/routes/admin/projects/index';
-import { index as adminTeamsIndex } from '@/routes/admin/teams/index';
 import { index as adminTaskRatingsReportIndex } from '@/routes/admin/task-ratings-report/index';
 import { index as adminTaskReviewsIndex } from '@/routes/admin/task-reviews/index';
+import { index as adminTeamsIndex } from '@/routes/admin/teams/index';
 import { index as adminTimeReportIndex } from '@/routes/admin/time-report/index';
 import { index as adminUsersIndex } from '@/routes/admin/users/index';
 import type { NavItem } from '@/types';
@@ -47,35 +47,6 @@ const mainNavItems = computed((): NavItem[] => {
             icon: LayoutGrid,
         },
     ];
-
-    if (page.props.auth.user?.role !== 'client') {
-        items.push({
-            title: 'Leave requests',
-            href: leaveRequestsIndex(),
-            icon: CalendarDays,
-        });
-    }
-
-    if (page.props.auth.user?.can_approve_leave_requests) {
-        items.push({
-            title: 'Leave approvals',
-            href: leaveRequestsManage(),
-            icon: CalendarDays,
-        });
-    }
-
-    if (page.props.auth.user?.can_manage_company_settings) {
-        items.push({
-            title: 'Company settings',
-            href: adminCompanyEdit(),
-            icon: Building2,
-        });
-        items.push({
-            title: 'Leave emails',
-            href: adminLeaveSettingsEdit(),
-            icon: CalendarDays,
-        });
-    }
 
     if (page.props.auth.user?.can_manage_users) {
         items.push({
@@ -121,6 +92,35 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Task ratings',
             href: adminTaskRatingsReportIndex(),
             icon: Star,
+        });
+    }
+
+    if (page.props.auth.user?.role !== 'client') {
+        items.push({
+            title: 'Leave requests',
+            href: leaveRequestsIndex(),
+            icon: CalendarDays,
+        });
+    }
+
+    if (page.props.auth.user?.can_approve_leave_requests) {
+        items.push({
+            title: 'Leave approvals',
+            href: leaveRequestsManage(),
+            icon: CalendarDays,
+        });
+    }
+
+    if (page.props.auth.user?.can_manage_company_settings) {
+        items.push({
+            title: 'Company settings',
+            href: adminCompanyEdit(),
+            icon: Building2,
+        });
+        items.push({
+            title: 'Leave emails',
+            href: adminLeaveSettingsEdit(),
+            icon: CalendarDays,
         });
     }
 
