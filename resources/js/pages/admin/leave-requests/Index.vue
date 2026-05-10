@@ -14,6 +14,14 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -54,6 +62,7 @@ const leaveType = ref(props.type_options[0]?.value ?? 'full_day');
 const halfDayPeriod = ref(props.half_day_period_options[0]?.value ?? 'first_half');
 const breakStartsAt = ref('');
 const breakEndsAt = ref('');
+const leaveRequestOpen = ref(false);
 
 function pad2(n: number): string {
     return String(n).padStart(2, '0');
@@ -71,6 +80,7 @@ watch(breakStartsAt, (v) => {
     }
 
     const d = new Date(v);
+
     if (Number.isNaN(d.getTime())) {
         return;
     }
@@ -160,27 +170,26 @@ const filteredLeaveRequests = computed(() => {
         <Heading title="Leave requests"
             description="Request time off. Super admins and admins must approve before leave is authorized." />
 
-        <Card>
-            <CardHeader>
-                <CardTitle>New request</CardTitle>
-                <CardDescription>
-                    Full day, half day (morning or afternoon), or a one-hour break window on a single date.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Form v-bind="LeaveRequestController.store.form()" class="flex max-w-xl flex-col gap-6"
-                    #default="{ errors, processing }">
+        <Dialog v-model:open="leaveRequestOpen">
+            <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>Add leave request</DialogTitle>
+                    <DialogDescription>Request time off.</DialogDescription>
+                </DialogHeader>
+
+                <Form v-bind="LeaveRequestController.store.form()" class="grid gap-4"
+                    @success="leaveRequestOpen = false" #default="{ errors, processing }">
                     <div class="grid gap-2">
                         <Label for="leave-type">Type</Label>
                         <TaskFormSelect id="leave-type" v-model="leaveType" name="type" required
                             :options="type_options" />
-                        <InputError class="mt-1" :message="errors.type" />
+                        <InputError :message="errors.type" />
                     </div>
 
                     <div class="grid gap-2">
                         <Label for="leave-date">Date</Label>
                         <Input id="leave-date" name="date" type="date" required :min="minDate" />
-                        <InputError class="mt-1" :message="errors.date" />
+                        <InputError :message="errors.date" />
                     </div>
 
                     <div class="grid gap-2">
@@ -188,20 +197,20 @@ const filteredLeaveRequests = computed(() => {
                         <TaskFormSelect id="half-day-period" v-model="halfDayPeriod" name="half_day_period"
                             :required="leaveType === 'half_day'" :disabled="leaveType !== 'half_day'"
                             :exclude-from-submit="leaveType !== 'half_day'" :options="half_day_period_options" />
-                        <InputError class="mt-1" :message="errors.half_day_period" />
+                        <InputError :message="errors.half_day_period" />
                     </div>
 
                     <div class="grid gap-2">
                         <Label for="break-start">Break starts</Label>
                         <Input id="break-start" v-model="breakStartsAt" name="break_starts_at" type="datetime-local"
                             :disabled="leaveType !== 'break'" :required="leaveType === 'break'" />
-                        <InputError class="mt-1" :message="errors.break_starts_at" />
+                        <InputError :message="errors.break_starts_at" />
                         <input v-model="breakEndsAt" type="hidden" name="break_ends_at"
                             :disabled="leaveType !== 'break'" />
                         <p class="text-muted-foreground text-sm">
                             End time is set automatically to one hour after the start.
                         </p>
-                        <InputError class="mt-1" :message="errors.break_ends_at" />
+                        <InputError :message="errors.break_ends_at" />
                     </div>
 
                     <div class="grid gap-2">
@@ -211,20 +220,29 @@ const filteredLeaveRequests = computed(() => {
                             'focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]',
                         )
                             " />
-                        <InputError class="mt-1" :message="errors.reason" />
+                        <InputError :message="errors.reason" />
                     </div>
 
-                    <div>
+                    <DialogFooter class="gap-2 sm:gap-0">
+                        <Button type="button" variant="outline" @click="leaveRequestOpen = false">
+                            Cancel
+                        </Button>
                         <Button type="submit" :disabled="processing">Submit request</Button>
-                    </div>
+                    </DialogFooter>
                 </Form>
-            </CardContent>
-        </Card>
+            </DialogContent>
+        </Dialog>
 
         <Card>
-            <CardHeader>
-                <CardTitle>Your requests</CardTitle>
-                <CardDescription>Track status and cancel pending requests.</CardDescription>
+            <CardHeader class="flex items-center justify-between">
+                <div>
+                    <CardTitle>Your requests</CardTitle>
+                    <CardDescription>Track status and cancel pending requests.</CardDescription>
+                </div>
+                <div><Button variant="outline" size="sm" type="button" @click="leaveRequestOpen = true">
+                        Add leave request
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent class="overflow-x-auto">
                 <div class="mb-4 flex flex-col gap-4">
