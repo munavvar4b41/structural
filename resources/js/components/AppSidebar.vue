@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Building2, ClipboardList, FolderKanban, LayoutGrid, Timer, Users } from 'lucide-vue-next';
+import {
+    Building2,
+    CalendarDays,
+    ClipboardList,
+    FolderKanban,
+    LayoutGrid,
+    Timer,
+    Users,
+} from 'lucide-vue-next';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -16,6 +24,8 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { edit as adminCompanyEdit } from '@/routes/admin/company/index';
+import { index as leaveRequestsIndex, manage as leaveRequestsManage } from '@/routes/admin/leave-requests/index';
+import { edit as adminLeaveSettingsEdit } from '@/routes/admin/leave-settings/index';
 import { index as adminMyWorkIndex } from '@/routes/admin/my-work/index';
 import { index as adminProjectsIndex } from '@/routes/admin/projects/index';
 import { index as adminTeamsIndex } from '@/routes/admin/teams/index';
@@ -34,11 +44,32 @@ const mainNavItems = computed((): NavItem[] => {
         },
     ];
 
+    if (page.props.auth.user?.role !== 'client') {
+        items.push({
+            title: 'Leave requests',
+            href: leaveRequestsIndex(),
+            icon: CalendarDays,
+        });
+    }
+
+    if (page.props.auth.user?.can_approve_leave_requests) {
+        items.push({
+            title: 'Leave approvals',
+            href: leaveRequestsManage(),
+            icon: CalendarDays,
+        });
+    }
+
     if (page.props.auth.user?.can_manage_company_settings) {
         items.push({
             title: 'Company settings',
             href: adminCompanyEdit(),
             icon: Building2,
+        });
+        items.push({
+            title: 'Leave emails',
+            href: adminLeaveSettingsEdit(),
+            icon: CalendarDays,
         });
     }
 

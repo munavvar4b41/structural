@@ -99,4 +99,20 @@ class TeamManagementTest extends TestCase
 
         $this->assertDatabaseHas('teams', ['id' => $team->id]);
     }
+
+    public function test_admin_can_search_teams_index_by_name(): void
+    {
+        $admin = User::factory()->admin()->withPrimaryTeam()->create();
+        Team::factory()->create(['name' => 'Zebra Squad']);
+        Team::factory()->create(['name' => 'Other Guild']);
+
+        $this->actingAs($admin)
+            ->get(route('admin.teams.index', ['search' => 'Zebra']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/teams/Index')
+                ->has('teams.data', 1)
+                ->where('teams.data.0.name', 'Zebra Squad')
+                ->where('filters.search', 'Zebra'));
+    }
 }

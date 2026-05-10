@@ -7,6 +7,7 @@ export type User = {
     can_manage_users: boolean;
     can_manage_projects: boolean;
     can_view_projects: boolean;
+    can_approve_leave_requests: boolean;
     avatar?: string;
     email_verified_at: string | null;
     created_at: string;
