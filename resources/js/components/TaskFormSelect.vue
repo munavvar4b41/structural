@@ -21,11 +21,20 @@ const props = withDefaults(
         required?: boolean;
         placeholder?: string;
         noneLabel?: string;
+        /** When true, the trigger is non-interactive (matches native disabled select). */
+        disabled?: boolean;
+        /**
+         * When true, hidden inputs are disabled so the field is omitted from form submission
+         * (same as a disabled native control).
+         */
+        excludeFromSubmit?: boolean;
     }>(),
     {
         required: false,
         placeholder: 'Choose…',
         noneLabel: 'None',
+        disabled: false,
+        excludeFromSubmit: false,
     },
 );
 
@@ -56,10 +65,7 @@ function onSelectUpdate(v: string | undefined): void {
 
 <template>
     <div class="grid gap-1">
-        <Select
-            :model-value="selectModelValue"
-            @update:model-value="onSelectUpdate"
-        >
+        <Select :model-value="selectModelValue" :disabled="disabled" @update:model-value="onSelectUpdate">
             <SelectTrigger :id="id" :class="cn('w-full')">
                 <SelectValue :placeholder="placeholder" />
             </SelectTrigger>
@@ -72,7 +78,8 @@ function onSelectUpdate(v: string | undefined): void {
                 </SelectItem>
             </SelectContent>
         </Select>
-        <input v-if="required" type="hidden" :name="name" :value="modelValue" />
-        <input v-else-if="modelValue !== ''" type="hidden" :name="name" :value="modelValue" />
+        <input v-if="required" type="hidden" :name="name" :value="modelValue" :disabled="excludeFromSubmit" />
+        <input v-else-if="modelValue !== ''" type="hidden" :name="name" :value="modelValue"
+            :disabled="excludeFromSubmit" />
     </div>
 </template>

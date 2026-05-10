@@ -272,4 +272,42 @@ class UserManagementTest extends TestCase
         $this->assertDatabaseMissing('users', ['id' => $superB->id]);
         $this->assertDatabaseHas('users', ['id' => $superA->id]);
     }
+
+    public function test_admin_can_filter_users_index_by_search_role_team_and_verified(): void
+    {
+        $admin = User::factory()->admin()->withPrimaryTeam()->create();
+        $team = Team::factory()->create();
+
+        $match = User::factory()->create([
+            'name' => 'Filterable Staff',
+            'email' => 'filterable-staff@example.com',
+            'role' => UserRole::Staff,
+            'email_verified_at' => now(),
+        ]);
+        $match->teams()->sync([$team->id]);
+        $match->update(['primary_team_id' => $team->id]);
+
+        User::factory()->create([
+            'name' => 'Other Person',
+            'role' => UserRole::TeamHead,
+            'email' => 'other@example.com',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.users.index', [
+                'search' => 'Filterable',
+                'role' => UserRole::Staff->value,
+                'team_id' => $team->id,
+                'verified' => 'verified',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/users/Index')
+                ->has('users.data', 1)
+                ->where('users.data.0.name', 'Filterable Staff')
+                ->where('filters.search', 'Filterable')
+                ->where('filters.role', UserRole::Staff->value)
+                ->where('filters.team_id', (string) $team->id)
+                ->where('filters.verified', 'verified'));
+    }
 }

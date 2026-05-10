@@ -92,4 +92,58 @@ class ProjectTaskPolicy
         return in_array($actor->role, [UserRole::SuperAdmin, UserRole::Admin, UserRole::TeamHead], true)
             || $task->project->lead_user_id === $actor->id;
     }
+
+    /**
+     * Assignee submits work for completion (moves task to Review).
+     */
+    public function submitCompletion(User $actor, ProjectTask $task): bool
+    {
+        if ($actor->isClient()) {
+            return false;
+        }
+
+        if (! $actor->can('view', $task)) {
+            return false;
+        }
+
+        if ($task->assignee_user_id !== $actor->id) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Reviewer confirms completion, records ratings, sets task to Done.
+     */
+    public function confirmCompletion(User $actor, ProjectTask $task): bool
+    {
+        if ($actor->isClient()) {
+            return false;
+        }
+
+        if (! $actor->can('view', $task)) {
+            return false;
+        }
+
+        if (! $this->isTaskCompletionReviewer($actor, $task->project)) {
+            return false;
+        }
+
+        if ($task->completion_submitted_by_user_id !== null
+            && $task->completion_submitted_by_user_id === $actor->id) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function isTaskCompletionReviewer(User $actor, Project $project): bool
+    {
+        if (in_array($actor->role, [UserRole::SuperAdmin, UserRole::Admin, UserRole::TeamHead], true)) {
+            return true;
+        }
+
+        return $project->lead_user_id === $actor->id;
+    }
 }

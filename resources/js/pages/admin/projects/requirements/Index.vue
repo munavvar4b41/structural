@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import Heading from '@/components/Heading.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
+import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
 import {
     create as requirementsCreate,
@@ -51,12 +55,77 @@ type ProjectSummary = {
     estimation_required: boolean;
 };
 
+type FilterOption = { value: string; label: string };
+
 const props = defineProps<{
     project: ProjectSummary;
     requirements: PaginatedRequirements;
     canCreateRequirements: boolean;
     canManageProject: boolean;
+    filters: {
+        search: string;
+        review_status: string;
+        responsible_user_id: string;
+    };
+    filter_options: {
+        review_status: FilterOption[];
+        responsibles: { value: number; label: string }[];
+    };
 }>();
+
+const reviewStatusFilter = ref(props.filters.review_status);
+const responsibleFilter = ref(props.filters.responsible_user_id);
+
+watch(
+    () => props.filters,
+    (f) => {
+        reviewStatusFilter.value = f.review_status;
+        responsibleFilter.value = f.responsible_user_id;
+    },
+);
+
+const reviewStatusSelectOptions = computed(() =>
+    props.filter_options.review_status.map((o) => ({
+        value: o.value,
+        label: o.label,
+    })),
+);
+
+const responsibleSelectOptions = computed(() =>
+    props.filter_options.responsibles.map((o) => ({
+        value: String(o.value),
+        label: o.label,
+    })),
+);
+
+function reloadRequirements(
+    overrides: Partial<Record<'search' | 'review_status' | 'responsible_user_id', string>> = {},
+): void {
+    routerReloadOnly(
+        requirementsIndex.url(props.project.id, {
+            query: stripFilterParams({
+                search: props.filters.search,
+                review_status: props.filters.review_status,
+                responsible_user_id: props.filters.responsible_user_id,
+                ...overrides,
+                page: 1,
+            }),
+        }),
+        ['requirements', 'filters', 'filter_options'],
+    );
+}
+
+function onSearch(search: string): void {
+    reloadRequirements({ search });
+}
+
+function onReviewStatus(v: string): void {
+    reloadRequirements({ review_status: v });
+}
+
+function onResponsible(v: string): void {
+    reloadRequirements({ responsible_user_id: v });
+}
 
 defineOptions({
     layout: (pageProps: {
@@ -125,19 +194,64 @@ const deleteRequirementDescription = computed(() => {
     />
 
     <div class="flex flex-col gap-8">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Heading
-                :title="`Requirements`"
-                :description="`Project ${project.name}${project.code ? ` (${project.code})` : ''}`"
-            />
-            <div class="flex flex-wrap gap-2">
-                <Button v-if="canCreateRequirements" as-child>
-                    <Link :href="requirementsCreate.url(project.id)">Add requirement</Link>
-                </Button>
-                <Button v-if="canManageProject" variant="outline" as-child>
-                    <Link :href="projectsEdit.url(project.id)">Edit project</Link>
-                </Button>
+        <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <Heading
+                    :title="`Requirements`"
+                    :description="`Project ${project.name}${project.code ? ` (${project.code})` : ''}`"
+                />
+                <div class="flex flex-wrap gap-2">
+                    <Button v-if="canCreateRequirements" as-child>
+                        <Link :href="requirementsCreate.url(project.id)">Add requirement</Link>
+                    </Button>
+                    <Button v-if="canManageProject" variant="outline" as-child>
+                        <Link :href="projectsEdit.url(project.id)">Edit project</Link>
+                    </Button>
+                </div>
             </div>
+
+            <ListToolbar
+                :model-value="filters.search"
+                placeholder="Search title or description…"
+                @update:model-value="onSearch"
+            >
+                <template #filters>
+                    <div class="flex flex-wrap items-end gap-3">
+                        <div class="grid gap-1">
+                            <Label class="text-xs text-muted-foreground" for="filter-review-status"
+                                >Stage</Label
+                            >
+                            <TaskFormSelect
+                                id="filter-review-status"
+                                name="review_status"
+                                class="w-[14rem]"
+                                :model-value="reviewStatusFilter"
+                                :options="reviewStatusSelectOptions"
+                                placeholder="All stages"
+                                none-label="All stages"
+                                exclude-from-submit
+                                @update:model-value="onReviewStatus"
+                            />
+                        </div>
+                        <div class="grid gap-1">
+                            <Label class="text-xs text-muted-foreground" for="filter-responsible"
+                                >Responsible</Label
+                            >
+                            <TaskFormSelect
+                                id="filter-responsible"
+                                name="responsible_user_id"
+                                class="min-w-[14rem]"
+                                :model-value="responsibleFilter"
+                                :options="responsibleSelectOptions"
+                                placeholder="Anyone"
+                                none-label="Anyone"
+                                exclude-from-submit
+                                @update:model-value="onResponsible"
+                            />
+                        </div>
+                    </div>
+                </template>
+            </ListToolbar>
         </div>
 
         <div

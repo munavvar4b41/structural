@@ -33,6 +33,9 @@ class User extends Authenticatable
         'can_manage_users',
         'can_manage_projects',
         'can_view_projects',
+        'can_approve_leave_requests',
+        'can_review_task_completions',
+        'can_view_task_rating_report',
     ];
 
     /**
@@ -75,6 +78,11 @@ class User extends Authenticatable
         return $this->role->canManageProjects();
     }
 
+    public function canApproveLeaveRequests(): bool
+    {
+        return $this->role->canApproveLeaveRequests();
+    }
+
     public function getCanManageCompanySettingsAttribute(): bool
     {
         return $this->canManageCompanySettings();
@@ -93,6 +101,29 @@ class User extends Authenticatable
     public function getCanViewProjectsAttribute(): bool
     {
         return $this->can('viewAny', Project::class);
+    }
+
+    public function getCanApproveLeaveRequestsAttribute(): bool
+    {
+        return $this->canApproveLeaveRequests();
+    }
+
+    public function getCanReviewTaskCompletionsAttribute(): bool
+    {
+        if ($this->isClient()) {
+            return false;
+        }
+
+        if (in_array($this->role, [UserRole::SuperAdmin, UserRole::Admin, UserRole::TeamHead], true)) {
+            return true;
+        }
+
+        return $this->leadProjects()->exists();
+    }
+
+    public function getCanViewTaskRatingReportAttribute(): bool
+    {
+        return $this->getCanReviewTaskCompletionsAttribute();
     }
 
     public function primaryTeam(): BelongsTo
@@ -142,5 +173,13 @@ class User extends Authenticatable
     public function taskTimeEntries(): HasMany
     {
         return $this->hasMany(TaskTimeEntry::class);
+    }
+
+    /**
+     * @return HasMany<LeaveRequest, $this>
+     */
+    public function leaveRequests(): HasMany
+    {
+        return $this->hasMany(LeaveRequest::class);
     }
 }

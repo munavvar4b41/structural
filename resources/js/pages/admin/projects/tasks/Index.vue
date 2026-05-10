@@ -3,11 +3,15 @@ import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
 import { CornerDownRight } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
+import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin/TaskCompletionReviewController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Card,
     CardContent,
@@ -58,6 +62,9 @@ type TaskRow = {
     tree_depth: number;
     can_update: boolean;
     can_delete: boolean;
+    is_assignee_only_limited: boolean;
+    can_submit_task_completion: boolean;
+    can_confirm_task_completion: boolean;
 };
 
 type Option = { value: string; label: string };
@@ -77,12 +84,78 @@ const props = defineProps<{
     project: ProjectSummary;
     tasks: TaskRow[];
     task_filter: string;
+    filters: {
+        search: string;
+        assignee_id: string;
+        status: string[];
+    };
     status_options: Option[];
     assignable_users: UserOption[];
     requirements: ReqOption[];
     can_create_tasks: boolean;
     can_manage_project: boolean;
 }>();
+
+const assigneeFilter = ref(props.filters.assignee_id);
+
+watch(
+    () => props.filters.assignee_id,
+    (v) => {
+        assigneeFilter.value = v;
+    },
+);
+
+function reloadTasks(overrides: Record<string, unknown> = {}): void {
+    routerReloadOnly(
+        projectTasksIndex.url(props.project.id, {
+            query: stripFilterParams({
+                task_filter: props.task_filter,
+                search: props.filters.search,
+                assignee_id: props.filters.assignee_id,
+                status: props.filters.status,
+                ...overrides,
+            }),
+        }),
+        [
+            'tasks',
+            'filters',
+            'task_filter',
+            'status_options',
+            'assignable_users',
+            'requirements',
+            'can_create_tasks',
+            'can_manage_project',
+            'project',
+        ],
+    );
+}
+
+function onSearch(search: string): void {
+    reloadTasks({ search });
+}
+
+function onAssignee(v: string): void {
+    reloadTasks({ assignee_id: v });
+}
+
+function toggleTaskStatus(value: string, checked: boolean): void {
+    const next = [...props.filters.status];
+    const ix = next.indexOf(value);
+
+    if (checked && ix === -1) {
+        next.push(value);
+    }
+
+    if (!checked && ix !== -1) {
+        next.splice(ix, 1);
+    }
+
+    reloadTasks({ status: next });
+}
+
+function statusChecked(value: string): boolean {
+    return props.filters.status.includes(value);
+}
 
 defineOptions({
     layout: (pageProps: { project: ProjectSummary; can_manage_project: boolean }) => ({
@@ -140,6 +213,26 @@ watch([editOpen, editingTask], () => {
 const statusSelectOptions = computed(() =>
     props.status_options.map((o) => ({ value: o.value, label: o.label })),
 );
+
+const editStatusSelectOptions = computed(() => {
+    const base = statusSelectOptions.value;
+    const row = editingTask.value;
+    if (row !== null && row.is_assignee_only_limited) {
+        return base.filter((o) => o.value !== 'done');
+    }
+    return base;
+});
+
+function submitForCompletionFromList(task: TaskRow): void {
+    router.post(
+        TaskCompletionReviewController.submit.url({
+            project: props.project.id,
+            task: task.id,
+        }),
+        {},
+        { preserveScroll: true },
+    );
+}
 
 const assigneeSelectOptions = computed(() =>
     props.assignable_users.map((u) => ({ value: String(u.value), label: u.label })),
@@ -217,13 +310,7 @@ const parentSelectOptionsForEdit = computed(() => {
 });
 
 function setFilter(filter: string): void {
-    router.get(
-        projectTasksIndex.url(props.project.id, {
-            query: { task_filter: filter },
-        }),
-        {},
-        { preserveState: true, preserveScroll: true },
-    );
+    reloadTasks({ task_filter: filter });
 }
 
 const deleteDialogOpen = ref(false);
@@ -288,10 +375,14 @@ function tryOpenEditFromQuery(): void {
 
     openEdit(task);
 
-    const indexOptions =
-        props.task_filter !== 'all'
-            ? { query: { task_filter: props.task_filter } }
-            : undefined;
+    const indexOptions = {
+        query: stripFilterParams({
+            task_filter: props.task_filter,
+            search: props.filters.search,
+            assignee_id: props.filters.assignee_id,
+            status: props.filters.status,
+        }),
+    };
 
     router.get(projectTasksIndex.url(props.project.id, indexOptions), {}, { replace: true, preserveState: true, preserveScroll: true });
 }
@@ -312,44 +403,95 @@ onMounted(() => {
     />
 
     <div class="flex flex-col gap-8">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Heading
-                :title="`Tasks · ${project.name}`"
-                description="Project work items; optionally link each task to a requirement or a parent task."
-            />
-            <div class="flex flex-wrap gap-2">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    :data-active="task_filter === 'all'"
-                    :class="task_filter === 'all' ? 'border-primary' : ''"
-                    type="button"
-                    @click="setFilter('all')"
-                >
-                    All
-                </Button>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    :class="task_filter === 'linked' ? 'border-primary' : ''"
-                    type="button"
-                    @click="setFilter('linked')"
-                >
-                    Linked to requirement
-                </Button>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    :class="task_filter === 'unlinked' ? 'border-primary' : ''"
-                    type="button"
-                    @click="setFilter('unlinked')"
-                >
-                    No requirement
-                </Button>
-                <Button v-if="can_create_tasks" type="button" @click="createOpen = true">
-                    Add task
-                </Button>
+        <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <Heading
+                    :title="`Tasks · ${project.name}`"
+                    description="Project work items; optionally link each task to a requirement or a parent task."
+                />
+                <div class="flex flex-wrap gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        :data-active="task_filter === 'all'"
+                        :class="task_filter === 'all' ? 'border-primary' : ''"
+                        type="button"
+                        @click="setFilter('all')"
+                    >
+                        All
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        :class="task_filter === 'linked' ? 'border-primary' : ''"
+                        type="button"
+                        @click="setFilter('linked')"
+                    >
+                        Linked to requirement
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        :class="task_filter === 'unlinked' ? 'border-primary' : ''"
+                        type="button"
+                        @click="setFilter('unlinked')"
+                    >
+                        No requirement
+                    </Button>
+                    <Button v-if="can_create_tasks" type="button" @click="createOpen = true">
+                        Add task
+                    </Button>
+                </div>
             </div>
+
+            <ListToolbar
+                :model-value="filters.search"
+                placeholder="Search title or description…"
+                @update:model-value="onSearch"
+            >
+                <template #filters>
+                    <div class="flex flex-col gap-3">
+                        <div class="flex flex-wrap items-center gap-4">
+                            <div class="grid gap-1">
+                                <Label class="text-xs text-muted-foreground" for="filter-assignee"
+                                    >Assignee</Label
+                                >
+                                <TaskFormSelect
+                                    id="filter-assignee"
+                                    name="assignee_id"
+                                    class="min-w-[12rem]"
+                                    :model-value="assigneeFilter"
+                                    :options="assigneeSelectOptions"
+                                    placeholder="Anyone"
+                                    none-label="Anyone"
+                                    exclude-from-submit
+                                    @update:model-value="onAssignee"
+                                />
+                            </div>
+                            <div class="grid gap-2">
+                                <span class="text-xs text-muted-foreground">Status</span>
+                                <div class="flex max-w-2xl flex-wrap gap-x-4 gap-y-2">
+                                    <label
+                                        v-for="opt in status_options"
+                                        :key="opt.value"
+                                        class="flex cursor-pointer items-center gap-2 text-sm"
+                                    >
+                                        <Checkbox
+                                            :model-value="statusChecked(opt.value)"
+                                            class="border-muted-foreground"
+                                            @update:model-value="
+                                                (v: boolean | 'indeterminate') =>
+                                                    toggleTaskStatus(opt.value, v === true)
+                                            "
+                                        />
+                                        {{ opt.label }}
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </ListToolbar>
         </div>
 
         <Dialog v-model:open="createOpen">
@@ -501,7 +643,7 @@ onMounted(() => {
                             v-model="editStatus"
                             required
                             placeholder="Status"
-                            :options="statusSelectOptions"
+                            :options="editStatusSelectOptions"
                         />
                         <InputError :message="errors.status" />
                     </div>
@@ -656,7 +798,16 @@ onMounted(() => {
                                 {{ formatTaskMinutes(task.estimated_minutes) }}
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-2">
+                                <div class="flex flex-wrap justify-end gap-2">
+                                    <Button
+                                        v-if="task.can_submit_task_completion"
+                                        variant="secondary"
+                                        size="sm"
+                                        type="button"
+                                        @click="submitForCompletionFromList(task)"
+                                    >
+                                        Submit for completion
+                                    </Button>
                                     <Button
                                         v-if="task.can_update"
                                         variant="outline"

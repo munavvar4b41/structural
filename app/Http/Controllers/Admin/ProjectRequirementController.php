@@ -37,17 +37,75 @@ class ProjectRequirementController extends Controller
         $actor = $request->user();
         abort_if(! $actor instanceof User, 403);
 
+        $search = trim((string) $request->query('search', ''));
+        $reviewStatus = (string) $request->query('review_status', '');
+        $allowedReviewStatuses = ['', 'pending_review', 'awaiting_understanding', 'confirmed'];
+        if (! in_array($reviewStatus, $allowedReviewStatuses, true)) {
+            $reviewStatus = '';
+        }
+
+        $responsibleQuery = $request->query('responsible_user_id');
+        $responsibleUserId = null;
+        if ($responsibleQuery !== null && $responsibleQuery !== '') {
+            $rid = (int) $responsibleQuery;
+            $responsibleUserId = $rid > 0 ? $rid : null;
+        }
+
+        $assignableResponsibles = $this->assignableResponsibleUsers($project);
+        $assignableIds = $assignableResponsibles->pluck('id')->all();
+
+        if ($responsibleUserId !== null && ! in_array($responsibleUserId, $assignableIds, true)) {
+            $responsibleUserId = null;
+        }
+
         $requirements = $project->requirements()
             ->with(['creator', 'responsibleUser', 'reviewer'])
+            ->when($search !== '', static function ($query) use ($search): void {
+                $term = '%'.addcslashes($search, '%_\\').'%';
+                $query->where(static function ($query) use ($term): void {
+                    $query->where('title', 'like', $term)
+                        ->orWhere('description', 'like', $term);
+                });
+            })
+            ->when($reviewStatus === 'pending_review', static fn ($query) => $query->whereNull('reviewed_at'))
+            ->when($reviewStatus === 'awaiting_understanding', static function ($query): void {
+                $query->whereNotNull('reviewed_at')
+                    ->whereNull('understanding_confirmed_at');
+            })
+            ->when($reviewStatus === 'confirmed', static fn ($query) => $query->whereNotNull('understanding_confirmed_at'))
+            ->when($responsibleUserId !== null, static fn ($query) => $query->where('responsible_user_id', $responsibleUserId))
             ->orderByDesc('created_at')
             ->paginate(15)
+            ->withQueryString()
             ->through(fn (ProjectRequirement $r): array => $this->requirementRow($r, $actor));
+
+        $responsibleOptions = $assignableResponsibles
+            ->map(static fn (User $u): array => [
+                'value' => $u->id,
+                'label' => $u->name.' ('.$u->email.')',
+            ])
+            ->values()
+            ->all();
 
         return Inertia::render('admin/projects/requirements/Index', [
             'project' => $this->projectSummary($project),
             'requirements' => $requirements,
             'canCreateRequirements' => $actor->can('create', [ProjectRequirement::class, $project]),
             'canManageProject' => $actor->can('update', $project),
+            'filters' => [
+                'search' => $search,
+                'review_status' => $reviewStatus,
+                'responsible_user_id' => $responsibleUserId !== null ? (string) $responsibleUserId : '',
+            ],
+            'filter_options' => [
+                'review_status' => [
+                    ['value' => '', 'label' => 'All stages'],
+                    ['value' => 'pending_review', 'label' => 'Pending review'],
+                    ['value' => 'awaiting_understanding', 'label' => 'Awaiting understanding'],
+                    ['value' => 'confirmed', 'label' => 'Understanding confirmed'],
+                ],
+                'responsibles' => $responsibleOptions,
+            ],
         ]);
     }
 

@@ -21,10 +21,25 @@ class TeamController extends Controller
     {
         $this->authorize('viewAny', Team::class);
 
+        $search = trim((string) $request->query('search', ''));
+
         $teams = Team::query()
             ->withCount('users')
+            ->when($search !== '', static function ($query) use ($search): void {
+                $term = '%'.addcslashes($search, '%_\\').'%';
+                $query->where(static function ($query) use ($term): void {
+                    $query->where('teams.name', 'like', $term)
+                        ->orWhere('teams.code', 'like', $term)
+                        ->orWhere('teams.description', 'like', $term)
+                        ->orWhereHas('users', static function ($query) use ($term): void {
+                            $query->where('users.name', 'like', $term)
+                                ->orWhere('users.email', 'like', $term);
+                        });
+                });
+            })
             ->orderBy('name')
             ->paginate(15)
+            ->withQueryString()
             ->through(static fn (Team $team): array => [
                 'id' => $team->id,
                 'name' => $team->name,
@@ -35,6 +50,9 @@ class TeamController extends Controller
 
         return Inertia::render('admin/teams/Index', [
             'teams' => $teams,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 

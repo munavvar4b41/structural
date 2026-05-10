@@ -24,10 +24,49 @@ class UserController extends Controller
 
         $actor = $request->user();
 
+        $search = trim((string) $request->query('search', ''));
+        $roleQuery = $request->query('role');
+        $roleFilter = is_string($roleQuery) ? $roleQuery : '';
+        $teamQuery = $request->query('team_id');
+        $verifiedQuery = $request->query('verified');
+        $verifiedFilter = is_string($verifiedQuery) ? $verifiedQuery : '';
+
+        $assignableRoleValues = $actor !== null
+            ? UserRole::assignableRoleValuesForActor($actor)
+            : [];
+
+        $roleApplied = $roleFilter !== '' && in_array($roleFilter, $assignableRoleValues, true);
+
+        $teamId = null;
+        if ($teamQuery !== null && $teamQuery !== '') {
+            $tid = (int) $teamQuery;
+            $teamId = $tid > 0 ? $tid : null;
+        }
+
+        $verifiedEffective = in_array($verifiedFilter, ['verified', 'unverified'], true)
+            ? $verifiedFilter
+            : '';
+
         $users = User::query()
             ->when($actor !== null, static fn ($query) => $query->whereKeyNot($actor->id))
+            ->when($search !== '', static function ($query) use ($search): void {
+                $term = '%'.addcslashes($search, '%_\\').'%';
+                $query->where(static function ($query) use ($term): void {
+                    $query->where('name', 'like', $term)
+                        ->orWhere('email', 'like', $term);
+                });
+            })
+            ->when($roleApplied, static fn ($query) => $query->where('role', $roleFilter))
+            ->when($teamId !== null, static function ($query) use ($teamId): void {
+                $query->whereHas('teams', static function ($query) use ($teamId): void {
+                    $query->where('teams.id', $teamId);
+                });
+            })
+            ->when($verifiedEffective === 'verified', static fn ($query) => $query->whereNotNull('email_verified_at'))
+            ->when($verifiedEffective === 'unverified', static fn ($query) => $query->whereNull('email_verified_at'))
             ->orderBy('name')
             ->paginate(15)
+            ->withQueryString()
             ->through(static fn (User $user): array => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -36,8 +75,35 @@ class UserController extends Controller
                 'email_verified_at' => $user->email_verified_at?->toIso8601String(),
             ]);
 
+        $roleOptions = collect($assignableRoleValues)
+            ->map(static function (string $value): array {
+                $enum = UserRole::from($value);
+
+                return [
+                    'value' => $value,
+                    'label' => $enum->label(),
+                ];
+            })
+            ->values()
+            ->all();
+
         return Inertia::render('admin/users/Index', [
             'users' => $users,
+            'filters' => [
+                'search' => $search,
+                'role' => $roleApplied ? $roleFilter : '',
+                'team_id' => $teamId !== null ? (string) $teamId : '',
+                'verified' => $verifiedEffective,
+            ],
+            'filter_options' => [
+                'roles' => $roleOptions,
+                'teams' => $this->teamsPayload(),
+                'verified' => [
+                    ['value' => '', 'label' => 'All'],
+                    ['value' => 'verified', 'label' => 'Verified email'],
+                    ['value' => 'unverified', 'label' => 'Unverified email'],
+                ],
+            ],
         ]);
     }
 

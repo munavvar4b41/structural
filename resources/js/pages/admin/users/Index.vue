@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import Heading from '@/components/Heading.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
+import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import {
     create as usersCreate,
     edit as usersEdit,
@@ -30,8 +34,21 @@ type PaginatedUsers = {
     links: PaginationLink[];
 };
 
+type FilterOption = { value: string; label: string };
+
 type Props = {
     users: PaginatedUsers;
+    filters: {
+        search: string;
+        role: string;
+        team_id: string;
+        verified: string;
+    };
+    filter_options: {
+        roles: FilterOption[];
+        teams: { value: number; label: string }[];
+        verified: FilterOption[];
+    };
 };
 
 defineOptions({
@@ -45,10 +62,71 @@ defineOptions({
     },
 });
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const deleteDialogOpen = ref(false);
 const userPendingDelete = ref<UserRow | null>(null);
+
+const roleFilter = ref(props.filters.role);
+const teamFilter = ref(props.filters.team_id);
+const verifiedFilter = ref(props.filters.verified);
+
+watch(
+    () => props.filters,
+    (f) => {
+        roleFilter.value = f.role;
+        teamFilter.value = f.team_id;
+        verifiedFilter.value = f.verified;
+    },
+);
+
+const teamSelectOptions = computed(() =>
+    props.filter_options.teams.map((t) => ({
+        value: String(t.value),
+        label: t.label,
+    })),
+);
+
+const roleSelectOptions = computed(() =>
+    props.filter_options.roles.map((r) => ({
+        value: r.value,
+        label: r.label,
+    })),
+);
+
+function reload(
+    overrides: Partial<Record<'search' | 'role' | 'team_id' | 'verified', string>> = {},
+): void {
+    routerReloadOnly(
+        usersIndex.url({
+            query: stripFilterParams({
+                search: props.filters.search,
+                role: props.filters.role,
+                team_id: props.filters.team_id,
+                verified: props.filters.verified,
+                ...overrides,
+                page: 1,
+            }),
+        }),
+        ['users', 'filters', 'filter_options'],
+    );
+}
+
+function onSearch(search: string): void {
+    reload({ search });
+}
+
+function onRole(v: string): void {
+    reload({ role: v });
+}
+
+function onTeam(v: string): void {
+    reload({ team_id: v });
+}
+
+function onVerified(v: string): void {
+    reload({ verified: v });
+}
 
 function openDeleteDialog(row: UserRow): void {
     userPendingDelete.value = row;
@@ -101,6 +179,59 @@ function roleLabel(role: string): string {
                 <Link :href="usersCreate()">Add user</Link>
             </Button>
         </div>
+
+        <ListToolbar
+            :model-value="filters.search"
+            placeholder="Search name or email…"
+            @update:model-value="onSearch"
+        >
+            <template #filters>
+                <div class="flex flex-wrap items-end gap-3">
+                    <div class="grid gap-1">
+                        <Label class="text-xs text-muted-foreground" for="filter-role">Role</Label>
+                        <TaskFormSelect
+                            id="filter-role"
+                            name="role"
+                            class="w-[10rem]"
+                            :model-value="roleFilter"
+                            :options="roleSelectOptions"
+                            placeholder="All roles"
+                            none-label="All roles"
+                            exclude-from-submit
+                            @update:model-value="onRole"
+                        />
+                    </div>
+                    <div class="grid gap-1">
+                        <Label class="text-xs text-muted-foreground" for="filter-team">Team</Label>
+                        <TaskFormSelect
+                            id="filter-team"
+                            name="team_id"
+                            class="w-[12rem]"
+                            :model-value="teamFilter"
+                            :options="teamSelectOptions"
+                            placeholder="All teams"
+                            none-label="All teams"
+                            exclude-from-submit
+                            @update:model-value="onTeam"
+                        />
+                    </div>
+                    <div class="grid gap-1">
+                        <Label class="text-xs text-muted-foreground" for="filter-verified">Email</Label>
+                        <TaskFormSelect
+                            id="filter-verified"
+                            name="verified"
+                            class="w-[11rem]"
+                            :model-value="verifiedFilter"
+                            :options="filter_options.verified"
+                            placeholder="All"
+                            none-label="All"
+                            exclude-from-submit
+                            @update:model-value="onVerified"
+                        />
+                    </div>
+                </div>
+            </template>
+        </ListToolbar>
 
         <div
             class="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
