@@ -32,6 +32,14 @@ enum UserRole: string
     }
 
     /**
+     * Super Admin and Admin may approve or reject leave requests.
+     */
+    public function canApproveLeaveRequests(): bool
+    {
+        return $this === self::SuperAdmin || $this === self::Admin;
+    }
+
+    /**
      * Whether this role may use admin user management (list/create/edit/delete users).
      */
     public function canManageUsers(): bool
