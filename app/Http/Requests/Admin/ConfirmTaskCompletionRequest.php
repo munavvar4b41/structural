@@ -8,6 +8,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
+use Illuminate\Support\Facades\Gate;
 
 class ConfirmTaskCompletionRequest extends FormRequest
 {
@@ -15,12 +16,12 @@ class ConfirmTaskCompletionRequest extends FormRequest
     {
         /** @var ProjectTask|null $task */
         $task = $this->route('task');
-
+        
         if (! $task instanceof ProjectTask) {
             return false;
         }
-
-        return $this->user()?->can('confirmCompletion', $task) ?? false;
+        
+        return Gate::check('confirmCompletion', $task);
     }
 
     /**

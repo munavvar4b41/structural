@@ -218,6 +218,7 @@ function toLocalInputValue(iso: string | null | undefined): string {
     }
 
     const d = new Date(iso);
+
     if (Number.isNaN(d.getTime())) {
         return '';
     }
@@ -270,6 +271,7 @@ function entryDurationSeconds(entry: TimeEntryRow): number {
     }
 
     const startedMs = Date.parse(entry.started_at);
+
     if (Number.isNaN(startedMs)) {
         return 0;
     }
@@ -358,6 +360,7 @@ const confirmForm = useForm({
     task_rating: '5',
     assignee_rating: '5',
     creator_rating: '5',
+    task: '',
 });
 
 watch(confirmCompletionOpen, (open) => {
@@ -367,6 +370,7 @@ watch(confirmCompletionOpen, (open) => {
         confirmForm.task_rating = '5';
         confirmForm.assignee_rating = '5';
         confirmForm.creator_rating = '5';
+
         if (props.task.assignee_user_id === null) {
             confirmForm.assignee_rating = '';
         }
@@ -424,28 +428,17 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
 </script>
 
 <template>
+
     <Head :title="`${task.title} · Tasks`" />
 
-    <ConfirmDestructiveDialog
-        v-model:open="deleteDialogOpen"
-        title="Delete task?"
-        :description="deleteTaskDescription"
-        @confirm="executeDelete"
-    />
+    <ConfirmDestructiveDialog v-model:open="deleteDialogOpen" title="Delete task?" :description="deleteTaskDescription"
+        @confirm="executeDelete" />
 
-    <ConfirmDestructiveDialog
-        v-model:open="subtaskDeleteOpen"
-        title="Delete subtask?"
-        :description="subtaskDeleteDescription"
-        @confirm="executeSubtaskDelete"
-    />
+    <ConfirmDestructiveDialog v-model:open="subtaskDeleteOpen" title="Delete subtask?"
+        :description="subtaskDeleteDescription" @confirm="executeSubtaskDelete" />
 
-    <ConfirmDestructiveDialog
-        v-model:open="entryDeleteOpen"
-        title="Delete time entry?"
-        :description="entryDeleteDescription"
-        @confirm="executeEntryDelete"
-    />
+    <ConfirmDestructiveDialog v-model:open="entryDeleteOpen" title="Delete time entry?"
+        :description="entryDeleteDescription" @confirm="executeEntryDelete" />
 
     <Dialog v-model:open="manualOpen">
         <DialogContent class="sm:max-w-md">
@@ -453,48 +446,24 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                 <DialogTitle>Add time entry</DialogTitle>
                 <DialogDescription>Log past work on this task.</DialogDescription>
             </DialogHeader>
-            <Form
-                v-bind="
-                    TaskTimeEntryController.store.form({
-                        project: project.id,
-                        task: task.id,
-                    })
-                "
-                class="grid gap-4"
-                @success="manualOpen = false"
-                v-slot="{ errors, processing }"
-            >
+            <Form v-bind="TaskTimeEntryController.store.form({
+                project: project.id,
+                task: task.id,
+            })
+                " class="grid gap-4" @success="manualOpen = false" v-slot="{ errors, processing }">
                 <div class="grid gap-2">
                     <Label for="manual-start">Start</Label>
-                    <Input
-                        id="manual-start"
-                        name="started_at"
-                        type="datetime-local"
-                        required
-                        v-model="manualStart"
-                    />
+                    <Input id="manual-start" name="started_at" type="datetime-local" required v-model="manualStart" />
                     <InputError :message="errors.started_at" />
                 </div>
                 <div class="grid gap-2">
                     <Label for="manual-end">End</Label>
-                    <Input
-                        id="manual-end"
-                        name="ended_at"
-                        type="datetime-local"
-                        required
-                        v-model="manualEnd"
-                    />
+                    <Input id="manual-end" name="ended_at" type="datetime-local" required v-model="manualEnd" />
                     <InputError :message="errors.ended_at" />
                 </div>
                 <div class="grid gap-2">
                     <Label for="manual-notes">Notes</Label>
-                    <Input
-                        id="manual-notes"
-                        name="notes"
-                        type="text"
-                        maxlength="500"
-                        v-model="manualNotes"
-                    />
+                    <Input id="manual-notes" name="notes" type="text" maxlength="500" v-model="manualNotes" />
                     <InputError :message="errors.notes" />
                 </div>
                 <DialogFooter class="gap-2 sm:gap-0">
@@ -513,50 +482,25 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                 <DialogTitle>Edit time entry</DialogTitle>
                 <DialogDescription>Adjust start/end and notes.</DialogDescription>
             </DialogHeader>
-            <Form
-                :key="editingEntry.id"
-                v-bind="
-                    TaskTimeEntryController.update.form({
-                        project: project.id,
-                        task: task.id,
-                        time_entry: editingEntry.id,
-                    })
-                "
-                class="grid gap-4"
-                @success="closeEditEntry()"
-                v-slot="{ errors, processing }"
-            >
+            <Form :key="editingEntry.id" v-bind="TaskTimeEntryController.update.form({
+                project: project.id,
+                task: task.id,
+                time_entry: editingEntry.id,
+            })
+                " class="grid gap-4" @success="closeEditEntry()" v-slot="{ errors, processing }">
                 <div class="grid gap-2">
                     <Label for="edit-entry-start">Start</Label>
-                    <Input
-                        id="edit-entry-start"
-                        name="started_at"
-                        type="datetime-local"
-                        required
-                        v-model="editStart"
-                    />
+                    <Input id="edit-entry-start" name="started_at" type="datetime-local" required v-model="editStart" />
                     <InputError :message="errors.started_at" />
                 </div>
                 <div class="grid gap-2">
                     <Label for="edit-entry-end">End</Label>
-                    <Input
-                        id="edit-entry-end"
-                        name="ended_at"
-                        type="datetime-local"
-                        required
-                        v-model="editEnd"
-                    />
+                    <Input id="edit-entry-end" name="ended_at" type="datetime-local" required v-model="editEnd" />
                     <InputError :message="errors.ended_at" />
                 </div>
                 <div class="grid gap-2">
                     <Label for="edit-entry-notes">Notes</Label>
-                    <Input
-                        id="edit-entry-notes"
-                        name="notes"
-                        type="text"
-                        maxlength="500"
-                        v-model="editNotes"
-                    />
+                    <Input id="edit-entry-notes" name="notes" type="text" maxlength="500" v-model="editNotes" />
                     <InputError :message="errors.notes" />
                 </div>
                 <DialogFooter class="gap-2 sm:gap-0">
@@ -579,56 +523,40 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
             </DialogHeader>
 
             <form class="grid gap-4" @submit.prevent="submitConfirmCompletion">
+
+                <InputError :message="confirmForm.errors.task" />
+                
                 <div class="grid gap-2">
                     <Label for="show-review-notes">Review notes</Label>
-                    <textarea
-                        id="show-review-notes"
-                        v-model="confirmForm.review_notes"
-                        rows="3"
-                        maxlength="10000"
+                    <textarea id="show-review-notes" v-model="confirmForm.review_notes" rows="3" maxlength="10000"
                         class="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-transparent"
-                        placeholder="Optional feedback for the team"
-                    />
+                        placeholder="Optional feedback for the team" />
                     <InputError :message="confirmForm.errors.review_notes" />
                 </div>
 
                 <div class="grid gap-2">
                     <Label for="show-task-rating">Task quality (1–5)</Label>
-                    <TaskFormSelect
-                        id="show-task-rating"
-                        v-model="confirmForm.task_rating"
-                        name="task_rating"
-                        required
-                        :options="ratingOptions"
-                    />
+                    <TaskFormSelect id="show-task-rating" v-model="confirmForm.task_rating" name="task_rating" required
+                        :options="ratingOptions" />
                     <InputError :message="confirmForm.errors.task_rating" />
                 </div>
 
                 <div v-if="showAssigneeRatingOnConfirm" class="grid gap-2">
                     <Label for="show-assignee-rating">Assignee performance (1–5)</Label>
-                    <TaskFormSelect
-                        id="show-assignee-rating"
-                        v-model="confirmForm.assignee_rating"
-                        name="assignee_rating"
-                        required
-                        :options="ratingOptions"
-                    />
+                    <TaskFormSelect id="show-assignee-rating" v-model="confirmForm.assignee_rating"
+                        name="assignee_rating" required :options="ratingOptions" />
                     <InputError :message="confirmForm.errors.assignee_rating" />
                 </div>
 
                 <div class="grid gap-2">
                     <Label for="show-creator-rating">Task owner / creator (1–5)</Label>
-                    <TaskFormSelect
-                        id="show-creator-rating"
-                        v-model="confirmForm.creator_rating"
-                        name="creator_rating"
-                        required
-                        :options="ratingOptions"
-                    />
+                    <TaskFormSelect id="show-creator-rating" v-model="confirmForm.creator_rating" name="creator_rating"
+                        required :options="ratingOptions" />
                     <InputError :message="confirmForm.errors.creator_rating" />
                 </div>
 
                 <DialogFooter class="gap-2 sm:gap-0">
+
                     <Button type="button" variant="outline" @click="confirmCompletionOpen = false">
                         Cancel
                     </Button>
@@ -640,63 +568,37 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
 
     <div class="flex flex-col gap-8">
         <div class="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <Heading
-                :title="task.title"
-                :description="`Project ${project.name}`"
-                title-line-clamp
-            />
+            <Heading :title="task.title" :description="`Project ${project.name}`" title-line-clamp />
             <div class="flex flex-wrap gap-2">
-                <Button
-                    v-if="task.can_submit_task_completion"
-                    variant="secondary"
-                    type="button"
-                    @click="submitForCompletion()"
-                >
+                <Button v-if="task.can_submit_task_completion" variant="secondary" type="button"
+                    @click="submitForCompletion()">
                     Submit for completion
                 </Button>
-                <Button
-                    v-if="task.can_confirm_task_completion"
-                    type="button"
-                    @click="confirmCompletionOpen = true"
-                >
+                <Button v-if="task.can_confirm_task_completion" type="button" @click="confirmCompletionOpen = true">
                     Confirm completion
                 </Button>
-                <TaskTimerButton
-                    v-if="time_tracking.can_track"
-                    :project-id="project.id"
-                    :task-id="task.id"
-                    size="default"
-                />
+                <TaskTimerButton v-if="time_tracking.can_track" :project-id="project.id" :task-id="task.id"
+                    size="default" />
                 <Button variant="outline" as-child>
                     <Link :href="projectTasksIndex.url(project.id)">Back to task list</Link>
                 </Button>
                 <Button v-if="task.can_update" variant="outline" as-child>
-                    <Link
-                        :href="
-                            projectTasksIndex.url(project.id, {
-                                query: { edit_task: String(task.id) },
-                            })
-                        "
-                    >
+                    <Link :href="projectTasksIndex.url(project.id, {
+                        query: { edit_task: String(task.id) },
+                    })
+                        ">
                         Edit on list
                     </Link>
                 </Button>
-                <Button
-                    v-if="task.can_delete"
-                    variant="outline"
-                    class="text-destructive hover:bg-destructive/10"
-                    type="button"
-                    @click="deleteDialogOpen = true"
-                >
+                <Button v-if="task.can_delete" variant="outline" class="text-destructive hover:bg-destructive/10"
+                    type="button" @click="deleteDialogOpen = true">
                     Delete
                 </Button>
             </div>
         </div>
 
-        <Card
-            v-if="task.status === 'review'"
-            class="border-amber-200/80 bg-amber-50/40 dark:border-amber-500/35 dark:bg-amber-500/10"
-        >
+        <Card v-if="task.status === 'review'"
+            class="border-amber-200/80 bg-amber-50/40 dark:border-amber-500/35 dark:bg-amber-500/10">
             <CardHeader>
                 <CardTitle class="text-base">Awaiting review</CardTitle>
                 <CardDescription>
@@ -719,10 +621,8 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
             <CardContent class="grid gap-6 text-sm">
                 <div class="grid gap-1">
                     <span class="text-xs font-medium text-muted-foreground">Title</span>
-                    <p
-                        class="max-w-md text-sm font-medium leading-snug text-foreground line-clamp-2 break-words"
-                        :title="task.title"
-                    >
+                    <p class="max-w-md text-sm font-medium leading-snug text-foreground line-clamp-2 break-words"
+                        :title="task.title">
                         {{ task.title }}
                     </p>
                 </div>
@@ -742,14 +642,11 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                     <span class="text-xs font-medium text-muted-foreground">Requirement</span>
                     <template v-if="task.project_requirement_id">
                         <Button variant="link" class="h-auto justify-start p-0" as-child>
-                            <Link
-                                :href="
-                                    requirementsShow.url({
-                                        project: project.id,
-                                        requirement: task.project_requirement_id,
-                                    })
-                                "
-                            >
+                            <Link :href="requirementsShow.url({
+                                project: project.id,
+                                requirement: task.project_requirement_id,
+                            })
+                                ">
                                 {{ task.requirement_title ?? 'View requirement' }}
                             </Link>
                         </Button>
@@ -762,16 +659,11 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                     <span class="text-xs font-medium text-muted-foreground">Parent task</span>
                     <template v-if="task.parent">
                         <Button variant="link" class="h-auto max-w-full min-w-0 justify-start p-0" as-child>
-                            <Link
-                                class="block truncate text-left"
-                                :title="task.parent.title"
-                                :href="
-                                    projectTasksShow.url({
-                                        project: project.id,
-                                        task: task.parent.id,
-                                    })
-                                "
-                            >
+                            <Link class="block truncate text-left" :title="task.parent.title" :href="projectTasksShow.url({
+                                project: project.id,
+                                task: task.parent.id,
+                            })
+                                ">
                                 {{ task.parent.title }}
                             </Link>
                         </Button>
@@ -796,18 +688,9 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                     </CardDescription>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <TaskTimerButton
-                        v-if="time_tracking.can_track"
-                        :project-id="project.id"
-                        :task-id="task.id"
-                    />
-                    <Button
-                        v-if="time_tracking.can_track"
-                        variant="outline"
-                        size="sm"
-                        type="button"
-                        @click="openManualDialog"
-                    >
+                    <TaskTimerButton v-if="time_tracking.can_track" :project-id="project.id" :task-id="task.id" />
+                    <Button v-if="time_tracking.can_track" variant="outline" size="sm" type="button"
+                        @click="openManualDialog">
                         Add manual entry
                     </Button>
                 </div>
@@ -847,11 +730,8 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr
-                                v-for="entry in time_tracking.entries"
-                                :key="entry.id"
-                                class="border-b border-border/60 last:border-0"
-                            >
+                            <tr v-for="entry in time_tracking.entries" :key="entry.id"
+                                class="border-b border-border/60 last:border-0">
                                 <td class="px-3 py-2 align-top text-muted-foreground">
                                     {{ entry.user_name ?? '—' }}
                                 </td>
@@ -874,23 +754,13 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                                 </td>
                                 <td class="px-3 py-2 align-top text-right">
                                     <div class="flex justify-end gap-2">
-                                        <Button
-                                            v-if="entry.can_update && !entry.is_running"
-                                            variant="outline"
-                                            size="sm"
-                                            type="button"
-                                            @click="openEditEntry(entry)"
-                                        >
+                                        <Button v-if="entry.can_update && !entry.is_running" variant="outline" size="sm"
+                                            type="button" @click="openEditEntry(entry)">
                                             Edit
                                         </Button>
-                                        <Button
-                                            v-if="entry.can_delete"
-                                            variant="outline"
-                                            size="sm"
-                                            class="text-destructive hover:bg-destructive/10"
-                                            type="button"
-                                            @click="openEntryDelete(entry)"
-                                        >
+                                        <Button v-if="entry.can_delete" variant="outline" size="sm"
+                                            class="text-destructive hover:bg-destructive/10" type="button"
+                                            @click="openEntryDelete(entry)">
                                             Delete
                                         </Button>
                                     </div>
@@ -927,46 +797,29 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr
-                            v-for="sub in task.subtasks"
-                            :key="sub.id"
-                            class="border-b border-border/60 last:border-0"
-                        >
-                            <td
-                                class="max-w-0 px-4 py-3 align-top"
-                                :style="{
-                                    paddingLeft: `calc(0.75rem + ${sub.tree_depth} * 1.25rem)`,
-                                }"
-                            >
+                        <tr v-for="sub in task.subtasks" :key="sub.id" class="border-b border-border/60 last:border-0">
+                            <td class="max-w-0 px-4 py-3 align-top" :style="{
+                                paddingLeft: `calc(0.75rem + ${sub.tree_depth} * 1.25rem)`,
+                            }">
                                 <div class="flex min-w-0 items-start gap-1.5">
-                                    <CornerDownRight
-                                        v-if="sub.tree_depth > 0"
-                                        class="mt-0.5 size-4 shrink-0 text-muted-foreground"
-                                        aria-hidden="true"
-                                    />
+                                    <CornerDownRight v-if="sub.tree_depth > 0"
+                                        class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                                     <div class="min-w-0 flex-1">
-                                        <Button
-                                            variant="link"
+                                        <Button variant="link"
                                             class="h-auto w-full min-w-0 justify-start p-0 font-medium text-foreground"
-                                            as-child
-                                        >
+                                            as-child>
                                             <Link
                                                 class="block text-left text-foreground line-clamp-2 break-words hover:underline"
-                                                :title="sub.title"
-                                                :href="
-                                                    projectTasksShow.url({
-                                                        project: project.id,
-                                                        task: sub.id,
-                                                    })
-                                                "
-                                            >
+                                                :title="sub.title" :href="projectTasksShow.url({
+                                                    project: project.id,
+                                                    task: sub.id,
+                                                })
+                                                    ">
                                                 {{ sub.title }}
                                             </Link>
                                         </Button>
-                                        <span
-                                            v-if="sub.children_count > 0"
-                                            class="mt-0.5 block text-xs text-muted-foreground"
-                                        >
+                                        <span v-if="sub.children_count > 0"
+                                            class="mt-0.5 block text-xs text-muted-foreground">
                                             ({{ sub.children_count }} subtasks)
                                         </span>
                                     </div>
@@ -979,14 +832,11 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                             <td class="px-4 py-3">
                                 <template v-if="sub.project_requirement_id">
                                     <Button variant="link" class="h-auto p-0" as-child>
-                                        <Link
-                                            :href="
-                                                requirementsShow.url({
-                                                    project: project.id,
-                                                    requirement: sub.project_requirement_id,
-                                                })
-                                            "
-                                        >
+                                        <Link :href="requirementsShow.url({
+                                            project: project.id,
+                                            requirement: sub.project_requirement_id,
+                                        })
+                                            ">
                                             {{ sub.requirement_title ?? 'View' }}
                                         </Link>
                                     </Button>
@@ -998,34 +848,21 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex flex-wrap justify-end gap-2">
-                                    <Button
-                                        v-if="sub.can_submit_task_completion"
-                                        variant="secondary"
-                                        size="sm"
-                                        type="button"
-                                        @click="submitForCompletionSubtask(sub)"
-                                    >
+                                    <Button v-if="sub.can_submit_task_completion" variant="secondary" size="sm"
+                                        type="button" @click="submitForCompletionSubtask(sub)">
                                         Submit for completion
                                     </Button>
                                     <Button v-if="sub.can_update" variant="outline" size="sm" as-child>
-                                        <Link
-                                            :href="
-                                                projectTasksIndex.url(project.id, {
-                                                    query: { edit_task: String(sub.id) },
-                                                })
-                                            "
-                                        >
+                                        <Link :href="projectTasksIndex.url(project.id, {
+                                            query: { edit_task: String(sub.id) },
+                                        })
+                                            ">
                                             Edit
                                         </Link>
                                     </Button>
-                                    <Button
-                                        v-if="sub.can_delete"
-                                        variant="outline"
-                                        size="sm"
-                                        class="text-destructive hover:bg-destructive/10"
-                                        type="button"
-                                        @click="openSubtaskDelete(sub)"
-                                    >
+                                    <Button v-if="sub.can_delete" variant="outline" size="sm"
+                                        class="text-destructive hover:bg-destructive/10" type="button"
+                                        @click="openSubtaskDelete(sub)">
                                         Delete
                                     </Button>
                                 </div>
