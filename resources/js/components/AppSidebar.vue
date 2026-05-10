@@ -3,9 +3,11 @@ import { Link, usePage } from '@inertiajs/vue3';
 import {
     Building2,
     CalendarDays,
+    ClipboardCheck,
     ClipboardList,
     FolderKanban,
     LayoutGrid,
+    Star,
     Timer,
     Users,
 } from 'lucide-vue-next';
@@ -29,6 +31,8 @@ import { edit as adminLeaveSettingsEdit } from '@/routes/admin/leave-settings/in
 import { index as adminMyWorkIndex } from '@/routes/admin/my-work/index';
 import { index as adminProjectsIndex } from '@/routes/admin/projects/index';
 import { index as adminTeamsIndex } from '@/routes/admin/teams/index';
+import { index as adminTaskRatingsReportIndex } from '@/routes/admin/task-ratings-report/index';
+import { index as adminTaskReviewsIndex } from '@/routes/admin/task-reviews/index';
 import { index as adminTimeReportIndex } from '@/routes/admin/time-report/index';
 import { index as adminUsersIndex } from '@/routes/admin/users/index';
 import type { NavItem } from '@/types';
@@ -101,6 +105,22 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Time report',
             href: adminTimeReportIndex(),
             icon: Timer,
+        });
+    }
+
+    if (page.props.auth.user?.can_review_task_completions) {
+        items.push({
+            title: 'Task reviews',
+            href: adminTaskReviewsIndex(),
+            icon: ClipboardCheck,
+        });
+    }
+
+    if (page.props.auth.user?.can_view_task_rating_report) {
+        items.push({
+            title: 'Task ratings',
+            href: adminTaskRatingsReportIndex(),
+            icon: Star,
         });
     }
 

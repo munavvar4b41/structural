@@ -27,14 +27,67 @@ class ProjectController extends Controller
 
         abort_if(! $actor instanceof User, 403);
 
+        $search = trim((string) $request->query('search', ''));
+        $teamQuery = $request->query('team_id');
+        $leadQuery = $request->query('lead_user_id');
+
+        $teamId = null;
+        if ($teamQuery !== null && $teamQuery !== '') {
+            $tid = (int) $teamQuery;
+            $teamId = $tid > 0 ? $tid : null;
+        }
+
+        $leadUserId = null;
+        if ($leadQuery !== null && $leadQuery !== '') {
+            $lid = (int) $leadQuery;
+            $leadUserId = $lid > 0 ? $lid : null;
+        }
+
+        $allowedTeamIds = $actor->role->canViewAllProjects()
+            ? null
+            : $actor->teams()->pluck('teams.id')->all();
+
+        if ($teamId !== null && $allowedTeamIds !== null && ! in_array($teamId, $allowedTeamIds, true)) {
+            $teamId = null;
+        }
+
+        $leadCandidateIds = collect($this->leadCandidatesPayload())
+            ->pluck('value')
+            ->all();
+
+        if ($leadUserId !== null
+            && ! in_array($leadUserId, $leadCandidateIds, true)
+        ) {
+            $leadUserId = null;
+        }
+
+        if ($leadUserId !== null && ! $actor->role->canViewAllProjects()) {
+            $leadUserId = null;
+        }
+
         $projects = Project::query()->with('clientUser');
 
         $projects->visibleToUser($actor);
 
         $projects = $projects
+            ->when($search !== '', static function ($query) use ($search): void {
+                $term = '%'.addcslashes($search, '%_\\').'%';
+                $query->where(static function ($query) use ($term): void {
+                    $query->where('projects.name', 'like', $term)
+                        ->orWhere('projects.code', 'like', $term)
+                        ->orWhere('projects.description', 'like', $term);
+                });
+            })
+            ->when($teamId !== null, static function ($query) use ($teamId): void {
+                $query->whereHas('teams', static function ($query) use ($teamId): void {
+                    $query->where('teams.id', $teamId);
+                });
+            })
+            ->when($leadUserId !== null, static fn ($query) => $query->where('lead_user_id', $leadUserId))
             ->withCount('teams')
             ->orderBy('name')
             ->paginate(15)
+            ->withQueryString()
             ->through(static function (Project $project): array {
                 $client = $project->clientUser;
 
@@ -52,9 +105,47 @@ class ProjectController extends Controller
                 ];
             });
 
+        $teamFilterOptions = $actor->role->canViewAllProjects()
+            ? Team::query()
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(static fn (Team $team): array => [
+                    'value' => $team->id,
+                    'label' => $team->name,
+                ])
+                ->all()
+            : $actor->teams()
+                ->orderBy('name')
+                ->get()
+                ->map(static fn (Team $team): array => [
+                    'value' => $team->id,
+                    'label' => $team->name,
+                ])
+                ->all();
+
+        $leadFilterOptions = $actor->role->canViewAllProjects()
+            ? collect($this->leadCandidatesPayload())
+                ->map(static fn (array $row): array => [
+                    'value' => $row['value'],
+                    'label' => $row['label'],
+                ])
+                ->values()
+                ->all()
+            : [];
+
         return Inertia::render('admin/projects/Index', [
             'projects' => $projects,
             'canManageProjects' => $actor->canManageProjects(),
+            'filters' => [
+                'search' => $search,
+                'team_id' => $teamId !== null ? (string) $teamId : '',
+                'lead_user_id' => $leadUserId !== null ? (string) $leadUserId : '',
+            ],
+            'filter_options' => [
+                'teams' => $teamFilterOptions,
+                'leads' => $leadFilterOptions,
+            ],
+            'show_lead_filter' => $actor->role->canViewAllProjects(),
         ]);
     }
 

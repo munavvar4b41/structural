@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { Form, Head, Link, router } from '@inertiajs/vue3';
+import { Form, Head, Link, router, useForm } from '@inertiajs/vue3';
 import { CornerDownRight } from 'lucide-vue-next';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
+import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin/TaskCompletionReviewController';
 import TaskTimeEntryController from '@/actions/App/Http/Controllers/Admin/TaskTimeEntryController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -63,6 +65,9 @@ type SubtaskRow = {
     tree_depth: number;
     can_update: boolean;
     can_delete: boolean;
+    is_assignee_only_limited: boolean;
+    can_submit_task_completion: boolean;
+    can_confirm_task_completion: boolean;
 };
 
 type TaskDetail = {
@@ -82,6 +87,11 @@ type TaskDetail = {
     subtasks: SubtaskRow[];
     can_update: boolean;
     can_delete: boolean;
+    completion_submitted_at: string | null;
+    completion_submitted_by: UserBrief;
+    is_assignee_only_limited: boolean;
+    can_submit_task_completion: boolean;
+    can_confirm_task_completion: boolean;
 };
 
 type ProjectSummary = {
@@ -335,6 +345,82 @@ const entryDeleteDescription = computed(() => {
 
     return `Delete time entry from ${formatEntryRange(row.started_at, row.ended_at, row.is_running)}? This cannot be undone.`;
 });
+
+const ratingOptions = [1, 2, 3, 4, 5].map((n) => ({
+    value: String(n),
+    label: String(n),
+}));
+
+const confirmCompletionOpen = ref(false);
+
+const confirmForm = useForm({
+    review_notes: '',
+    task_rating: '5',
+    assignee_rating: '5',
+    creator_rating: '5',
+});
+
+watch(confirmCompletionOpen, (open) => {
+    if (open) {
+        confirmForm.reset();
+        confirmForm.clearErrors();
+        confirmForm.task_rating = '5';
+        confirmForm.assignee_rating = '5';
+        confirmForm.creator_rating = '5';
+        if (props.task.assignee_user_id === null) {
+            confirmForm.assignee_rating = '';
+        }
+    }
+});
+
+const showAssigneeRatingOnConfirm = computed(() => props.task.assignee_user_id !== null);
+
+function submitForCompletion(): void {
+    router.post(
+        TaskCompletionReviewController.submit.url({
+            project: props.project.id,
+            task: props.task.id,
+        }),
+        {},
+        { preserveScroll: true },
+    );
+}
+
+function submitConfirmCompletion(): void {
+    confirmForm
+        .transform((data) => ({
+            review_notes: data.review_notes.trim() === '' ? null : data.review_notes,
+            task_rating: Number.parseInt(String(data.task_rating), 10),
+            assignee_rating:
+                props.task.assignee_user_id === null || data.assignee_rating === ''
+                    ? null
+                    : Number.parseInt(String(data.assignee_rating), 10),
+            creator_rating: Number.parseInt(String(data.creator_rating), 10),
+        }))
+        .post(
+            TaskCompletionReviewController.confirm.url({
+                project: props.project.id,
+                task: props.task.id,
+            }),
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    confirmCompletionOpen.value = false;
+                },
+            },
+        );
+}
+
+function submitForCompletionSubtask(row: SubtaskRow): void {
+    router.post(
+        TaskCompletionReviewController.submit.url({
+            project: props.project.id,
+            task: row.id,
+        }),
+        {},
+        { preserveScroll: true },
+    );
+}
 </script>
 
 <template>
@@ -483,6 +569,75 @@ const entryDeleteDescription = computed(() => {
         </DialogContent>
     </Dialog>
 
+    <Dialog :open="confirmCompletionOpen" @update:open="(v: boolean) => (confirmCompletionOpen = v)">
+        <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Confirm completion</DialogTitle>
+                <DialogDescription>
+                    Add optional notes and ratings (1–5). The task will be marked done.
+                </DialogDescription>
+            </DialogHeader>
+
+            <form class="grid gap-4" @submit.prevent="submitConfirmCompletion">
+                <div class="grid gap-2">
+                    <Label for="show-review-notes">Review notes</Label>
+                    <textarea
+                        id="show-review-notes"
+                        v-model="confirmForm.review_notes"
+                        rows="3"
+                        maxlength="10000"
+                        class="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-transparent"
+                        placeholder="Optional feedback for the team"
+                    />
+                    <InputError :message="confirmForm.errors.review_notes" />
+                </div>
+
+                <div class="grid gap-2">
+                    <Label for="show-task-rating">Task quality (1–5)</Label>
+                    <TaskFormSelect
+                        id="show-task-rating"
+                        v-model="confirmForm.task_rating"
+                        name="task_rating"
+                        required
+                        :options="ratingOptions"
+                    />
+                    <InputError :message="confirmForm.errors.task_rating" />
+                </div>
+
+                <div v-if="showAssigneeRatingOnConfirm" class="grid gap-2">
+                    <Label for="show-assignee-rating">Assignee performance (1–5)</Label>
+                    <TaskFormSelect
+                        id="show-assignee-rating"
+                        v-model="confirmForm.assignee_rating"
+                        name="assignee_rating"
+                        required
+                        :options="ratingOptions"
+                    />
+                    <InputError :message="confirmForm.errors.assignee_rating" />
+                </div>
+
+                <div class="grid gap-2">
+                    <Label for="show-creator-rating">Task owner / creator (1–5)</Label>
+                    <TaskFormSelect
+                        id="show-creator-rating"
+                        v-model="confirmForm.creator_rating"
+                        name="creator_rating"
+                        required
+                        :options="ratingOptions"
+                    />
+                    <InputError :message="confirmForm.errors.creator_rating" />
+                </div>
+
+                <DialogFooter class="gap-2 sm:gap-0">
+                    <Button type="button" variant="outline" @click="confirmCompletionOpen = false">
+                        Cancel
+                    </Button>
+                    <Button type="submit" :disabled="confirmForm.processing">Confirm & mark done</Button>
+                </DialogFooter>
+            </form>
+        </DialogContent>
+    </Dialog>
+
     <div class="flex flex-col gap-8">
         <div class="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <Heading
@@ -491,6 +646,21 @@ const entryDeleteDescription = computed(() => {
                 title-line-clamp
             />
             <div class="flex flex-wrap gap-2">
+                <Button
+                    v-if="task.can_submit_task_completion"
+                    variant="secondary"
+                    type="button"
+                    @click="submitForCompletion()"
+                >
+                    Submit for completion
+                </Button>
+                <Button
+                    v-if="task.can_confirm_task_completion"
+                    type="button"
+                    @click="confirmCompletionOpen = true"
+                >
+                    Confirm completion
+                </Button>
                 <TaskTimerButton
                     v-if="time_tracking.can_track"
                     :project-id="project.id"
@@ -522,6 +692,24 @@ const entryDeleteDescription = computed(() => {
                 </Button>
             </div>
         </div>
+
+        <Card
+            v-if="task.status === 'review'"
+            class="border-amber-200/80 bg-amber-50/40 dark:border-amber-500/35 dark:bg-amber-500/10"
+        >
+            <CardHeader>
+                <CardTitle class="text-base">Awaiting review</CardTitle>
+                <CardDescription>
+                    This task was submitted for completion
+                    <template v-if="task.completion_submitted_at">
+                        on {{ new Date(task.completion_submitted_at).toLocaleString() }}
+                    </template>
+                    <template v-if="task.completion_submitted_by">
+                        by {{ task.completion_submitted_by.name }}.
+                    </template>
+                </CardDescription>
+            </CardHeader>
+        </Card>
 
         <Card>
             <CardHeader>
@@ -809,7 +997,16 @@ const entryDeleteDescription = computed(() => {
                                 {{ formatTaskMinutes(sub.estimated_minutes) }}
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-2">
+                                <div class="flex flex-wrap justify-end gap-2">
+                                    <Button
+                                        v-if="sub.can_submit_task_completion"
+                                        variant="secondary"
+                                        size="sm"
+                                        type="button"
+                                        @click="submitForCompletionSubtask(sub)"
+                                    >
+                                        Submit for completion
+                                    </Button>
                                     <Button v-if="sub.can_update" variant="outline" size="sm" as-child>
                                         <Link
                                             :href="

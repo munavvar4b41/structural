@@ -3,10 +3,10 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\ProjectTaskStatus;
-use App\Enums\UserRole;
 use App\Models\ProjectTask;
 use App\Models\User;
 use App\Support\ProjectRequirementAssignableUsers;
+use App\Support\ProjectTaskAssigneeCapabilities;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -24,8 +24,7 @@ class UpdateProjectTaskRequest extends FormRequest
 
         /** @var ProjectTask|null $task */
         $task = $this->route('task');
-        if (
-            $task instanceof ProjectTask
+        if ($task instanceof ProjectTask
             && $task->project->estimation_required
             && ! $this->has('estimated_minutes')
         ) {
@@ -60,7 +59,8 @@ class UpdateProjectTaskRequest extends FormRequest
 
         $assignableIds = ProjectRequirementAssignableUsers::responsibleUserIds($project);
 
-        $staffAssigneeOnly = $this->staffAssigneeLimitedUpdate($task);
+        $user = $this->user();
+        $staffAssigneeOnly = $user instanceof User && ProjectTaskAssigneeCapabilities::isAssigneeOnlyLimited($user, $task);
 
         if ($staffAssigneeOnly) {
             return [
@@ -104,10 +104,33 @@ class UpdateProjectTaskRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
+                $user = $this->user();
                 /** @var ProjectTask $task */
                 $task = $this->route('task');
 
-                if ($this->staffAssigneeLimitedUpdate($task)) {
+                if (! $user instanceof User) {
+                    return;
+                }
+
+                if (ProjectTaskAssigneeCapabilities::isAssigneeOnlyLimited($user, $task)) {
+                    $status = $this->input('status');
+                    if ($status !== null && $status !== '') {
+                        $asEnum = ProjectTaskStatus::tryFrom((string) $status);
+                        if ($asEnum === ProjectTaskStatus::Done) {
+                            $validator->errors()->add(
+                                'status',
+                                __('Use “Submit for completion” so a reviewer can confirm this task.'),
+                            );
+                        }
+                    }
+                }
+            },
+            function (Validator $validator): void {
+                $user = $this->user();
+                /** @var ProjectTask $task */
+                $task = $this->route('task');
+
+                if (! $user instanceof User || ProjectTaskAssigneeCapabilities::isAssigneeOnlyLimited($user, $task)) {
                     return;
                 }
 
@@ -169,27 +192,5 @@ class UpdateProjectTaskRequest extends FormRequest
         }
 
         return false;
-    }
-
-    private function staffAssigneeLimitedUpdate(ProjectTask $task): bool
-    {
-        $user = $this->user();
-        if (! $user instanceof User) {
-            return false;
-        }
-
-        if ($user->role !== UserRole::Staff) {
-            return false;
-        }
-
-        if ($task->project->lead_user_id === $user->id) {
-            return false;
-        }
-
-        if ($task->created_by_user_id === $user->id) {
-            return false;
-        }
-
-        return $task->assignee_user_id === $user->id;
     }
 }

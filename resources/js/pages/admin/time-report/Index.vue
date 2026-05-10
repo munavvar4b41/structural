@@ -2,6 +2,7 @@
 import { Head, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import Heading from '@/components/Heading.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -178,6 +179,22 @@ function formatEntryWhen(start: string | null, end: string | null): string {
 
     return `${startLabel} → ${new Date(end).toLocaleString()}`;
 }
+
+const entrySearch = ref('');
+
+const filteredEntries = computed(() => {
+    const needle = entrySearch.value.trim().toLowerCase();
+
+    if (needle === '') {
+        return props.entries;
+    }
+
+    return props.entries.filter((entry) => {
+        const hay = `${entry.task_title ?? ''} ${entry.notes ?? ''}`.toLowerCase();
+
+        return hay.includes(needle);
+    });
+});
 </script>
 
 <template>
@@ -400,10 +417,18 @@ function formatEntryWhen(start: string | null, end: string | null): string {
 
         <Card>
             <CardHeader>
-                <CardTitle>Entries</CardTitle>
-                <CardDescription>
-                    Up to 500 most recent entries in this range.
-                </CardDescription>
+                <div class="flex flex-col gap-3">
+                    <div>
+                        <CardTitle>Entries</CardTitle>
+                        <CardDescription>
+                            Up to 500 most recent entries in this range.
+                        </CardDescription>
+                    </div>
+                    <ListToolbar
+                        v-model="entrySearch"
+                        placeholder="Filter by task title or notes…"
+                    />
+                </div>
             </CardHeader>
             <CardContent class="overflow-x-auto">
                 <table class="w-full min-w-[720px] text-left text-sm">
@@ -419,7 +444,7 @@ function formatEntryWhen(start: string | null, end: string | null): string {
                     </thead>
                     <tbody>
                         <tr
-                            v-for="entry in entries"
+                            v-for="entry in filteredEntries"
                             :key="entry.id"
                             class="border-b border-border/60 last:border-0"
                         >
@@ -442,9 +467,13 @@ function formatEntryWhen(start: string | null, end: string | null): string {
                                 {{ entry.notes ?? '—' }}
                             </td>
                         </tr>
-                        <tr v-if="entries.length === 0">
+                        <tr v-if="filteredEntries.length === 0">
                             <td colspan="6" class="px-3 py-8 text-center text-muted-foreground">
-                                No entries.
+                                {{
+                                    entries.length === 0
+                                        ? 'No entries.'
+                                        : 'No entries match your search.'
+                                }}
                             </td>
                         </tr>
                     </tbody>

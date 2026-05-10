@@ -5,6 +5,8 @@ import TeamController from '@/actions/App/Http/Controllers/Admin/TeamController'
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
+import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import { Button } from '@/components/ui/button';
 import {
     create as teamsCreate,
@@ -33,6 +35,9 @@ type PaginatedTeams = {
 
 type Props = {
     teams: PaginatedTeams;
+    filters: {
+        search: string;
+    };
     errors: {
         team?: string;
     };
@@ -44,10 +49,22 @@ defineOptions({
     },
 });
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const deleteDialogOpen = ref(false);
 const teamPendingDelete = ref<TeamRow | null>(null);
+
+function reloadSearch(search: string): void {
+    routerReloadOnly(
+        teamsIndex.url({
+            query: stripFilterParams({
+                search,
+                page: 1,
+            }),
+        }),
+        ['teams', 'filters'],
+    );
+}
 
 function openDeleteDialog(team: TeamRow): void {
     teamPendingDelete.value = team;
@@ -87,14 +104,23 @@ const deleteTeamDescription = computed(() => {
     />
 
     <div class="flex flex-col gap-8">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex flex-col gap-4">
             <Heading
                 title="Teams"
                 description="Manage teams and cross-team assignments"
             />
-            <Button as-child>
-                <Link :href="teamsCreate()">Add team</Link>
-            </Button>
+
+            <ListToolbar
+                :model-value="filters.search"
+                placeholder="Search team name, code, member…"
+                @update:model-value="reloadSearch"
+            >
+                <template #actions>
+                    <Button as-child>
+                        <Link :href="teamsCreate()">Add team</Link>
+                    </Button>
+                </template>
+            </ListToolbar>
         </div>
 
         <InputError :message="errors.team" />

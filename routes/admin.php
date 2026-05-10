@@ -8,6 +8,8 @@ use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\ProjectRequirementController;
 use App\Http\Controllers\Admin\ProjectRequirementMessageController;
 use App\Http\Controllers\Admin\ProjectTaskController;
+use App\Http\Controllers\Admin\TaskCompletionReviewController;
+use App\Http\Controllers\Admin\TaskRatingReportController;
 use App\Http\Controllers\Admin\TaskTimeEntryController;
 use App\Http\Controllers\Admin\TaskTimerController;
 use App\Http\Controllers\Admin\TeamController;
@@ -41,6 +43,8 @@ Route::patch('leave-requests/{leaveRequest}/reject', [LeaveRequestController::cl
 Route::resource('leave-requests', LeaveRequestController::class)->only(['index', 'store', 'destroy']);
 
 Route::get('my-work', [MyWorkController::class, 'index'])->name('my-work.index');
+Route::get('task-reviews', [TaskCompletionReviewController::class, 'index'])->name('task-reviews.index');
+Route::get('task-ratings-report', [TaskRatingReportController::class, 'index'])->name('task-ratings-report.index');
 Route::resource('projects', ProjectController::class)->except(['show']);
 Route::resource('projects.tasks', ProjectTaskController::class)
     ->only(['index', 'show', 'store', 'update', 'destroy'])
@@ -53,6 +57,12 @@ Route::post('projects/{project}/requirements/{requirement}/messages', [ProjectRe
     ->name('projects.requirements.messages.store');
 Route::resource('projects.requirements', ProjectRequirementController::class);
 
+Route::post('projects/{project}/tasks/{task}/submit-completion', [TaskCompletionReviewController::class, 'submit'])
+    ->scopeBindings()
+    ->name('projects.tasks.submit-completion');
+Route::post('projects/{project}/tasks/{task}/confirm-completion', [TaskCompletionReviewController::class, 'confirm'])
+    ->scopeBindings()
+    ->name('projects.tasks.confirm-completion');
 Route::post('projects/{project}/tasks/{task}/timer/start', [TaskTimerController::class, 'start'])
     ->scopeBindings()
     ->name('projects.tasks.timer.start');

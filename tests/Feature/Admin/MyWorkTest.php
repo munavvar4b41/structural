@@ -60,7 +60,7 @@ class MyWorkTest extends TestCase
                 ));
     }
 
-    public function test_staff_can_patch_status_on_assigned_task(): void
+    public function test_assignee_only_staff_cannot_patch_status_to_done(): void
     {
         $team = Team::factory()->create();
         $head = User::factory()->teamHead()->withPrimaryTeam($team)->create();
@@ -82,8 +82,9 @@ class MyWorkTest extends TestCase
             ->patch(route('admin.projects.tasks.update', [$project, $task]), [
                 'status' => ProjectTaskStatus::Done->value,
             ])
-            ->assertRedirect(route('admin.my-work.index'));
+            ->assertRedirect(route('admin.my-work.index'))
+            ->assertSessionHasErrors('status');
 
-        $this->assertSame(ProjectTaskStatus::Done, $task->fresh()->status);
+        $this->assertSame(ProjectTaskStatus::ToDo, $task->fresh()->status);
     }
 }

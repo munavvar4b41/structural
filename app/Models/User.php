@@ -34,6 +34,8 @@ class User extends Authenticatable
         'can_manage_projects',
         'can_view_projects',
         'can_approve_leave_requests',
+        'can_review_task_completions',
+        'can_view_task_rating_report',
     ];
 
     /**
@@ -104,6 +106,24 @@ class User extends Authenticatable
     public function getCanApproveLeaveRequestsAttribute(): bool
     {
         return $this->canApproveLeaveRequests();
+    }
+
+    public function getCanReviewTaskCompletionsAttribute(): bool
+    {
+        if ($this->isClient()) {
+            return false;
+        }
+
+        if (in_array($this->role, [UserRole::SuperAdmin, UserRole::Admin, UserRole::TeamHead], true)) {
+            return true;
+        }
+
+        return $this->leadProjects()->exists();
+    }
+
+    public function getCanViewTaskRatingReportAttribute(): bool
+    {
+        return $this->getCanReviewTaskCompletionsAttribute();
     }
 
     public function primaryTeam(): BelongsTo

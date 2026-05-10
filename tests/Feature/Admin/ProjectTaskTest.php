@@ -439,4 +439,36 @@ class ProjectTaskTest extends TestCase
 
         $this->assertSame(ProjectTaskStatus::InProgress, $task->fresh()->status);
     }
+
+    public function test_tasks_index_includes_ancestor_rows_when_descendant_matches_search(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $parent = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'title' => 'Parent umbrella',
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'title' => 'ChildMatchTokenXYZ',
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.index', [
+                'project' => $project,
+                'search' => 'ChildMatchTokenXYZ',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/projects/tasks/Index')
+                ->where('tasks', fn ($tasks) => count($tasks) >= 2));
+    }
 }

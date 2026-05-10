@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\User;
+use App\Support\ProjectTaskAssigneeCapabilities;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -31,7 +32,7 @@ class MyWorkController extends Controller
         }
 
         foreach ($tasks as $task) {
-            $grouped[$task->status->value][] = $this->taskCard($task);
+            $grouped[$task->status->value][] = $this->taskCard($task, $actor);
         }
 
         $columns = [];
@@ -57,7 +58,7 @@ class MyWorkController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function taskCard(ProjectTask $task): array
+    private function taskCard(ProjectTask $task, User $actor): array
     {
         $project = $task->project;
 
@@ -78,6 +79,21 @@ class MyWorkController extends Controller
             ],
             'project_tasks_url' => route('admin.projects.tasks.index', $project),
             'task_show_url' => route('admin.projects.tasks.show', [$project, $task]),
+            'is_assignee_only_limited' => ProjectTaskAssigneeCapabilities::isAssigneeOnlyLimited($actor, $task),
+            'can_submit_task_completion' => $this->canSubmitTaskCompletion($actor, $task),
         ];
+    }
+
+    private function canSubmitTaskCompletion(User $actor, ProjectTask $task): bool
+    {
+        if (! $actor->can('submitCompletion', $task)) {
+            return false;
+        }
+
+        return ! in_array($task->status, [
+            ProjectTaskStatus::Review,
+            ProjectTaskStatus::Done,
+            ProjectTaskStatus::Cancelled,
+        ], true);
     }
 }

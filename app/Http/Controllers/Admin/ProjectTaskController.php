@@ -12,6 +12,7 @@ use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
 use App\Models\User;
 use App\Support\ProjectRequirementAssignableUsers;
+use App\Support\ProjectTaskAssigneeCapabilities;
 use App\Support\ProjectTaskDisplayOrder;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -37,17 +38,79 @@ class ProjectTaskController extends Controller
             $filter = 'all';
         }
 
-        $query = $project->tasks()
-            ->with(['assignee:id,name,email', 'requirement:id,title'])
-            ->withCount('children');
+        $search = trim((string) $request->query('search', ''));
 
-        if ($filter === 'linked') {
-            $query->whereNotNull('project_requirement_id');
-        } elseif ($filter === 'unlinked') {
-            $query->whereNull('project_requirement_id');
+        $assigneeQuery = $request->query('assignee_id');
+        $assigneeId = null;
+        if ($assigneeQuery !== null && $assigneeQuery !== '') {
+            $aid = (int) $assigneeQuery;
+            $assigneeId = $aid > 0 ? $aid : null;
         }
 
-        $tasksCollection = $query->get();
+        $assignableIds = collect($this->assignableUserOptions($project))
+            ->pluck('value')
+            ->all();
+
+        if ($assigneeId !== null && ! in_array($assigneeId, $assignableIds, true)) {
+            $assigneeId = null;
+        }
+
+        $allowedStatusValues = array_map(
+            static fn (ProjectTaskStatus $s): string => $s->value,
+            ProjectTaskStatus::cases(),
+        );
+
+        $statusRaw = $request->query('status');
+        $statuses = [];
+        if (is_array($statusRaw)) {
+            $statuses = array_values(array_intersect(
+                array_map(static fn (mixed $v): string => (string) $v, $statusRaw),
+                $allowedStatusValues,
+            ));
+        }
+
+        $parentLinks = ProjectTask::query()
+            ->where('project_id', $project->id)
+            ->get(['id', 'parent_project_task_id']);
+
+        /** @var array<int, int|null> */
+        $parentOf = [];
+        foreach ($parentLinks as $row) {
+            $parentOf[$row->id] = $row->parent_project_task_id;
+        }
+
+        $matchQuery = $project->tasks()->getQuery();
+
+        if ($filter === 'linked') {
+            $matchQuery->whereNotNull('project_requirement_id');
+        } elseif ($filter === 'unlinked') {
+            $matchQuery->whereNull('project_requirement_id');
+        }
+
+        $matchQuery
+            ->when($search !== '', static function ($query) use ($search): void {
+                $term = '%'.addcslashes($search, '%_\\').'%';
+                $query->where(static function ($query) use ($term): void {
+                    $query->where('title', 'like', $term)
+                        ->orWhere('description', 'like', $term);
+                });
+            })
+            ->when($statuses !== [], static fn ($query) => $query->whereIn('status', $statuses))
+            ->when($assigneeId !== null, static fn ($query) => $query->where('assignee_user_id', $assigneeId));
+
+        $matchingIds = $matchQuery->pluck('id')->all();
+
+        if ($matchingIds === []) {
+            $tasksCollection = new EloquentCollection([]);
+        } else {
+            $expandedIds = $this->expandTaskIdsWithAncestors($parentOf, $matchingIds);
+
+            $tasksCollection = $project->tasks()
+                ->whereIn('id', $expandedIds)
+                ->with(['assignee:id,name,email', 'requirement:id,title'])
+                ->withCount('children')
+                ->get();
+        }
 
         $tasks = collect(ProjectTaskDisplayOrder::depthFirstWithDepth($tasksCollection))
             ->map(fn (array $row): array => $this->taskRow($row['task'], $actor, $row['depth']))
@@ -57,6 +120,11 @@ class ProjectTaskController extends Controller
             'project' => $this->projectSummary($project),
             'tasks' => $tasks,
             'task_filter' => $filter,
+            'filters' => [
+                'search' => $search,
+                'assignee_id' => $assigneeId !== null ? (string) $assigneeId : '',
+                'status' => $statuses,
+            ],
             'status_options' => $this->statusOptions(),
             'assignable_users' => $this->assignableUserOptions($project),
             'requirements' => $project->requirements()->orderBy('title')->get(['id', 'title'])->map(static fn (ProjectRequirement $r): array => [
@@ -66,6 +134,27 @@ class ProjectTaskController extends Controller
             'can_create_tasks' => $actor->can('create', [ProjectTask::class, $project]),
             'can_manage_project' => $actor->can('update', $project),
         ]);
+    }
+
+    /**
+     * @param  array<int, int|null>  $parentOf
+     * @param  list<int>  $seedIds
+     * @return list<int>
+     */
+    private function expandTaskIdsWithAncestors(array $parentOf, array $seedIds): array
+    {
+        $keep = [];
+
+        foreach ($seedIds as $id) {
+            $current = $id;
+
+            while ($current !== null) {
+                $keep[$current] = true;
+                $current = $parentOf[$current] ?? null;
+            }
+        }
+
+        return array_keys($keep);
     }
 
     public function show(Request $request, Project $project, ProjectTask $task): Response
@@ -80,6 +169,7 @@ class ProjectTaskController extends Controller
             'assignee:id,name,email',
             'requirement:id,title',
             'parent:id,title',
+            'completionSubmittedBy:id,name,email',
         ]);
         $task->loadCount('children');
 
@@ -251,6 +341,9 @@ class ProjectTaskController extends Controller
             'tree_depth' => $treeDepth,
             'can_update' => $actor->can('update', $task),
             'can_delete' => $actor->can('delete', $task),
+            'is_assignee_only_limited' => ProjectTaskAssigneeCapabilities::isAssigneeOnlyLimited($actor, $task),
+            'can_submit_task_completion' => $this->canSubmitTaskCompletion($actor, $task),
+            'can_confirm_task_completion' => $actor->can('confirmCompletion', $task),
         ];
     }
 
@@ -307,12 +400,33 @@ class ProjectTaskController extends Controller
                     'tree_depth' => 1,
                     'can_update' => $actor->can('update', $child),
                     'can_delete' => $actor->can('delete', $child),
+                    'is_assignee_only_limited' => ProjectTaskAssigneeCapabilities::isAssigneeOnlyLimited($actor, $child),
+                    'can_submit_task_completion' => $this->canSubmitTaskCompletion($actor, $child),
+                    'can_confirm_task_completion' => $actor->can('confirmCompletion', $child),
                 ])
                 ->values()
                 ->all(),
             'can_update' => $actor->can('update', $task),
             'can_delete' => $actor->can('delete', $task),
+            'completion_submitted_at' => $task->completion_submitted_at?->toIso8601String(),
+            'completion_submitted_by' => $this->userBrief($task->completionSubmittedBy),
+            'is_assignee_only_limited' => ProjectTaskAssigneeCapabilities::isAssigneeOnlyLimited($actor, $task),
+            'can_submit_task_completion' => $this->canSubmitTaskCompletion($actor, $task),
+            'can_confirm_task_completion' => $actor->can('confirmCompletion', $task),
         ];
+    }
+
+    private function canSubmitTaskCompletion(User $actor, ProjectTask $task): bool
+    {
+        if (! $actor->can('submitCompletion', $task)) {
+            return false;
+        }
+
+        return ! in_array($task->status, [
+            ProjectTaskStatus::Review,
+            ProjectTaskStatus::Done,
+            ProjectTaskStatus::Cancelled,
+        ], true);
     }
 
     private function ensureTaskBelongsToProject(Project $project, ProjectTask $task): void

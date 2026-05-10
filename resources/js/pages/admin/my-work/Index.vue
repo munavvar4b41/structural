@@ -2,6 +2,7 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
+import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin/TaskCompletionReviewController';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import Heading from '@/components/Heading.vue';
@@ -20,6 +21,8 @@ type TaskCard = {
     requirement: { id: number; title: string } | null;
     project_tasks_url: string;
     task_show_url: string;
+    is_assignee_only_limited: boolean;
+    can_submit_task_completion: boolean;
 };
 
 type StatusOption = { value: string; label: string };
@@ -35,9 +38,31 @@ const props = defineProps<{
     status_options: StatusOption[];
 }>();
 
-const statusSelectOptions = computed(() =>
-    props.status_options.map((o) => ({ value: o.value, label: o.label })),
-);
+const doneStatusValue = 'done';
+
+function statusSelectOptionsForTask(task: TaskCard) {
+    const base = props.status_options.map((o) => ({ value: o.value, label: o.label }));
+    if (task.is_assignee_only_limited) {
+        return base.filter((o) => o.value !== doneStatusValue);
+    }
+    return base;
+}
+
+function submitForCompletion(task: TaskCard): void {
+    router.post(
+        TaskCompletionReviewController.submit.url({
+            project: task.project_id,
+            task: task.id,
+        }),
+        {},
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                router.reload({ only: ['columns'], preserveScroll: true });
+            },
+        },
+    );
+}
 
 defineOptions({
     layout: {
@@ -130,10 +155,20 @@ function patchTaskStatus(task: TaskCard, status: string): void {
                                 :model-value="task.status"
                                 required
                                 placeholder="Status"
-                                :options="statusSelectOptions"
+                                :options="statusSelectOptionsForTask(task)"
                                 @update:model-value="patchTaskStatus(task, $event)"
                             />
                             <div class="flex flex-wrap gap-2">
+                                <Button
+                                    v-if="task.can_submit_task_completion"
+                                    variant="secondary"
+                                    size="sm"
+                                    class="h-8 w-full text-xs"
+                                    type="button"
+                                    @click="submitForCompletion(task)"
+                                >
+                                    Submit for completion
+                                </Button>
                                 <TaskTimerButton
                                     :project-id="task.project_id"
                                     :task-id="task.id"

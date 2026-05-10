@@ -725,4 +725,42 @@ class ProjectRequirementTest extends TestCase
             ->get(route('admin.projects.requirements.index', $hidden))
             ->assertForbidden();
     }
+
+    public function test_requirements_index_filters_by_status_search_and_responsible(): void
+    {
+        $team = Team::factory()->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $pending = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'title' => 'Zebra pending item',
+            'responsible_user_id' => $staff->id,
+            'reviewed_at' => null,
+        ]);
+
+        ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'title' => 'Other noise',
+            'responsible_user_id' => $staff->id,
+            'reviewed_at' => now(),
+            'understanding_confirmed_at' => null,
+        ]);
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.requirements.index', [
+                'project' => $project,
+                'review_status' => 'pending_review',
+                'search' => 'Zebra',
+                'responsible_user_id' => $staff->id,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('requirements.data', 1)
+                ->where('requirements.data.0.id', $pending->id));
+    }
 }

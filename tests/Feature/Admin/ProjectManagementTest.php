@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\UserRole;
 use App\Models\Project;
 use App\Models\Team;
 use App\Models\User;
@@ -269,5 +270,38 @@ class ProjectManagementTest extends TestCase
             'project_id' => $project->id,
             'team_id' => $team->id,
         ]);
+    }
+
+    public function test_super_admin_can_filter_projects_index_by_search_team_and_lead(): void
+    {
+        $super = User::factory()->superAdmin()->create(['primary_team_id' => null]);
+        $team = Team::factory()->create();
+        $lead = User::factory()->create(['role' => UserRole::Staff]);
+        $lead->teams()->sync([$team->id]);
+
+        $match = Project::factory()->create([
+            'name' => 'FindMeAlpha',
+            'code' => 'FM-100',
+            'lead_user_id' => $lead->id,
+        ]);
+        $match->teams()->sync([$team->id]);
+
+        $other = Project::factory()->create(['name' => 'NoiseOther']);
+        $other->teams()->sync([$team->id]);
+
+        $this->actingAs($super)
+            ->get(route('admin.projects.index', [
+                'search' => 'FindMe',
+                'team_id' => $team->id,
+                'lead_user_id' => $lead->id,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/projects/Index')
+                ->has('projects.data', 1)
+                ->where('projects.data.0.name', 'FindMeAlpha')
+                ->where('filters.search', 'FindMe')
+                ->where('filters.team_id', (string) $team->id)
+                ->where('filters.lead_user_id', (string) $lead->id));
     }
 }
