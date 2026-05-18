@@ -6,19 +6,13 @@ import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/P
 import ProjectRequirementMessageController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementMessageController';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
-import Heading from '@/components/Heading.vue';
+import GlassCard from '@/components/dashboard/GlassCard.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import RequirementRichTextEditor from '@/components/RequirementRichTextEditor.vue';
 import RequirementRichTextViewer from '@/components/RequirementRichTextViewer.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import {
     Dialog,
     DialogClose,
@@ -311,7 +305,7 @@ defineOptions({
 
     <div class="flex flex-col gap-8">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <Heading :title="requirement.title" :description="`Project ${project.name}`" />
+            <PageHeader :title="requirement.title" :description="`Project ${project.name}`" />
             <div class="flex flex-wrap gap-2">
                 <Button v-if="can_update" as-child>
                     <Link :href="requirementsEdit.url({
@@ -334,12 +328,14 @@ defineOptions({
 
         <div class="mx-auto flex w-full flex-col gap-8">
             <div class="grid min-w-0 gap-6 lg:grid-cols-12 lg:items-stretch">
-                <Card class="flex h-full min-h-0 flex-col lg:col-span-7">
-                    <CardHeader>
-                        <CardTitle>People</CardTitle>
-                        <CardDescription>Ownership and review</CardDescription>
-                    </CardHeader>
-                    <CardContent class="grid flex-1 gap-3 text-sm">
+                <GlassCard class="flex h-full min-h-0 flex-col lg:col-span-7">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">People</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Ownership and review
+                    </p>
+                </div>
+                <div class="grid flex-1 gap-3 text-sm">
                         <div>
                             <span class="text-muted-foreground">Created by</span>
                             {{ requirement.creator?.name ?? '—' }}
@@ -376,17 +372,17 @@ defineOptions({
                             · Updated
                             {{ requirement.updated_at ? new Date(requirement.updated_at).toLocaleString() : '—' }}
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+            </GlassCard>
 
-                <Card class="flex h-full min-h-0 flex-col lg:col-span-5">
-                    <CardHeader>
-                        <CardTitle>Clarification discussion</CardTitle>
-                        <CardDescription>
-                            Ask questions and align with the team before finalizing review understanding.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent class="flex min-h-0 flex-1 flex-col gap-4">
+                <GlassCard class="flex h-full min-h-0 flex-col lg:col-span-5">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Clarification discussion</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Ask questions and align with the team before finalizing review understanding.
+                    </p>
+                </div>
+<div class="flex min-h-0 flex-1 flex-col gap-4">
                         <div v-if="olderMessagesHref" class="flex shrink-0 justify-center border-b border-border pb-3">
                             <Button variant="outline" size="sm" as-child>
                                 <Link :href="olderMessagesHref">Load older messages</Link>
@@ -394,7 +390,7 @@ defineOptions({
                         </div>
                         <div
                             ref="chatScrollEl"
-                            class="min-h-32 min-w-0 flex-1 space-y-3 overflow-y-auto rounded-md border border-input bg-muted/20 p-3 text-sm lg:max-h-[min(32rem,calc(100vh-14rem))]"
+                            class="min-h-32 min-w-0 flex-1 space-y-3 overflow-y-auto rounded-xl border border-input bg-muted/20 p-3 text-sm lg:max-h-[min(32rem,calc(100vh-14rem))]"
                         >
                             <p v-if="requirement_chat_messages.data.length === 0" class="text-muted-foreground">
                                 No messages yet. Start the thread below.
@@ -451,28 +447,18 @@ defineOptions({
                         <p v-else class="shrink-0 text-xs text-muted-foreground">
                             You can view this thread but cannot post.
                         </p>
-                    </CardContent>
-                </Card>
+                    </div>
+            </GlassCard>
 
-                <Card class="lg:col-span-12">
-                    <CardHeader class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <CardTitle>Tasks</CardTitle>
-                            <CardDescription>
-                                Work linked to this requirement. Estimates:
+                <GlassCard class="lg:col-span-12" :padding="false">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Tasks</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Work linked to this requirement. Estimates:
                                 {{ project.estimation_required ? 'required on this project.' : 'optional.' }}
-                            </CardDescription>
-                        </div>
-                        <div class="flex flex-wrap gap-2">
-                            <Button v-if="can_create_tasks" type="button" @click="createTaskOpen = true">
-                                Add task
-                            </Button>
-                            <Button variant="outline" size="sm" as-child>
-                                <Link :href="projectTasksIndex.url(project.id)">All project tasks</Link>
-                            </Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent class="overflow-x-auto p-0 sm:p-6">
+                    </p>
+                </div>
+<div class="overflow-x-auto p-0 sm:p-6">
                         <Dialog v-model:open="createTaskOpen">
                             <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-lg">
                                 <DialogHeader>
@@ -499,7 +485,7 @@ defineOptions({
                                             id="req-task-description"
                                             name="description"
                                             rows="3"
-                                            class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+                                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
                                         />
                                         <InputError :message="errors.description" />
                                     </div>
@@ -661,27 +647,29 @@ defineOptions({
                                 </tr>
                             </tbody>
                         </table>
-                    </CardContent>
-                </Card>
+                    </div>
+            </GlassCard>
 
-                <Card v-if="requirement.review_understanding" class="lg:col-span-12">
-                    <CardHeader>
-                        <CardTitle>Review understanding</CardTitle>
-                        <CardDescription>What the reviewing party recorded about this requirement</CardDescription>
-                    </CardHeader>
-                    <CardContent>
+                <GlassCard v-if="requirement.review_understanding" class="lg:col-span-12">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Review understanding</h2>
+                    <p class="text-sm text-muted-foreground">
+                        What the reviewing party recorded about this requirement
+                    </p>
+                </div>
+<div>
                         <RequirementRichTextViewer :json="requirement.review_understanding" />
-                    </CardContent>
-                </Card>
+                    </div>
+            </GlassCard>
 
-                <Card v-if="can_confirm_understanding" class="lg:col-span-12">
-                    <CardHeader>
-                        <CardTitle>Confirm understanding</CardTitle>
-                        <CardDescription>
-                            Confirm that this matches your intent as creator or responsible person.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
+                <GlassCard v-if="can_confirm_understanding" class="lg:col-span-12">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Confirm understanding</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Confirm that this matches your intent as creator or responsible person.
+                    </p>
+                </div>
+<div>
                         <Form v-bind="ProjectRequirementController.confirmUnderstanding.form({
                             project: project.id,
                             requirement: requirement.id,
@@ -689,18 +677,18 @@ defineOptions({
                             " class="flex flex-col gap-3" v-slot="{ processing }">
                             <Button type="submit" :disabled="processing">Confirm understanding</Button>
                         </Form>
-                    </CardContent>
-                </Card>
+                    </div>
+            </GlassCard>
 
-                <Card class="lg:col-span-12">
-                    <CardHeader>
-                        <CardTitle>Description</CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                <GlassCard class="lg:col-span-12">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Description</h2>
+                </div>
+<div>
                         <RequirementRichTextViewer v-if="requirement.description" :json="requirement.description" />
                         <p v-else class="text-sm text-muted-foreground">No description.</p>
-                    </CardContent>
-                </Card>
+                    </div>
+            </GlassCard>
             </div>
         </div>
 

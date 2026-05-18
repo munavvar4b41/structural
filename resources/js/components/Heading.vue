@@ -27,7 +27,7 @@ withDefaults(defineProps<Props>(), {
             :class="[
                 variant === 'small'
                     ? 'mb-0.5 text-base font-medium'
-                    : 'text-xl font-semibold tracking-tight',
+                    : 'text-2xl font-semibold tracking-tight sm:text-3xl',
                 titleLineClamp ? 'line-clamp-2 min-w-0 break-words' : '',
                 titleTruncate && !titleLineClamp ? 'min-w-0 truncate' : '',
             ]"

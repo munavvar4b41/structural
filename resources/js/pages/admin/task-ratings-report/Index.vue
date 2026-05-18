@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
-import Heading from '@/components/Heading.vue';
+import ChartCard from '@/components/dashboard/ChartCard.vue';
+import DataTable from '@/components/dashboard/DataTable.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import { Button } from '@/components/ui/button';
@@ -135,24 +137,49 @@ function avgLabel(v: number | null): string {
     if (v === null) {
         return '—';
     }
+
     return String(v);
 }
+
+const ratingsChartSeries = computed(() => [
+    {
+        name: 'As assignee',
+        data: filteredRows.value.map((row) => row.assignee_avg ?? 0),
+    },
+    {
+        name: 'As creator',
+        data: filteredRows.value.map((row) => row.creator_avg ?? 0),
+    },
+]);
+
+const ratingsChartOptions = computed(() => ({
+    chart: { type: 'bar' as const },
+    plotOptions: {
+        bar: {
+            horizontal: true,
+            borderRadius: 6,
+        },
+    },
+    xaxis: {
+        categories: filteredRows.value.map((row) => row.name),
+        max: 5,
+    },
+}));
 </script>
 
 <template>
     <Head title="Task ratings report" />
 
-    <div class="flex flex-col gap-8">
-        <div class="flex flex-col gap-3">
-            <Heading
-                title="Task ratings report"
-                description="Averages from completed task reviews. Filter by date, project, or staff involved."
-            />
-            <ListToolbar
-                v-model="localSearch"
-                placeholder="Narrow by staff name, task, or project (table results)…"
-            />
-        </div>
+    <div class="flex flex-col gap-6">
+        <PageHeader
+            title="Task ratings report"
+            description="Averages from completed task reviews. Filter by date, project, or staff involved."
+        />
+
+        <ListToolbar
+            v-model="localSearch"
+            placeholder="Narrow by staff name, task, or project (table results)…"
+        />
 
         <Card>
             <CardHeader>
@@ -194,6 +221,16 @@ function avgLabel(v: number | null): string {
             </CardContent>
         </Card>
 
+        <ChartCard
+            v-if="filteredRows.length > 0"
+            title="Rating averages"
+            description="Compare assignee vs creator scores by staff member"
+            type="bar"
+            :series="ratingsChartSeries"
+            :options="ratingsChartOptions"
+            :height="320"
+        />
+
         <Card>
             <CardHeader>
                 <CardTitle>By staff member</CardTitle>
@@ -201,42 +238,52 @@ function avgLabel(v: number | null): string {
                     Separate averages when someone was rated as assignee vs. as task creator/owner.
                 </CardDescription>
             </CardHeader>
-            <CardContent class="overflow-x-auto">
-                <table v-if="filteredRows.length > 0" class="w-full min-w-[640px] text-sm">
+            <CardContent>
+                <DataTable v-if="filteredRows.length > 0" min-width="640px">
                     <thead>
-                        <tr class="border-b border-border text-left text-xs font-medium text-muted-foreground">
-                            <th class="pb-3 pr-4">Name</th>
-                            <th class="pb-3 pr-4">Avg as assignee</th>
-                            <th class="pb-3 pr-4">Reviews (assignee)</th>
-                            <th class="pb-3 pr-4">Avg as creator</th>
-                            <th class="pb-3 pr-4">Reviews (creator)</th>
+                        <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Name
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Avg as assignee
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Reviews (assignee)
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Avg as creator
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Reviews (creator)
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr
                             v-for="row in filteredRows"
                             :key="row.user_id"
-                            class="border-b border-border/60 align-top last:border-0"
+                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
                         >
-                            <td class="py-3 pr-4 font-medium">{{ row.name }}</td>
-                            <td class="py-3 pr-4 tabular-nums text-muted-foreground">
+                            <td class="px-5 py-3.5 font-medium">{{ row.name }}</td>
+                            <td class="px-5 py-3.5 tabular-nums text-muted-foreground">
                                 {{ avgLabel(row.assignee_avg) }}
                             </td>
-                            <td class="py-3 pr-4 tabular-nums text-muted-foreground">
+                            <td class="px-5 py-3.5 tabular-nums text-muted-foreground">
                                 {{ row.assignee_count }}
                             </td>
-                            <td class="py-3 pr-4 tabular-nums text-muted-foreground">
+                            <td class="px-5 py-3.5 tabular-nums text-muted-foreground">
                                 {{ avgLabel(row.creator_avg) }}
                             </td>
-                            <td class="py-3 pr-4 tabular-nums text-muted-foreground">
+                            <td class="px-5 py-3.5 tabular-nums text-muted-foreground">
                                 {{ row.creator_count }}
                             </td>
                         </tr>
                     </tbody>
-                </table>
-                <p v-else class="text-sm text-muted-foreground">
+                </DataTable>
+                <div v-else class="text-sm text-muted-foreground">
                     {{ rows.length === 0 ? 'No ratings in this range.' : 'No rows match your search.' }}
-                </p>
+                </div>
             </CardContent>
         </Card>
 
@@ -245,49 +292,61 @@ function avgLabel(v: number | null): string {
                 <CardTitle>Recent reviews</CardTitle>
                 <CardDescription>Latest confirmed tasks (up to 100 in this filter).</CardDescription>
             </CardHeader>
-            <CardContent class="overflow-x-auto">
-                <table v-if="filteredRecentReviews.length > 0" class="w-full min-w-[720px] text-sm">
+            <CardContent>
+                <DataTable v-if="filteredRecentReviews.length > 0" min-width="720px">
                     <thead>
-                        <tr class="border-b border-border text-left text-xs font-medium text-muted-foreground">
-                            <th class="pb-3 pr-4">Date</th>
-                            <th class="pb-3 pr-4">Task</th>
-                            <th class="pb-3 pr-4">Project</th>
-                            <th class="pb-3 pr-4">Task rating</th>
-                            <th class="pb-3 pr-4">Assignee rating</th>
-                            <th class="pb-3 pr-4">Creator rating</th>
+                        <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Date
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Task
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Project
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Task rating
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Assignee rating
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Creator rating
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr
                             v-for="r in filteredRecentReviews"
                             :key="r.id"
-                            class="border-b border-border/60 last:border-0"
+                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
                         >
-                            <td class="py-3 pr-4 text-muted-foreground">
+                            <td class="px-5 py-3.5 text-muted-foreground">
                                 {{ new Date(r.created_at).toLocaleString() }}
                             </td>
-                            <td class="py-3 pr-4">{{ r.task_title ?? '—' }}</td>
-                            <td class="py-3 pr-4 text-muted-foreground">
+                            <td class="px-5 py-3.5">{{ r.task_title ?? '—' }}</td>
+                            <td class="px-5 py-3.5 text-muted-foreground">
                                 {{ r.project_name ?? '—' }}
                                 <span v-if="r.project_code">({{ r.project_code }})</span>
                             </td>
-                            <td class="py-3 pr-4 tabular-nums">{{ r.task_rating }}</td>
-                            <td class="py-3 pr-4 tabular-nums text-muted-foreground">
+                            <td class="px-5 py-3.5 tabular-nums">{{ r.task_rating }}</td>
+                            <td class="px-5 py-3.5 tabular-nums text-muted-foreground">
                                 {{ r.assignee_rating ?? '—' }}
                             </td>
-                            <td class="py-3 pr-4 tabular-nums text-muted-foreground">
+                            <td class="px-5 py-3.5 tabular-nums text-muted-foreground">
                                 {{ r.creator_rating ?? '—' }}
                             </td>
                         </tr>
                     </tbody>
-                </table>
-                <p v-else class="text-sm text-muted-foreground">
+                </DataTable>
+                <div v-else class="text-sm text-muted-foreground">
                     {{
                         recent_reviews.length === 0
                             ? 'No reviews in this range.'
                             : 'No reviews match your search.'
                     }}
-                </p>
+                </div>
             </CardContent>
         </Card>
     </div>

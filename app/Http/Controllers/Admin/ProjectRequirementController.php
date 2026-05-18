@@ -99,7 +99,6 @@ class ProjectRequirementController extends Controller
             ],
             'filter_options' => [
                 'review_status' => [
-                    ['value' => '', 'label' => 'All stages'],
                     ['value' => 'pending_review', 'label' => 'Pending review'],
                     ['value' => 'awaiting_understanding', 'label' => 'Awaiting understanding'],
                     ['value' => 'confirmed', 'label' => 'Understanding confirmed'],

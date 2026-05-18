@@ -3,7 +3,7 @@ import { Form, Head } from '@inertiajs/vue3';
 import { ChevronDown } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import TeamSelectionController from '@/actions/App/Http/Controllers/TeamSelectionController';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/dashboard/FormField.vue';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -13,8 +13,6 @@ import {
     DropdownMenuRadioItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Label } from '@/components/ui/label';
-
 type TeamOption = {
     value: number;
     label: string;
@@ -55,8 +53,12 @@ defineOptions({
         <input type="hidden" name="primary_team_id" :value="primaryTeamId" />
 
         <div class="grid gap-6">
-            <div class="grid gap-2">
-                <Label id="primary_team_id-label">Primary team</Label>
+            <FormField
+                label="Primary team"
+                html-for="primary_team_id"
+                :error="errors.primary_team_id"
+                required
+            >
                 <DropdownMenu>
                     <DropdownMenuTrigger as-child>
                         <Button
@@ -83,8 +85,7 @@ defineOptions({
                         </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
-                <InputError :message="errors.primary_team_id" />
-            </div>
+            </FormField>
 
             <Button type="submit" class="w-full" :disabled="processing">
                 Continue

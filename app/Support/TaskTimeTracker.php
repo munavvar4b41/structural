@@ -62,14 +62,15 @@ class TaskTimeTracker
     }
 
     /**
-     * Stop the user's currently running entry, if any.
+     * Pause the user's currently running (non-paused) entry, if any.
      */
-    public function stop(User $user): ?TaskTimeEntry
+    public function pause(User $user): ?TaskTimeEntry
     {
         return DB::transaction(function () use ($user): ?TaskTimeEntry {
             $running = TaskTimeEntry::query()
                 ->where('user_id', $user->id)
                 ->whereNull('ended_at')
+                ->whereNull('paused_at')
                 ->lockForUpdate()
                 ->first();
 
@@ -77,9 +78,59 @@ class TaskTimeTracker
                 return null;
             }
 
-            $this->closeEntry($running, now());
+            $running->forceFill(['paused_at' => now()])->save();
 
             return $running->refresh();
+        });
+    }
+
+    /**
+     * Resume the user's paused entry, if any.
+     */
+    public function resume(User $user): ?TaskTimeEntry
+    {
+        return DB::transaction(function () use ($user): ?TaskTimeEntry {
+            $paused = TaskTimeEntry::query()
+                ->where('user_id', $user->id)
+                ->whereNull('ended_at')
+                ->whereNotNull('paused_at')
+                ->lockForUpdate()
+                ->first();
+
+            if ($paused === null) {
+                return null;
+            }
+
+            $pauseDuration = $paused->paused_at->diffInSeconds(now());
+
+            $paused->forceFill([
+                'accumulated_pause_seconds' => (int) ($paused->accumulated_pause_seconds ?? 0) + $pauseDuration,
+                'paused_at' => null,
+            ])->save();
+
+            return $paused->refresh();
+        });
+    }
+
+    /**
+     * Stop the user's currently open entry (running or paused), if any.
+     */
+    public function stop(User $user): ?TaskTimeEntry
+    {
+        return DB::transaction(function () use ($user): ?TaskTimeEntry {
+            $open = TaskTimeEntry::query()
+                ->where('user_id', $user->id)
+                ->whereNull('ended_at')
+                ->lockForUpdate()
+                ->first();
+
+            if ($open === null) {
+                return null;
+            }
+
+            $this->closeEntry($open, now());
+
+            return $open->refresh();
         });
     }
 
@@ -137,9 +188,15 @@ class TaskTimeTracker
             $endedAt = $entry->started_at->copy();
         }
 
+        if ($entry->paused_at !== null) {
+            $pauseDuration = $entry->paused_at->diffInSeconds($endedAt);
+            $entry->accumulated_pause_seconds = (int) ($entry->accumulated_pause_seconds ?? 0) + $pauseDuration;
+            $entry->paused_at = null;
+        }
+
         $entry->forceFill([
             'ended_at' => $endedAt,
-            'duration_seconds' => $entry->started_at->diffInSeconds($endedAt),
+            'duration_seconds' => $entry->elapsedSeconds($endedAt),
         ])->save();
 
         $previousStatus = $entry->previous_task_status;

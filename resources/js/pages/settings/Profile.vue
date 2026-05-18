@@ -2,12 +2,10 @@
 import { Form, Head, Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
+import FormField from '@/components/dashboard/FormField.vue';
 import DeleteUser from '@/components/DeleteUser.vue';
-import Heading from '@/components/Heading.vue';
-import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/profile';
 import { send } from '@/routes/verification';
 
@@ -38,49 +36,49 @@ const user = computed(() => page.props.auth.user);
 
     <h1 class="sr-only">Profile settings</h1>
 
-    <div class="flex flex-col space-y-6">
-        <Heading
-            variant="small"
-            title="Profile information"
-            description="Update your name and email address"
-        />
+    <div class="flex flex-col gap-6">
+        <div class="space-y-1">
+            <h2 class="text-lg font-semibold">Profile information</h2>
+            <p class="text-sm text-muted-foreground">
+                Update your name and email address
+            </p>
+        </div>
 
         <Form
             v-bind="ProfileController.update.form()"
-            class="space-y-6"
+            class="flex flex-col gap-6"
             v-slot="{ errors, processing, recentlySuccessful }"
         >
-            <div class="grid gap-2">
-                <Label for="name">Name</Label>
+            <FormField label="Name" html-for="name" :error="errors.name" required>
                 <Input
                     id="name"
-                    class="mt-1 block w-full"
                     name="name"
                     :default-value="user.name"
                     required
                     autocomplete="name"
                     placeholder="Full name"
                 />
-                <InputError class="mt-2" :message="errors.name" />
-            </div>
+            </FormField>
 
-            <div class="grid gap-2">
-                <Label for="email">Email address</Label>
+            <FormField
+                label="Email address"
+                html-for="email"
+                :error="errors.email"
+                required
+            >
                 <Input
                     id="email"
                     type="email"
-                    class="mt-1 block w-full"
                     name="email"
                     :default-value="user.email"
                     required
                     autocomplete="username"
                     placeholder="Email address"
                 />
-                <InputError class="mt-2" :message="errors.email" />
-            </div>
+            </FormField>
 
             <div v-if="mustVerifyEmail && !user.email_verified_at">
-                <p class="-mt-4 text-sm text-muted-foreground">
+                <p class="text-sm text-muted-foreground">
                     Your email address is unverified.
                     <Link
                         :href="send()"

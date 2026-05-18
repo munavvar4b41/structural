@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed } from 'vue';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
 import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin/TaskCompletionReviewController';
+import GlassCard from '@/components/dashboard/GlassCard.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
-import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { index as myWorkIndex } from '@/routes/admin/my-work/index';
@@ -42,9 +42,11 @@ const doneStatusValue = 'done';
 
 function statusSelectOptionsForTask(task: TaskCard) {
     const base = props.status_options.map((o) => ({ value: o.value, label: o.label }));
+
     if (task.is_assignee_only_limited) {
         return base.filter((o) => o.value !== doneStatusValue);
     }
+
     return base;
 }
 
@@ -58,7 +60,7 @@ function submitForCompletion(task: TaskCard): void {
         {
             preserveScroll: true,
             onSuccess: () => {
-                router.reload({ only: ['columns'], preserveScroll: true });
+                router.reload({ only: ['columns'] });
             },
         },
     );
@@ -87,7 +89,7 @@ function patchTaskStatus(task: TaskCard, status: string): void {
         {
             preserveScroll: true,
             onSuccess: () => {
-                router.reload({ only: ['columns'], preserveScroll: true });
+                router.reload({ only: ['columns'] });
             },
         },
     );
@@ -98,26 +100,26 @@ function patchTaskStatus(task: TaskCard, status: string): void {
     <Head title="My work" />
 
     <div class="flex flex-col gap-8">
-        <Heading
-            title="My work"
-            description="Tasks assigned to you, grouped by status. Click a card to open the task, or use Move to to change status."
-        />
+        <PageHeader title="My work"
+            description="Tasks assigned to you, grouped by status. Click a card to open the task, or use Move to to change status." />
 
         <div class="flex gap-4 overflow-x-auto pb-2">
-            <div
+            <GlassCard
                 v-for="col in columns"
                 :key="col.status"
-                class="flex w-72 shrink-0 flex-col gap-3 rounded-xl border border-sidebar-border/70 bg-muted/20 p-3 dark:border-sidebar-border"
+                class="flex w-72 shrink-0 flex-col gap-3 p-4"
             >
                 <div class="flex items-center justify-between gap-2">
                     <h2 class="text-sm font-semibold">{{ col.label }}</h2>
                     <span class="text-xs text-muted-foreground">{{ col.tasks.length }}</span>
                 </div>
                 <div class="flex flex-col gap-2">
-                    <div
+                    <GlassCard
                         v-for="task in col.tasks"
                         :key="task.id"
-                        class="rounded-lg border border-border bg-card shadow-xs"
+                        :padding="false"
+                        class="overflow-hidden p-0"
+                        hover
                     >
                         <Link
                             class="block min-w-0 p-3 pb-0 hover:bg-muted/40"
@@ -181,15 +183,15 @@ function patchTaskStatus(task: TaskCard, status: string): void {
                                 </Button>
                             </div>
                         </div>
-                    </div>
+                    </GlassCard>
                     <p
                         v-if="col.tasks.length === 0"
-                        class="rounded-md border border-dashed border-border/80 px-2 py-6 text-center text-xs text-muted-foreground"
+                        class="rounded-xl border border-dashed border-border/80 px-2 py-6 text-center text-xs text-muted-foreground"
                     >
                         No tasks
                     </p>
                 </div>
-            </div>
+            </GlassCard>
         </div>
     </div>
 </template>

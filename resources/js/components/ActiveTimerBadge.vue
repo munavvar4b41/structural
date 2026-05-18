@@ -31,12 +31,20 @@ const elapsedSeconds = computed(() => {
         return 0;
     }
 
-    const startedMs = Date.parse(active.value.started_at);
-    if (Number.isNaN(startedMs)) {
-        return 0;
+    if (active.value.is_paused) {
+        return active.value.elapsed_seconds;
     }
 
-    return Math.max(0, Math.floor((now.value - startedMs) / 1000));
+    const startedMs = Date.parse(active.value.started_at);
+
+    if (Number.isNaN(startedMs)) {
+        return active.value.elapsed_seconds;
+    }
+
+    const base = active.value.elapsed_seconds;
+    const tick = Math.max(0, Math.floor((now.value - startedMs) / 1000));
+
+    return Math.max(base, tick);
 });
 
 const elapsedLabel = computed(() => formatSeconds(elapsedSeconds.value, { withSeconds: true }));
@@ -58,7 +66,11 @@ function stopTimer(): void {
         v-if="active !== null"
         class="flex min-w-0 items-center gap-2 rounded-full border border-emerald-300/70 bg-emerald-50 px-2 py-1 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300"
     >
-        <span class="flex size-2 shrink-0 rounded-full bg-emerald-500 motion-safe:animate-pulse" aria-hidden="true" />
+        <span
+            class="flex size-2 shrink-0 rounded-full bg-emerald-500"
+            :class="{ 'motion-safe:animate-pulse': !active.is_paused }"
+            aria-hidden="true"
+        />
         <Link
             :href="
                 projectTasksShow.url({

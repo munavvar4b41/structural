@@ -1,18 +1,11 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
 import TeamController from '@/actions/App/Http/Controllers/Admin/TeamController';
-import Heading from '@/components/Heading.vue';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/dashboard/FormField.vue';
+import GlassCard from '@/components/dashboard/GlassCard.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
     edit as teamsEdit,
     index as teamsIndex,
@@ -48,23 +41,27 @@ defineOptions({
     <Head :title="`Edit ${team.name}`" />
 
     <div class="flex flex-col gap-8">
-        <Heading title="Edit team" :description="`Update ${team.name}`" />
+        <PageHeader title="Edit team" :description="`Update ${team.name}`" />
 
         <Form
             v-bind="TeamController.update.form(team.id)"
             class="flex max-w-xl flex-col gap-8"
             v-slot="{ errors, processing, recentlySuccessful }"
         >
-            <Card>
-                <CardHeader>
-                    <CardTitle>Team details</CardTitle>
-                    <CardDescription>
+            <GlassCard class="p-6">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Team details</h2>
+                    <p class="text-sm text-muted-foreground">
                         Name, optional code, and an internal description
-                    </CardDescription>
-                </CardHeader>
-                <CardContent class="grid gap-6">
-                    <div class="grid gap-2">
-                        <Label for="name">Name</Label>
+                    </p>
+                </div>
+                <div class="grid gap-6">
+                    <FormField
+                        label="Name"
+                        html-for="name"
+                        :error="errors.name"
+                        required
+                    >
                         <Input
                             id="name"
                             name="name"
@@ -72,31 +69,30 @@ defineOptions({
                             required
                             :default-value="team.name"
                         />
-                        <InputError :message="errors.name" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="code">Code</Label>
+                    </FormField>
+                    <FormField label="Code" html-for="code" :error="errors.code">
                         <Input
                             id="code"
                             name="code"
                             type="text"
                             :default-value="team.code ?? ''"
                         />
-                        <InputError :message="errors.code" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="description">Description</Label>
+                    </FormField>
+                    <FormField
+                        label="Description"
+                        html-for="description"
+                        :error="errors.description"
+                    >
                         <textarea
                             id="description"
                             name="description"
                             rows="4"
                             :default-value="team.description ?? ''"
-                            class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
                         />
-                        <InputError :message="errors.description" />
-                    </div>
-                </CardContent>
-            </Card>
+                    </FormField>
+                </div>
+            </GlassCard>
 
             <div class="flex items-center gap-4">
                 <Button type="submit" :disabled="processing">Save</Button>

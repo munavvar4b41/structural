@@ -3,17 +3,11 @@ import { Form, Head, Link } from '@inertiajs/vue3';
 import { ChevronDown } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementController';
-import Heading from '@/components/Heading.vue';
+import GlassCard from '@/components/dashboard/GlassCard.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import RequirementRichTextEditor from '@/components/RequirementRichTextEditor.vue';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -93,10 +87,8 @@ defineOptions({
     <Head :title="`Add requirement · ${project.name}`" />
 
     <div class="flex flex-col gap-8">
-        <Heading
-            title="Add requirement"
-            :description="`For project ${project.name}`"
-        />
+        <PageHeader title="Add requirement"
+            :description="`For project ${project.name}`" />
 
         <Form
             v-bind="ProjectRequirementController.store.form({ project: project.id })"
@@ -105,12 +97,14 @@ defineOptions({
         >
             <input type="hidden" name="responsible_user_id" :value="responsibleUserId" />
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Requirement</CardTitle>
-                    <CardDescription>Title and optional rich-text details for your team</CardDescription>
-                </CardHeader>
-                <CardContent class="grid gap-6">
+            <GlassCard class="p-6">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Requirement</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Title and optional rich-text details for your team
+                    </p>
+                </div>
+                <div class="grid gap-6">
                     <div class="grid gap-2">
                         <Label for="title">Title</Label>
                         <Input id="title" name="title" type="text" required />
@@ -161,8 +155,8 @@ defineOptions({
                         </p>
                         <InputError :message="errors.responsible_user_id" />
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </GlassCard>
 
             <div class="flex items-center gap-4">
                 <Button type="submit" :disabled="processing">Create</Button>

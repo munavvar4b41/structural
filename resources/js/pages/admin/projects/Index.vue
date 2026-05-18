@@ -3,12 +3,14 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import ProjectController from '@/actions/App/Http/Controllers/Admin/ProjectController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
-import Heading from '@/components/Heading.vue';
+import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTablePagination from '@/components/dashboard/DataTablePagination.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
-import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import {
     create as projectsCreate,
     edit as projectsEdit,
@@ -160,19 +162,19 @@ const deleteProjectDescription = computed(() => {
         @confirm="executeDelete"
     />
 
-    <div class="flex flex-col gap-8">
-        <div class="flex flex-col gap-4">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <Heading
-                    title="Projects"
-                    description="Projects you can access based on your role and assignments"
-                />
+    <div class="flex flex-col gap-6">
+        <PageHeader
+            title="Projects"
+            description="Projects you can access based on your role and assignments"
+        >
+            <template #actions>
                 <Button v-if="canManageProjects" as-child>
                     <Link :href="projectsCreate()">Add project</Link>
                 </Button>
-            </div>
+            </template>
+        </PageHeader>
 
-            <ListToolbar
+        <ListToolbar
                 :model-value="filters.search"
                 placeholder="Search name, code, description…"
                 @update:model-value="onSearch"
@@ -214,57 +216,67 @@ const deleteProjectDescription = computed(() => {
                     </div>
                 </template>
             </ListToolbar>
-        </div>
 
-        <div
-            class="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-        >
-            <table class="w-full text-left text-sm">
-                <thead
-                    class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border"
+        <DataTable>
+            <thead>
+                <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
+                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Name
+                    </th>
+                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Code
+                    </th>
+                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Client
+                    </th>
+                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Teams
+                    </th>
+                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Requirements
+                    </th>
+                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Tasks
+                    </th>
+                    <th
+                        v-if="canManageProjects"
+                        class="px-5 py-3.5 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                    >
+                        Actions
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    v-for="project in projects.data"
+                    :key="project.id"
+                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
                 >
-                    <tr>
-                        <th class="px-4 py-3 font-medium">Name</th>
-                        <th class="px-4 py-3 font-medium">Code</th>
-                        <th class="px-4 py-3 font-medium">Client</th>
-                        <th class="px-4 py-3 font-medium">Teams</th>
-                        <th class="px-4 py-3 font-medium">Requirements</th>
-                        <th class="px-4 py-3 font-medium">Tasks</th>
-                        <th
-                            v-if="canManageProjects"
-                            class="px-4 py-3 font-medium text-right"
-                        >
-                            Actions
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="project in projects.data" :key="project.id">
-                        <td class="px-4 py-3">{{ project.name }}</td>
-                        <td class="px-4 py-3 text-muted-foreground">
+                    <td class="px-5 py-3.5 font-medium">{{ project.name }}</td>
+                    <td class="px-5 py-3.5 text-muted-foreground">
                             {{ project.code ?? '-' }}
                         </td>
-                        <td class="px-4 py-3 text-muted-foreground">
-                            <template v-if="project.client_user">
-                                {{ project.client_user.name }}
-                                <span class="text-xs">({{ project.client_user.email }})</span>
-                            </template>
-                            <template v-else>—</template>
-                        </td>
-                        <td class="px-4 py-3 text-muted-foreground">
-                            {{ project.teams_count }}
-                        </td>
-                        <td class="px-4 py-3">
-                            <Button variant="link" class="h-auto p-0" as-child>
-                                <Link :href="projectRequirementsIndex.url(project.id)">View</Link>
-                            </Button>
-                        </td>
-                        <td class="px-4 py-3">
-                            <Button variant="link" class="h-auto p-0" as-child>
-                                <Link :href="projectTasksIndex.url(project.id)">View</Link>
-                            </Button>
-                        </td>
-                        <td v-if="canManageProjects" class="px-4 py-3 text-right">
+                    <td class="px-5 py-3.5 text-muted-foreground">
+                        <template v-if="project.client_user">
+                            {{ project.client_user.name }}
+                            <span class="text-xs">({{ project.client_user.email }})</span>
+                        </template>
+                        <template v-else>—</template>
+                    </td>
+                    <td class="px-5 py-3.5 text-muted-foreground">
+                        {{ project.teams_count }}
+                    </td>
+                    <td class="px-5 py-3.5">
+                        <Button variant="link" class="h-auto p-0" as-child>
+                            <Link :href="projectRequirementsIndex.url(project.id)">View</Link>
+                        </Button>
+                    </td>
+                    <td class="px-5 py-3.5">
+                        <Button variant="link" class="h-auto p-0" as-child>
+                            <Link :href="projectTasksIndex.url(project.id)">View</Link>
+                        </Button>
+                    </td>
+                    <td v-if="canManageProjects" class="px-5 py-3.5 text-right">
                             <div class="flex justify-end gap-2">
                                 <Button variant="outline" size="sm" as-child>
                                     <Link :href="projectsEdit(project.id)">Edit</Link>
@@ -280,32 +292,10 @@ const deleteProjectDescription = computed(() => {
                                 </Button>
                             </div>
                         </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                </tr>
+            </tbody>
+        </DataTable>
 
-        <nav
-            v-if="projects.links.length > 3"
-            class="flex flex-wrap items-center justify-center gap-1"
-            aria-label="Pagination"
-        >
-            <template v-for="(link, i) in projects.links" :key="i">
-                <Button
-                    v-if="link.url"
-                    variant="outline"
-                    size="sm"
-                    :disabled="link.active"
-                    as-child
-                >
-                    <Link :href="link.url" preserve-scroll v-html="link.label" />
-                </Button>
-                <span
-                    v-else
-                    class="px-3 py-1.5 text-sm text-muted-foreground"
-                    v-html="link.label"
-                />
-            </template>
-        </nav>
+        <DataTablePagination :links="projects.links" />
     </div>
 </template>

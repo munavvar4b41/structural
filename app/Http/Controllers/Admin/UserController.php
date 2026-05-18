@@ -99,7 +99,6 @@ class UserController extends Controller
                 'roles' => $roleOptions,
                 'teams' => $this->teamsPayload(),
                 'verified' => [
-                    ['value' => '', 'label' => 'All'],
                     ['value' => 'verified', 'label' => 'Verified email'],
                     ['value' => 'unverified', 'label' => 'Unverified email'],
                 ],
