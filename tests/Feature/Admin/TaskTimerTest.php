@@ -9,6 +9,7 @@ use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
 use App\Models\Team;
 use App\Models\User;
+use App\Support\TaskTimeTracker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -39,13 +40,16 @@ class TaskTimerTest extends TestCase
         return compact('team', 'head', 'staff', 'project', 'task');
     }
 
+    private function tracker(): TaskTimeTracker
+    {
+        return app(TaskTimeTracker::class);
+    }
+
     public function test_staff_can_start_timer_on_assigned_task(): void
     {
         ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
 
-        $this->actingAs($staff)
-            ->post(route('admin.projects.tasks.timer.start', [$project, $task]))
-            ->assertRedirect();
+        $this->tracker()->start($staff, $task);
 
         $entry = TaskTimeEntry::query()->firstOrFail();
         $this->assertSame($staff->id, $entry->user_id);
@@ -55,7 +59,7 @@ class TaskTimerTest extends TestCase
         $this->assertSame(TimeEntrySource::Timer, $entry->source);
     }
 
-    public function test_starting_a_second_timer_auto_stops_the_first(): void
+    public function test_starting_a_second_timer_pauses_the_first(): void
     {
         ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
 
@@ -68,22 +72,106 @@ class TaskTimerTest extends TestCase
             ]);
 
         Carbon::setTestNow(Carbon::parse('2026-05-07 10:00:00'));
-        $this->actingAs($staff)->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+        $this->tracker()->start($staff, $task);
 
         Carbon::setTestNow(Carbon::parse('2026-05-07 10:30:00'));
-        $this->actingAs($staff)->post(route('admin.projects.tasks.timer.start', [$project, $secondTask]));
+        $this->tracker()->start($staff, $secondTask);
 
         $first = TaskTimeEntry::query()->where('project_task_id', $task->id)->firstOrFail();
         $second = TaskTimeEntry::query()->where('project_task_id', $secondTask->id)->firstOrFail();
 
-        $this->assertNotNull($first->ended_at);
-        $this->assertSame(30 * 60, $first->duration_seconds);
+        $this->assertNull($first->ended_at);
+        $this->assertNotNull($first->paused_at);
+        $this->assertSame(30 * 60, $first->elapsedSeconds());
         $this->assertNull($second->ended_at);
+        $this->assertNull($second->paused_at);
 
         $this->assertSame(
             1,
-            TaskTimeEntry::query()->where('user_id', $staff->id)->whereNull('ended_at')->count(),
+            TaskTimeEntry::query()->where('user_id', $staff->id)->running()->count(),
         );
+        $this->assertSame(
+            2,
+            TaskTimeEntry::query()->where('user_id', $staff->id)->open()->count(),
+        );
+
+        Carbon::setTestNow();
+    }
+
+    public function test_switching_back_same_day_resumes_paused_entry(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+
+        $secondTask = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $staff->id,
+                'assignee_user_id' => $staff->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 10:00:00'));
+        $this->tracker()->start($staff, $task);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 10:20:00'));
+        $this->tracker()->start($staff, $secondTask);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 10:50:00'));
+        $this->tracker()->start($staff, $task);
+
+        $first = TaskTimeEntry::query()->where('project_task_id', $task->id)->firstOrFail();
+        $second = TaskTimeEntry::query()->where('project_task_id', $secondTask->id)->firstOrFail();
+
+        $this->assertNull($first->ended_at);
+        $this->assertNull($first->paused_at);
+        $this->assertNotNull($second->paused_at);
+        $this->assertSame(30 * 60, $second->elapsedSeconds());
+        $this->assertSame(20 * 60, $first->elapsedSeconds());
+
+        Carbon::setTestNow();
+    }
+
+    public function test_stale_open_entry_from_yesterday_is_closed_on_start(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+
+        Carbon::setTestNow(Carbon::parse('2026-05-06 16:00:00'));
+        $this->tracker()->start($staff, $task);
+
+        $stale = TaskTimeEntry::query()->firstOrFail();
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 09:00:00'));
+        $this->tracker()->start($staff, $task);
+
+        $stale->refresh();
+        $this->assertNotNull($stale->ended_at);
+
+        $running = TaskTimeEntry::query()
+            ->where('user_id', $staff->id)
+            ->running()
+            ->firstOrFail();
+        $this->assertNotSame($stale->id, $running->id);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_today_elapsed_seconds_includes_closed_and_open_segments(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 08:00:00'));
+        $this->tracker()->start($staff, $task);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 08:30:00'));
+        $this->tracker()->stop($staff);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 09:00:00'));
+        $this->tracker()->start($staff, $task);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 09:15:00'));
+
+        $total = TaskTimeEntry::todayElapsedSecondsForUserOnTask($staff->id, $task->id);
+        $this->assertSame(30 * 60 + 15 * 60, $total);
 
         Carbon::setTestNow();
     }
@@ -93,12 +181,10 @@ class TaskTimerTest extends TestCase
         ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
 
         Carbon::setTestNow(Carbon::parse('2026-05-07 11:00:00'));
-        $this->actingAs($staff)->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+        $this->tracker()->start($staff, $task);
 
         Carbon::setTestNow(Carbon::parse('2026-05-07 11:15:30'));
-        $this->actingAs($staff)
-            ->post(route('admin.time-entries.stop'))
-            ->assertRedirect();
+        $this->tracker()->stop($staff);
 
         $entry = TaskTimeEntry::query()->firstOrFail();
         $this->assertNotNull($entry->ended_at);
@@ -111,23 +197,17 @@ class TaskTimerTest extends TestCase
     {
         ['staff' => $staff] = $this->setupProjectWithTask();
 
-        $this->actingAs($staff)
-            ->post(route('admin.time-entries.stop'))
-            ->assertRedirect();
+        $this->tracker()->stop($staff);
 
         $this->assertSame(0, TaskTimeEntry::query()->count());
     }
 
-    public function test_user_without_project_visibility_gets_403_starting_timer(): void
+    public function test_user_without_project_visibility_cannot_start_timer(): void
     {
         ['project' => $project, 'task' => $task] = $this->setupProjectWithTask();
         $other = User::factory()->withPrimaryTeam()->create();
 
-        $this->actingAs($other)
-            ->post(route('admin.projects.tasks.timer.start', [$project, $task]))
-            ->assertForbidden();
-
-        $this->assertSame(0, TaskTimeEntry::query()->count());
+        $this->assertFalse($other->can('start', [TaskTimeEntry::class, $task]));
     }
 
     public function test_client_cannot_start_timer(): void
@@ -138,18 +218,14 @@ class TaskTimerTest extends TestCase
         $client->teams()->syncWithoutDetaching([$team->id]);
         $client->forceFill(['primary_team_id' => $team->id])->save();
 
-        $this->actingAs($client->fresh())
-            ->post(route('admin.projects.tasks.timer.start', [$project, $task]))
-            ->assertForbidden();
+        $this->assertFalse($client->fresh()->can('start', [TaskTimeEntry::class, $task]));
     }
 
     public function test_starting_timer_transitions_status_to_in_progress_and_snapshots_previous(): void
     {
         ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
 
-        $this->actingAs($staff)
-            ->post(route('admin.projects.tasks.timer.start', [$project, $task]))
-            ->assertRedirect();
+        $this->tracker()->start($staff, $task);
 
         $this->assertSame(ProjectTaskStatus::InProgress, $task->fresh()->status);
 
@@ -161,16 +237,13 @@ class TaskTimerTest extends TestCase
     {
         ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
 
-        $this->actingAs($staff)
-            ->post(route('admin.projects.tasks.timer.start', [$project, $task]));
-        $this->actingAs($staff)
-            ->post(route('admin.time-entries.stop'))
-            ->assertRedirect();
+        $this->tracker()->start($staff, $task);
+        $this->tracker()->stop($staff);
 
         $this->assertSame(ProjectTaskStatus::ToDo, $task->fresh()->status);
     }
 
-    public function test_switch_auto_stop_restores_previous_status_on_old_task_and_transitions_new(): void
+    public function test_switch_pauses_old_task_and_transitions_new_while_old_stays_in_progress(): void
     {
         ['staff' => $staff, 'head' => $head, 'project' => $project, 'task' => $taskA] = $this->setupProjectWithTask();
 
@@ -182,12 +255,10 @@ class TaskTimerTest extends TestCase
                 'status' => ProjectTaskStatus::Review,
             ]);
 
-        $this->actingAs($staff)
-            ->post(route('admin.projects.tasks.timer.start', [$project, $taskA]));
-        $this->actingAs($staff)
-            ->post(route('admin.projects.tasks.timer.start', [$project, $taskB]));
+        $this->tracker()->start($staff, $taskA);
+        $this->tracker()->start($staff, $taskB);
 
-        $this->assertSame(ProjectTaskStatus::ToDo, $taskA->fresh()->status);
+        $this->assertSame(ProjectTaskStatus::InProgress, $taskA->fresh()->status);
         $this->assertSame(ProjectTaskStatus::InProgress, $taskB->fresh()->status);
 
         $entryA = TaskTimeEntry::query()->where('project_task_id', $taskA->id)->firstOrFail();
@@ -195,6 +266,7 @@ class TaskTimerTest extends TestCase
 
         $this->assertSame(ProjectTaskStatus::ToDo, $entryA->previous_task_status);
         $this->assertSame(ProjectTaskStatus::Review, $entryB->previous_task_status);
+        $this->assertNotNull($entryA->paused_at);
     }
 
     public function test_in_progress_task_records_no_snapshot_and_status_unchanged_on_stop(): void
@@ -202,14 +274,13 @@ class TaskTimerTest extends TestCase
         ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
         $task->forceFill(['status' => ProjectTaskStatus::InProgress])->save();
 
-        $this->actingAs($staff)
-            ->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+        $this->tracker()->start($staff, $task);
 
         $entry = TaskTimeEntry::query()->firstOrFail();
         $this->assertNull($entry->previous_task_status);
         $this->assertSame(ProjectTaskStatus::InProgress, $task->fresh()->status);
 
-        $this->actingAs($staff)->post(route('admin.time-entries.stop'));
+        $this->tracker()->stop($staff);
 
         $this->assertSame(ProjectTaskStatus::InProgress, $task->fresh()->status);
     }
@@ -219,8 +290,7 @@ class TaskTimerTest extends TestCase
         ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
         $task->forceFill(['status' => ProjectTaskStatus::Done])->save();
 
-        $this->actingAs($staff)
-            ->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+        $this->tracker()->start($staff, $task);
 
         $entry = TaskTimeEntry::query()->firstOrFail();
         $this->assertNull($entry->previous_task_status);
@@ -232,8 +302,7 @@ class TaskTimerTest extends TestCase
         ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
         $task->forceFill(['status' => ProjectTaskStatus::Cancelled])->save();
 
-        $this->actingAs($staff)
-            ->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+        $this->tracker()->start($staff, $task);
 
         $entry = TaskTimeEntry::query()->firstOrFail();
         $this->assertNull($entry->previous_task_status);
@@ -244,12 +313,11 @@ class TaskTimerTest extends TestCase
     {
         ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
 
-        $this->actingAs($staff)
-            ->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+        $this->tracker()->start($staff, $task);
 
         $task->forceFill(['status' => ProjectTaskStatus::Review])->save();
 
-        $this->actingAs($staff)->post(route('admin.time-entries.stop'));
+        $this->tracker()->stop($staff);
 
         $this->assertSame(ProjectTaskStatus::Review, $task->fresh()->status);
     }
@@ -259,17 +327,17 @@ class TaskTimerTest extends TestCase
         ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
 
         Carbon::setTestNow(Carbon::parse('2026-05-07 12:00:00'));
-        $this->actingAs($staff)->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+        $this->tracker()->start($staff, $task);
 
         Carbon::setTestNow(Carbon::parse('2026-05-07 12:10:00'));
-        $this->actingAs($staff)->post(route('admin.time-entries.pause'))->assertRedirect();
+        $this->tracker()->pause($staff);
 
         $entry = TaskTimeEntry::query()->firstOrFail();
         $this->assertNotNull($entry->paused_at);
         $this->assertSame(10 * 60, $entry->elapsedSeconds());
 
         Carbon::setTestNow(Carbon::parse('2026-05-07 12:25:00'));
-        $this->actingAs($staff)->post(route('admin.time-entries.resume'))->assertRedirect();
+        $this->tracker()->resume($staff);
 
         $entry->refresh();
         $this->assertNull($entry->paused_at);
@@ -286,13 +354,13 @@ class TaskTimerTest extends TestCase
         ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
 
         Carbon::setTestNow(Carbon::parse('2026-05-07 13:00:00'));
-        $this->actingAs($staff)->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+        $this->tracker()->start($staff, $task);
 
         Carbon::setTestNow(Carbon::parse('2026-05-07 13:05:00'));
-        $this->actingAs($staff)->post(route('admin.time-entries.pause'));
+        $this->tracker()->pause($staff);
 
         Carbon::setTestNow(Carbon::parse('2026-05-07 13:20:00'));
-        $this->actingAs($staff)->post(route('admin.time-entries.stop'));
+        $this->tracker()->stop($staff);
 
         $entry = TaskTimeEntry::query()->firstOrFail();
         $this->assertSame(5 * 60, $entry->duration_seconds);

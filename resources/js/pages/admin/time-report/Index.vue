@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { colorsForProjectIds } from '@/lib/charts';
 import { formatSeconds } from '@/lib/formatSeconds';
 import { index as timeReportIndex } from '@/routes/admin/time-report/index';
 
@@ -238,6 +239,9 @@ const projectDonutSeries = computed(() =>
 const projectChartOptions = computed(() => ({
     labels: props.per_project.map(
         (row) => row.project_code ?? row.project_name ?? `Project ${row.project_id}`,
+    ),
+    colors: colorsForProjectIds(
+        props.per_project.map((row) => row.project_id),
     ),
     legend: { position: 'bottom' as const },
 }));

@@ -20,6 +20,6 @@ class DesktopMyWorkController extends Controller
         $actor = $request->user();
         abort_if(! $actor instanceof User, 403);
 
-        return response()->json($this->boardBuilder->build($actor));
+        return response()->json($this->boardBuilder->build($actor, $request));
     }
 }

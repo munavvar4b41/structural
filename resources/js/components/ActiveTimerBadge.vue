@@ -31,20 +31,26 @@ const elapsedSeconds = computed(() => {
         return 0;
     }
 
+    const todayBase =
+        active.value.task_today_seconds - active.value.elapsed_seconds;
+
     if (active.value.is_paused) {
-        return active.value.elapsed_seconds;
+        return Math.max(0, active.value.task_today_seconds);
     }
 
     const startedMs = Date.parse(active.value.started_at);
 
     if (Number.isNaN(startedMs)) {
-        return active.value.elapsed_seconds;
+        return Math.max(0, active.value.task_today_seconds);
     }
 
-    const base = active.value.elapsed_seconds;
-    const tick = Math.max(0, Math.floor((now.value - startedMs) / 1000));
+    const segmentTick = Math.max(
+        0,
+        Math.floor((now.value - startedMs) / 1000),
+    );
+    const segmentElapsed = Math.max(active.value.elapsed_seconds, segmentTick);
 
-    return Math.max(base, tick);
+    return Math.max(0, todayBase + segmentElapsed);
 });
 
 const elapsedLabel = computed(() => formatSeconds(elapsedSeconds.value, { withSeconds: true }));
@@ -62,36 +68,22 @@ function stopTimer(): void {
 </script>
 
 <template>
-    <div
-        v-if="active !== null"
-        class="flex min-w-0 items-center gap-2 rounded-full border border-emerald-300/70 bg-emerald-50 px-2 py-1 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300"
-    >
-        <span
-            class="flex size-2 shrink-0 rounded-full bg-emerald-500"
-            :class="{ 'motion-safe:animate-pulse': !active.is_paused }"
-            aria-hidden="true"
-        />
-        <Link
-            :href="
-                projectTasksShow.url({
-                    project: active.project_id,
-                    task: active.task_id,
-                })
-            "
-            class="min-w-0 truncate text-xs font-medium hover:underline"
-            :title="`${active.task_title} · ${active.project_name}`"
-        >
+    <div v-if="active !== null"
+        class="flex min-w-0 items-center gap-2 rounded-full border border-emerald-300/70 bg-emerald-50 px-2 py-1 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300">
+        <span class="flex size-2 shrink-0 rounded-full bg-emerald-500"
+            :class="{ 'motion-safe:animate-pulse': !active.is_paused }" aria-hidden="true" />
+        <Link :href="projectTasksShow.url({
+            project: active.project_id,
+            task: active.task_id,
+        })
+            " class="min-w-0 truncate text-xs font-medium hover:underline"
+            :title="`${active.task_title} · ${active.project_name}`">
             {{ active.task_title }}
         </Link>
         <span class="shrink-0 font-mono text-xs tabular-nums">{{ elapsedLabel }}</span>
-        <Button
-            variant="ghost"
-            size="icon"
+        <Button variant="ghost" size="icon"
             class="size-6 shrink-0 rounded-full text-emerald-700 hover:bg-emerald-200/60 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
-            type="button"
-            title="Stop timer"
-            @click="stopTimer"
-        >
+            type="button" title="Stop timer" @click="stopTimer">
             <Square class="size-3" />
         </Button>
     </div>

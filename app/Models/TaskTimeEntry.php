@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ProjectTaskStatus;
 use App\Enums\TimeEntrySource;
+use Carbon\CarbonImmutable;
 use Database\Factories\TaskTimeEntryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -125,5 +126,46 @@ class TaskTimeEntry extends Model
     public function scopeBetweenDates(Builder $query, \DateTimeInterface $from, \DateTimeInterface $to): void
     {
         $query->whereBetween('started_at', [$from, $to]);
+    }
+
+    public static function activeSessionForUser(int $userId): ?self
+    {
+        return self::query()
+            ->where('user_id', $userId)
+            ->open()
+            ->orderByRaw('CASE WHEN paused_at IS NULL THEN 0 ELSE 1 END')
+            ->orderByDesc('started_at')
+            ->first();
+    }
+
+    public static function todayElapsedSecondsForUserOnTask(
+        int $userId,
+        int $taskId,
+        ?\DateTimeInterface $at = null,
+    ): int {
+        $at = $at ?? now();
+        $day = CarbonImmutable::parse($at);
+        $startOfDay = $day->startOfDay();
+        $endOfDay = $day->endOfDay();
+
+        $closedTotal = (int) self::query()
+            ->where('user_id', $userId)
+            ->where('project_task_id', $taskId)
+            ->whereNotNull('ended_at')
+            ->whereBetween('started_at', [$startOfDay, $endOfDay])
+            ->sum('duration_seconds');
+
+        $open = self::query()
+            ->where('user_id', $userId)
+            ->where('project_task_id', $taskId)
+            ->open()
+            ->whereBetween('started_at', [$startOfDay, $endOfDay])
+            ->first();
+
+        if ($open === null) {
+            return $closedTotal;
+        }
+
+        return $closedTotal + $open->elapsedSeconds($at);
     }
 }

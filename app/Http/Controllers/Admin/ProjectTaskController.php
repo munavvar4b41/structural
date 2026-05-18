@@ -194,9 +194,6 @@ class ProjectTaskController extends Controller
      */
     private function timeTrackingProps(ProjectTask $task, User $actor): array
     {
-        $startOfToday = CarbonImmutable::today();
-        $endOfToday = $startOfToday->endOfDay();
-
         $entries = TaskTimeEntry::query()
             ->where('project_task_id', $task->id)
             ->with('user:id,name,email')
@@ -206,10 +203,10 @@ class ProjectTaskController extends Controller
 
         $myEntries = $entries->where('user_id', $actor->id);
 
-        $myTodayTotal = (int) $myEntries
-            ->filter(fn (TaskTimeEntry $e): bool => $e->ended_at !== null
-                && $e->started_at->between($startOfToday, $endOfToday))
-            ->sum('duration_seconds');
+        $myTodayTotal = TaskTimeEntry::todayElapsedSecondsForUserOnTask(
+            $actor->id,
+            $task->id,
+        );
 
         $myAllTimeTotal = (int) $myEntries
             ->whereNotNull('duration_seconds')

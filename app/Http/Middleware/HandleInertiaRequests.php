@@ -66,7 +66,7 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{id: int, task_id: int, project_id: int, task_title: string, project_name: string, project_code: string|null, started_at: string, is_paused: bool, elapsed_seconds: int}|null
+     * @return array{id: int, task_id: int, project_id: int, task_title: string, project_name: string, project_code: string|null, started_at: string, is_paused: bool, elapsed_seconds: int, task_today_seconds: int}|null
      */
     protected function activeTimeEntryProps(Request $request): ?array
     {
@@ -75,16 +75,12 @@ class HandleInertiaRequests extends Middleware
             return null;
         }
 
-        $entry = TaskTimeEntry::query()
-            ->where('user_id', $user->id)
-            ->open()
-            ->with(['task:id,title', 'project:id,name,code'])
-            ->latest('started_at')
-            ->first();
-
+        $entry = TaskTimeEntry::activeSessionForUser($user->id);
         if ($entry === null) {
             return null;
         }
+
+        $entry->loadMissing(['task:id,title', 'project:id,name,code']);
 
         return [
             'id' => $entry->id,
@@ -96,6 +92,10 @@ class HandleInertiaRequests extends Middleware
             'started_at' => $entry->started_at->toIso8601String(),
             'is_paused' => $entry->isPaused(),
             'elapsed_seconds' => $entry->elapsedSeconds(),
+            'task_today_seconds' => TaskTimeEntry::todayElapsedSecondsForUserOnTask(
+                $user->id,
+                $entry->project_task_id,
+            ),
         ];
     }
 }

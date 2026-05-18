@@ -60,6 +60,44 @@ class MyWorkTest extends TestCase
                 ));
     }
 
+    public function test_project_filter_limits_board_to_one_project(): void
+    {
+        $team = Team::factory()->create();
+        $head = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $projectA = Project::factory()->create(['client_user_id' => $client->id, 'name' => 'Alpha']);
+        $projectB = Project::factory()->create(['client_user_id' => $client->id, 'name' => 'Beta']);
+        $projectA->teams()->sync([$team->id]);
+        $projectB->teams()->sync([$team->id]);
+
+        ProjectTask::factory()->forProject($projectA)->create([
+            'created_by_user_id' => $head->id,
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+            'title' => 'Alpha task',
+        ]);
+        ProjectTask::factory()->forProject($projectB)->create([
+            'created_by_user_id' => $head->id,
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+            'title' => 'Beta task',
+        ]);
+
+        $toDoIndex = array_search(ProjectTaskStatus::ToDo, ProjectTaskStatus::boardOrder(), true);
+        $this->assertNotFalse($toDoIndex);
+
+        $this->actingAs($staff)
+            ->get(route('admin.my-work.index', ['project_id' => $projectA->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/my-work/Index')
+                ->where('filters.project_id', $projectA->id)
+                ->has('project_options')
+                ->has('columns.'.$toDoIndex.'.tasks', 1)
+                ->where('columns.'.$toDoIndex.'.tasks.0.title', 'Alpha task'));
+    }
+
     public function test_assignee_only_staff_cannot_patch_status_to_done(): void
     {
         $team = Team::factory()->create();

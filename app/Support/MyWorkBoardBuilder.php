@@ -5,37 +5,66 @@ namespace App\Support;
 use App\Enums\ProjectTaskStatus;
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Models\TaskTimeEntry;
 use App\Models\User;
+use Illuminate\Http\Request;
 
 class MyWorkBoardBuilder
 {
+    private const PER_COLUMN = 20;
+
     /**
-     * @return array{columns: list<array{status: string, label: string, tasks: list<array<string, mixed>>}>, status_options: list<array{value: string, label: string}>}
+     * @return array{
+     *     columns: list<array{status: string, label: string, tasks: list<array<string, mixed>>, meta: array{total: int, current_page: int, last_page: int, per_page: int}}>,
+     *     status_options: list<array{value: string, label: string}>,
+     *     project_options: list<array{value: int, label: string}>,
+     *     filters: array{project_id: int|null}
+     * }
      */
-    public function build(User $actor): array
+    public function build(User $actor, ?Request $request = null): array
     {
-        $tasks = ProjectTask::query()
+        $projectId = $request !== null && $request->filled('project_id')
+            ? (int) $request->input('project_id')
+            : null;
+
+        $baseQuery = ProjectTask::query()
             ->where('assignee_user_id', $actor->id)
-            ->whereIn('project_id', Project::query()->visibleToUser($actor)->select('projects.id'))
-            ->with(['project:id,name,code', 'requirement:id,title'])
-            ->orderByDesc('updated_at')
-            ->get();
+            ->whereIn('project_id', Project::query()->visibleToUser($actor)->select('projects.id'));
 
-        $grouped = [];
-        foreach (ProjectTaskStatus::boardOrder() as $status) {
-            $grouped[$status->value] = [];
+        if ($projectId !== null) {
+            $baseQuery->where('project_id', $projectId);
         }
 
-        foreach ($tasks as $task) {
-            $grouped[$task->status->value][] = $this->taskCard($task, $actor);
-        }
+        $activeEntry = TaskTimeEntry::activeSessionForUser($actor->id);
 
         $columns = [];
         foreach (ProjectTaskStatus::boardOrder() as $status) {
+            $pageName = 'page_'.$status->value;
+            $page = max(1, (int) ($request?->input($pageName) ?? 1));
+
+            $statusQuery = (clone $baseQuery)->where('status', $status);
+            $total = (clone $statusQuery)->count();
+            $lastPage = max(1, (int) ceil($total / self::PER_COLUMN));
+            $limit = min($total, self::PER_COLUMN * $page);
+
+            $tasks = (clone $statusQuery)
+                ->with(['project:id,name,code', 'requirement:id,title'])
+                ->orderByDesc('updated_at')
+                ->limit($limit)
+                ->get();
+
             $columns[] = [
                 'status' => $status->value,
                 'label' => $status->label(),
-                'tasks' => $grouped[$status->value] ?? [],
+                'tasks' => $tasks
+                    ->map(fn (ProjectTask $task): array => $this->taskCard($task, $actor, $activeEntry))
+                    ->all(),
+                'meta' => [
+                    'total' => $total,
+                    'current_page' => min($page, $lastPage),
+                    'last_page' => $lastPage,
+                    'per_page' => self::PER_COLUMN,
+                ],
             ];
         }
 
@@ -47,15 +76,34 @@ class MyWorkBoardBuilder
                     'label' => $s->label(),
                 ])
                 ->all(),
+            'project_options' => Project::query()
+                ->visibleToUser($actor)
+                ->orderBy('name')
+                ->get(['id', 'name', 'code'])
+                ->map(static fn (Project $p): array => [
+                    'value' => $p->id,
+                    'label' => $p->code !== null && $p->code !== ''
+                        ? "{$p->name} ({$p->code})"
+                        : $p->name,
+                ])
+                ->all(),
+            'filters' => [
+                'project_id' => $projectId,
+            ],
         ];
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function taskCard(ProjectTask $task, User $actor): array
+    private function taskCard(ProjectTask $task, User $actor, ?TaskTimeEntry $activeEntry): array
     {
         $project = $task->project;
+        $timerState = 'idle';
+
+        if ($activeEntry !== null && $activeEntry->project_task_id === $task->id) {
+            $timerState = $activeEntry->isPaused() ? 'paused' : 'running';
+        }
 
         return [
             'id' => $task->id,
@@ -76,6 +124,11 @@ class MyWorkBoardBuilder
             'task_show_url' => route('admin.projects.tasks.show', [$project, $task]),
             'is_assignee_only_limited' => ProjectTaskAssigneeCapabilities::isAssigneeOnlyLimited($actor, $task),
             'can_submit_task_completion' => $this->canSubmitTaskCompletion($actor, $task),
+            'timer_today_seconds' => TaskTimeEntry::todayElapsedSecondsForUserOnTask(
+                $actor->id,
+                $task->id,
+            ),
+            'timer_state' => $timerState,
         ];
     }
 
