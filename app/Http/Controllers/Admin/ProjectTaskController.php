@@ -14,7 +14,7 @@ use App\Models\User;
 use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\ProjectTaskAssigneeCapabilities;
 use App\Support\ProjectTaskDisplayOrder;
-use Carbon\CarbonImmutable;
+use App\Support\ProjectTaskShowPayloadBuilder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -25,6 +25,11 @@ use Inertia\Response;
 class ProjectTaskController extends Controller
 {
     use AuthorizesRequests;
+
+    public function __construct(private readonly ProjectTaskShowPayloadBuilder $showPayloadBuilder)
+    {
+        //
+    }
 
     public function index(Request $request, Project $project): Response
     {
@@ -170,6 +175,7 @@ class ProjectTaskController extends Controller
             'requirement:id,title',
             'parent:id,title',
             'completionSubmittedBy:id,name,email',
+            'checklistItems' => fn ($q) => $q->orderBy('created_at'),
         ]);
         $task->loadCount('children');
 
@@ -185,6 +191,7 @@ class ProjectTaskController extends Controller
             'project' => $this->projectSummary($project),
             'task' => $this->taskDetail($task, $actor, $directChildren),
             'can_manage_project' => $actor->can('update', $project),
+            'checklist' => ProjectTaskChecklistProps::forTask($task, $actor),
             'time_tracking' => $this->timeTrackingProps($task, $actor),
         ]);
     }

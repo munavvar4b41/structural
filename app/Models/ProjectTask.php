@@ -80,6 +80,14 @@ class ProjectTask extends Model
         return $this->hasMany(TaskTimeEntry::class, 'project_task_id');
     }
 
+    /**
+     * @return HasMany<ProjectTaskChecklistItem, $this>
+     */
+    public function checklistItems(): HasMany
+    {
+        return $this->hasMany(ProjectTaskChecklistItem::class, 'project_task_id');
+    }
+
     public function completionSubmittedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'completion_submitted_by_user_id');

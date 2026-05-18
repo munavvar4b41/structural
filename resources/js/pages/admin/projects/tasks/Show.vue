@@ -2,6 +2,7 @@
 import { Form, Head, Link, router, useForm } from '@inertiajs/vue3';
 import { CornerDownRight } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import ProjectTaskChecklistItemController from '@/actions/App/Http/Controllers/Admin/ProjectTaskChecklistItemController';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
 import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin/TaskCompletionReviewController';
 import TaskTimeEntryController from '@/actions/App/Http/Controllers/Admin/TaskTimeEntryController';
@@ -12,6 +13,7 @@ import InputError from '@/components/InputError.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -120,10 +122,22 @@ type TimeTracking = {
     entries: TimeEntryRow[];
 };
 
+type ChecklistItemRow = {
+    id: number;
+    title: string;
+    is_completed: boolean;
+};
+
+type Checklist = {
+    can_manage: boolean;
+    items: ChecklistItemRow[];
+};
+
 const props = defineProps<{
     project: ProjectSummary;
     task: TaskDetail;
     can_manage_project: boolean;
+    checklist: Checklist;
     time_tracking: TimeTracking;
 }>();
 
@@ -132,6 +146,7 @@ defineOptions({
         project: ProjectSummary;
         task: TaskDetail;
         can_manage_project: boolean;
+        checklist: Checklist;
         time_tracking: TimeTracking;
     }) => ({
         breadcrumbs: [
@@ -419,6 +434,98 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
         { preserveScroll: true },
     );
 }
+
+const newChecklistTitle = ref('');
+
+const editingChecklistId = ref<number | null>(null);
+const editChecklistTitle = ref('');
+
+function openEditChecklistItem(row: ChecklistItemRow): void {
+    editingChecklistId.value = row.id;
+    editChecklistTitle.value = row.title;
+}
+
+function closeEditChecklistItem(): void {
+    editingChecklistId.value = null;
+    editChecklistTitle.value = '';
+}
+
+function saveChecklistItem(row: ChecklistItemRow): void {
+    const title = editChecklistTitle.value.trim();
+
+    if (title === '') {
+        return;
+    }
+
+    router.patch(
+        ProjectTaskChecklistItemController.update.url({
+            project: props.project.id,
+            task: props.task.id,
+            checklist_item: row.id,
+        }),
+        { title },
+        {
+            preserveScroll: true,
+            onSuccess: () => closeEditChecklistItem(),
+        },
+    );
+}
+
+function toggleChecklistItem(row: ChecklistItemRow, completed: boolean | 'indeterminate'): void {
+    if (!props.checklist.can_manage || completed === 'indeterminate') {
+        return;
+    }
+
+    if (row.is_completed === completed) {
+        return;
+    }
+
+    router.patch(
+        ProjectTaskChecklistItemController.update.url({
+            project: props.project.id,
+            task: props.task.id,
+            checklist_item: row.id,
+        }),
+        { is_completed: completed },
+        { preserveScroll: true },
+    );
+}
+
+const checklistDeleteOpen = ref(false);
+const checklistPendingDelete = ref<ChecklistItemRow | null>(null);
+
+function openChecklistDelete(row: ChecklistItemRow): void {
+    checklistPendingDelete.value = row;
+    checklistDeleteOpen.value = true;
+}
+
+function executeChecklistDelete(): void {
+    const row = checklistPendingDelete.value;
+
+    if (row === null) {
+        return;
+    }
+
+    router.delete(
+        ProjectTaskChecklistItemController.destroy.url({
+            project: props.project.id,
+            task: props.task.id,
+            checklist_item: row.id,
+        }),
+        { preserveScroll: true },
+    );
+    checklistPendingDelete.value = null;
+}
+
+const checklistDeleteDescription = computed(() => {
+    const row = checklistPendingDelete.value;
+
+    if (row === null) {
+        return '';
+    }
+
+    return `Delete "${row.title}"? This cannot be undone.`;
+});
 </script>
 
 <template>
@@ -433,6 +540,9 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
 
     <ConfirmDestructiveDialog v-model:open="entryDeleteOpen" title="Delete time entry?"
         :description="entryDeleteDescription" @confirm="executeEntryDelete" />
+
+    <ConfirmDestructiveDialog v-model:open="checklistDeleteOpen" title="Delete checklist item?"
+        :description="checklistDeleteDescription" @confirm="executeChecklistDelete" />
 
     <Dialog v-model:open="manualOpen">
         <DialogContent class="sm:max-w-md">
@@ -593,7 +703,7 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
 
         <GlassCard v-if="task.status === 'review'"
             class="border-amber-200/80 bg-amber-50/40 dark:border-amber-500/35 dark:bg-amber-500/10">
-            <div class="mb-6 space-y-1">
+            <div class="space-y-1">
                 <h2 class="text-lg font-semibold">Awaiting review</h2>
                 <p class="text-sm text-muted-foreground">
                     This task was submitted for completion
@@ -674,6 +784,71 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                     <p class="whitespace-pre-wrap text-muted-foreground">{{ task.description }}</p>
                 </div>
             </div>
+        </GlassCard>
+
+        <GlassCard>
+            <div class="mb-6 space-y-1">
+                <h2 class="text-lg font-semibold">Checklist</h2>
+                <p class="text-sm text-muted-foreground">
+                    Simple steps for this task. Check items off as you complete them.
+                </p>
+            </div>
+            <ul v-if="checklist.items.length > 0" class="space-y-2">
+                <li v-for="item in checklist.items" :key="item.id"
+                    class="flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2">
+                    <Checkbox :id="`checklist-${item.id}`" :model-value="item.is_completed"
+                        :disabled="!checklist.can_manage" class="mt-0.5"
+                        @update:model-value="(v) => toggleChecklistItem(item, v)" />
+                    <div v-if="editingChecklistId === item.id"
+                        class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+                        <Input :id="`edit-checklist-${item.id}`" v-model="editChecklistTitle" type="text"
+                            maxlength="500" class="h-8" placeholder="Checklist item title"
+                            @keydown.enter.prevent="saveChecklistItem(item)" />
+                        <div class="flex shrink-0 gap-1">
+                            <Button type="button" size="sm" @click="saveChecklistItem(item)">
+                                Save
+                            </Button>
+                            <Button type="button" variant="outline" size="sm" @click="closeEditChecklistItem()">
+                                Cancel
+                            </Button>
+                        </div>
+                    </div>
+                    <div v-else class="min-w-0 flex-1">
+                        <label :for="`checklist-${item.id}`" class="block cursor-pointer text-sm" :class="item.is_completed
+                            ? 'text-muted-foreground line-through'
+                            : 'text-foreground'
+                            " @click="checklist.can_manage && toggleChecklistItem(item, !item.is_completed)">
+                            {{ item.title }}
+                        </label>
+                    </div>
+                    <div v-if="checklist.can_manage && editingChecklistId !== item.id" class="flex shrink-0 gap-1">
+                        <Button type="button" variant="outline" size="sm" @click="openEditChecklistItem(item)">
+                            Edit
+                        </Button>
+                        <Button type="button" variant="outline" size="sm"
+                            class="text-destructive hover:bg-destructive/10" @click="openChecklistDelete(item)">
+                            Delete
+                        </Button>
+                    </div>
+                </li>
+            </ul>
+            <p v-else class="text-sm text-muted-foreground">
+                No checklist items yet.
+            </p>
+            <Form v-if="checklist.can_manage" v-bind="ProjectTaskChecklistItemController.store.form({
+                project: project.id,
+                task: task.id,
+            })
+                " class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end" @success="newChecklistTitle = ''"
+                v-slot="{ errors, processing }">
+                <div class="grid flex-1 gap-2">
+                    <Label for="new-checklist-title" class="sr-only">New item</Label>
+                    <Input id="new-checklist-title" name="title" type="text" maxlength="500" required
+                        placeholder="Add a checklist item…" v-model="newChecklistTitle" />
+                    <InputError :message="errors.title" />
+                </div>
+                <Button type="submit" :disabled="processing">Add</Button>
+            </Form>
         </GlassCard>
 
         <GlassCard>

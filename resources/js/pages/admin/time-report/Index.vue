@@ -515,7 +515,7 @@ const projectChartOptions = computed(() => ({
                     <div>
                         <CardTitle>Entries</CardTitle>
                         <CardDescription>
-                            Up to 500 most recent entries in this range.
+                            Up to 50 most recent entries in this range.
                         </CardDescription>
                     </div>
                     <ListToolbar
