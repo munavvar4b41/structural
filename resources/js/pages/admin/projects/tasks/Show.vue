@@ -519,7 +519,7 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
             <form class="grid gap-4" @submit.prevent="submitConfirmCompletion">
 
                 <InputError :message="confirmForm.errors.task" />
-                
+
                 <div class="grid gap-2">
                     <Label for="show-review-notes">Review notes</Label>
                     <textarea id="show-review-notes" v-model="confirmForm.review_notes" rows="3" maxlength="10000"
@@ -592,30 +592,30 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
         </div>
 
         <GlassCard v-if="task.status === 'review'"
-            class="border-amber-200/80 bg-amber-50/40 dark:border-amber-500/35 dark:bg-amber-500/10" p-6>
-                <div class="mb-6 space-y-1">
-                    <h2 class="text-lg font-semibold">Awaiting review</h2>
-                    <p class="text-sm text-muted-foreground">
-                        This task was submitted for completion
+            class="border-amber-200/80 bg-amber-50/40 dark:border-amber-500/35 dark:bg-amber-500/10">
+            <div class="mb-6 space-y-1">
+                <h2 class="text-lg font-semibold">Awaiting review</h2>
+                <p class="text-sm text-muted-foreground">
+                    This task was submitted for completion
                     <template v-if="task.completion_submitted_at">
                         on {{ new Date(task.completion_submitted_at).toLocaleString() }}
                     </template>
                     <template v-if="task.completion_submitted_by">
                         by {{ task.completion_submitted_by.name }}.
                     </template>
-                    </p>
-                </div>
+                </p>
+            </div>
 
-            </GlassCard>
+        </GlassCard>
 
-        <GlassCard :padding="false">
-                <div class="mb-6 space-y-1">
-                    <h2 class="text-lg font-semibold">Details</h2>
-                    <p class="text-sm text-muted-foreground">
-                        Status, ownership, and links for this task.
-                    </p>
-                </div>
-                <div class="grid gap-6 text-sm">
+        <GlassCard>
+            <div class="mb-6 space-y-1">
+                <h2 class="text-lg font-semibold">Details</h2>
+                <p class="text-sm text-muted-foreground">
+                    Status, ownership, and links for this task.
+                </p>
+            </div>
+            <div class="grid gap-6 text-sm">
                 <div class="grid gap-1">
                     <span class="text-xs font-medium text-muted-foreground">Title</span>
                     <p class="max-w-md text-sm font-medium leading-snug text-foreground line-clamp-2 break-words"
@@ -674,21 +674,21 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                     <p class="whitespace-pre-wrap text-muted-foreground">{{ task.description }}</p>
                 </div>
             </div>
-            </GlassCard>
+        </GlassCard>
 
-        <GlassCard :padding="false">
-                <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div class="space-y-1">
-                        <h2 class="text-lg font-semibold">Time tracked</h2>
-                        <p class="text-sm text-muted-foreground">
-                            Start a timer or log past work. Totals reflect closed entries only.
-                        </p>
-                    </div>
-                    <Button type="button" variant="outline" size="sm" @click="openManualDialog">
-                        Log time
-                    </Button>
+        <GlassCard>
+            <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div class="space-y-1">
+                    <h2 class="text-lg font-semibold">Time tracked</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Start a timer or log past work. Totals reflect closed entries only.
+                    </p>
                 </div>
-                <div class="grid gap-6">
+                <Button type="button" variant="outline" size="sm" @click="openManualDialog">
+                    Log time
+                </Button>
+            </div>
+            <div class="grid gap-6">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div class="rounded-lg border border-border/60 bg-muted/20 p-3">
                         <p class="text-xs text-muted-foreground">My time today</p>
@@ -768,16 +768,16 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                     </table>
                 </div>
             </div>
-            </GlassCard>
+        </GlassCard>
 
-        <GlassCard :padding="false">
-                <div class="mb-6 space-y-1">
-                    <h2 class="text-lg font-semibold">Subtasks</h2>
-                    <p class="text-sm text-muted-foreground">
-                        Direct children of this task. Same layout as the project task list.
-                    </p>
-                </div>
-<div class="overflow-x-auto p-0 sm:p-6">
+        <GlassCard>
+            <div class="mb-6 space-y-1">
+                <h2 class="text-lg font-semibold">Subtasks</h2>
+                <p class="text-sm text-muted-foreground">
+                    Direct children of this task. Same layout as the project task list.
+                </p>
+            </div>
+            <div class="overflow-x-auto">
                 <table class="w-full min-w-[720px] table-fixed text-left text-sm">
                     <thead class="border-b bg-muted/40">
                         <tr>
@@ -869,6 +869,6 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                     </tbody>
                 </table>
             </div>
-            </GlassCard>
+        </GlassCard>
     </div>
 </template>

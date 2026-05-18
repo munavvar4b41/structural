@@ -30,7 +30,7 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
 
         <div class="flex flex-col gap-6 lg:flex-row lg:gap-8">
             <aside class="w-full lg:w-52">
-                <GlassCard :padding="true" class="p-3">
+                <GlassCard class="p-3">
                     <nav class="flex flex-col gap-1" aria-label="Settings">
                         <Button
                             v-for="item in sidebarNavItems"
