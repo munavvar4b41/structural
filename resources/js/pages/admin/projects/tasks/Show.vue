@@ -460,7 +460,7 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                     <Input id="manual-notes" name="notes" type="text" maxlength="500" v-model="manualNotes" />
                     <InputError :message="errors.notes" />
                 </div>
-                <DialogFooter class="gap-2 sm:gap-0">
+                <DialogFooter class="gap-3">
                     <Button type="button" variant="outline" @click="manualOpen = false">
                         Cancel
                     </Button>
@@ -497,7 +497,7 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                     <Input id="edit-entry-notes" name="notes" type="text" maxlength="500" v-model="editNotes" />
                     <InputError :message="errors.notes" />
                 </div>
-                <DialogFooter class="gap-2 sm:gap-0">
+                <DialogFooter class="gap-3">
                     <Button type="button" variant="outline" @click="closeEditEntry()">
                         Cancel
                     </Button>
@@ -549,7 +549,7 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                     <InputError :message="confirmForm.errors.creator_rating" />
                 </div>
 
-                <DialogFooter class="gap-2 sm:gap-0">
+                <DialogFooter class="gap-3">
 
                     <Button type="button" variant="outline" @click="confirmCompletionOpen = false">
                         Cancel

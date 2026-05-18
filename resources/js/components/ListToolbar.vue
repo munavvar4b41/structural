@@ -4,6 +4,7 @@ import { ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import Label from './ui/label/Label.vue';
 
 const props = withDefaults(
     defineProps<{

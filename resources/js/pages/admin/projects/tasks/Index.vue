@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
-import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
+import { index as projectsIndex } from '@/routes/admin/projects/index';
 import {
     index as requirementsIndex,
     show as requirementsShow,
@@ -142,9 +142,7 @@ defineOptions({
             { title: 'Projects', href: projectsIndex.url() },
             {
                 title: pageProps.project.name,
-                href: pageProps.can_manage_project
-                    ? projectsEdit.url(pageProps.project.id)
-                    : requirementsIndex.url(pageProps.project.id),
+                href: requirementsIndex.url(pageProps.project.id),
             },
             {
                 title: 'Tasks',
@@ -479,7 +477,7 @@ onMounted(() => {
                             :required="project.estimation_required" />
                         <InputError :message="errors.estimated_minutes" />
                     </div>
-                    <DialogFooter class="gap-2 sm:gap-0">
+                    <DialogFooter class="gap-3">
                         <Button type="button" variant="outline" @click="createOpen = false">
                             Cancel
                         </Button>
@@ -508,7 +506,7 @@ onMounted(() => {
                     <div class="grid gap-2">
                         <Label for="edit-description">Description</Label>
                         <textarea id="edit-description" name="description" rows="3"
-                            :default-value="editingTask.description ?? ''"
+                            v-model="editingTask.description"
                             class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30" />
                         <InputError :message="errors.description" />
                     </div>
@@ -545,7 +543,7 @@ onMounted(() => {
                                 " />
                         <InputError :message="errors.estimated_minutes" />
                     </div>
-                    <DialogFooter class="gap-2 sm:gap-0">
+                    <DialogFooter class="gap-3">
                         <Button type="button" variant="outline" @click="closeEdit()">
                             Cancel
                         </Button>

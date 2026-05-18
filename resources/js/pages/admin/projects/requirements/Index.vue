@@ -18,6 +18,7 @@ import {
     index as requirementsIndex,
     show as requirementsShow,
 } from '@/routes/admin/projects/requirements/index';
+import { index as projectTasksIndex } from '@/routes/admin/projects/tasks/index';
 
 type UserBrief = {
     id: number;
@@ -138,9 +139,7 @@ defineOptions({
             { title: 'Projects', href: projectsIndex.url() },
             {
                 title: pageProps.project.name,
-                href: pageProps.canManageProject
-                    ? projectsEdit.url(pageProps.project.id)
-                    : requirementsIndex.url(pageProps.project.id),
+                href: projectTasksIndex.url(pageProps.project.id),
             },
             {
                 title: 'Requirements',

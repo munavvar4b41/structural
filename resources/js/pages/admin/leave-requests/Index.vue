@@ -232,7 +232,7 @@ const filteredLeaveRequests = computed(() => {
                         <InputError :message="errors.reason" />
                     </div>
 
-                    <DialogFooter class="gap-2 sm:gap-0">
+                    <DialogFooter class="gap-3">
                         <Button type="button" variant="outline" @click="leaveRequestOpen = false">
                             Cancel
                         </Button>
