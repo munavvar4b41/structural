@@ -296,12 +296,8 @@ defineOptions({
 
     <Head :title="`${requirement.title} · ${project.name}`" />
 
-    <ConfirmDestructiveDialog
-        v-model:open="taskDeleteOpen"
-        title="Delete task?"
-        :description="deleteTaskDescription"
-        @confirm="executeTaskDelete"
-    />
+    <ConfirmDestructiveDialog v-model:open="taskDeleteOpen" title="Delete task?" :description="deleteTaskDescription"
+        @confirm="executeTaskDelete" />
 
     <div class="flex flex-col gap-8">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -329,13 +325,13 @@ defineOptions({
         <div class="mx-auto flex w-full flex-col gap-8">
             <div class="grid min-w-0 gap-6 lg:grid-cols-12 lg:items-stretch">
                 <GlassCard class="flex h-full min-h-0 flex-col lg:col-span-7">
-                <div class="mb-6 space-y-1">
-                    <h2 class="text-lg font-semibold">People</h2>
-                    <p class="text-sm text-muted-foreground">
-                        Ownership and review
-                    </p>
-                </div>
-                <div class="grid flex-1 gap-3 text-sm">
+                    <div class="mb-6 space-y-1">
+                        <h2 class="text-lg font-semibold">People</h2>
+                        <p class="text-sm text-muted-foreground">
+                            Ownership and review
+                        </p>
+                    </div>
+                    <div class="grid flex-1 gap-3 text-sm">
                         <div>
                             <span class="text-muted-foreground">Created by</span>
                             {{ requirement.creator?.name ?? '—' }}
@@ -373,73 +369,53 @@ defineOptions({
                             {{ requirement.updated_at ? new Date(requirement.updated_at).toLocaleString() : '—' }}
                         </div>
                     </div>
-            </GlassCard>
+                </GlassCard>
 
                 <GlassCard class="flex h-full min-h-0 flex-col lg:col-span-5">
-                <div class="mb-6 space-y-1">
-                    <h2 class="text-lg font-semibold">Clarification discussion</h2>
-                    <p class="text-sm text-muted-foreground">
-                        Ask questions and align with the team before finalizing review understanding.
-                    </p>
-                </div>
-<div class="flex min-h-0 flex-1 flex-col gap-4">
+                    <div class="mb-6 space-y-1">
+                        <h2 class="text-lg font-semibold">Clarification discussion</h2>
+                        <p class="text-sm text-muted-foreground">
+                            Ask questions and align with the team before finalizing review understanding.
+                        </p>
+                    </div>
+                    <div class="flex min-h-0 flex-1 flex-col gap-4">
                         <div v-if="olderMessagesHref" class="flex shrink-0 justify-center border-b border-border pb-3">
                             <Button variant="outline" size="sm" as-child>
                                 <Link :href="olderMessagesHref">Load older messages</Link>
                             </Button>
                         </div>
-                        <div
-                            ref="chatScrollEl"
-                            class="min-h-32 min-w-0 flex-1 space-y-3 overflow-y-auto rounded-xl border border-input bg-muted/20 p-3 text-sm lg:max-h-[min(32rem,calc(100vh-14rem))]"
-                        >
+                        <div ref="chatScrollEl"
+                            class="min-h-32 min-w-0 flex-1 space-y-3 overflow-y-auto rounded-xl border border-input bg-muted/20 p-3 text-sm lg:max-h-[min(32rem,calc(100vh-14rem))]">
                             <p v-if="requirement_chat_messages.data.length === 0" class="text-muted-foreground">
                                 No messages yet. Start the thread below.
                             </p>
-                            <div
-                                v-for="row in requirement_chat_messages.data"
-                                :key="row.id"
+                            <div v-for="row in requirement_chat_messages.data" :key="row.id"
                                 class="rounded-md bg-background p-2 shadow-xs"
-                                :class="isCurrentUser(row.user?.id ?? 0) ? 'ms-5' : 'me-5'"
-                            >
+                                :class="isCurrentUser(row.user?.id ?? 0) ? 'ms-5' : 'me-5'">
                                 <div
-                                    class="flex flex-wrap items-baseline justify-between gap-2 text-xs text-muted-foreground"
-                                >
+                                    class="flex flex-wrap items-baseline justify-between gap-2 text-xs text-muted-foreground">
                                     <span class="font-medium text-foreground">{{ row.user?.name ?? 'Unknown' }}</span>
                                     <span>{{
                                         row.created_at ? new Date(row.created_at).toLocaleString() : '—'
-                                    }}</span>
+                                        }}</span>
                                 </div>
                                 <p class="mt-1 whitespace-pre-wrap break-words">{{ row.body }}</p>
                             </div>
                         </div>
                         <div v-if="can_post_requirement_chat" class="shrink-0">
-                            <Form
-                                v-bind="
-                                    ProjectRequirementMessageController.store.form({
-                                        project: project.id,
-                                        requirement: requirement.id,
-                                    })
-                                "
-                                class="grid gap-2"
-                                @success="onChatMessagePosted"
-                                v-slot="{ errors, processing }"
-                            >
+                            <Form v-bind="ProjectRequirementMessageController.store.form({
+                                project: project.id,
+                                requirement: requirement.id,
+                            })
+                                " class="grid gap-2" @success="onChatMessagePosted" v-slot="{ errors, processing }">
                                 <Label for="requirement-chat-body">Message</Label>
-                                <textarea
-                                    id="requirement-chat-body"
-                                    v-model="chatBody"
-                                    name="body"
-                                    rows="3"
-                                    required
-                                    :class="
-                                        cn(
-                                            'placeholder:text-muted-foreground border-input w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none',
-                                            'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                                            'aria-invalid:border-destructive',
-                                        )
-                                    "
-                                    placeholder="Ask for clarification or share context…"
-                                />
+                                <textarea id="requirement-chat-body" v-model="chatBody" name="body" rows="3" required
+                                    :class="cn(
+                                        'placeholder:text-muted-foreground border-input w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none',
+                                        'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                                        'aria-invalid:border-destructive',
+                                    )
+                                        " placeholder="Ask for clarification or share context…" />
                                 <InputError :message="errors.body" />
                                 <Button type="submit" :disabled="processing" class="w-fit">Send</Button>
                             </Form>
@@ -448,17 +424,17 @@ defineOptions({
                             You can view this thread but cannot post.
                         </p>
                     </div>
-            </GlassCard>
+                </GlassCard>
 
-                <GlassCard class="lg:col-span-12" :padding="false">
-                <div class="mb-6 space-y-1">
-                    <h2 class="text-lg font-semibold">Tasks</h2>
-                    <p class="text-sm text-muted-foreground">
-                        Work linked to this requirement. Estimates:
-                                {{ project.estimation_required ? 'required on this project.' : 'optional.' }}
-                    </p>
-                </div>
-<div class="overflow-x-auto p-0 sm:p-6">
+                <GlassCard class="lg:col-span-12">
+                    <div class="mb-6 space-y-1">
+                        <h2 class="text-lg font-semibold">Tasks</h2>
+                        <p class="text-sm text-muted-foreground">
+                            Work linked to this requirement. Estimates:
+                            {{ project.estimation_required ? 'required on this project.' : 'optional.' }}
+                        </p>
+                    </div>
+                    <div class="overflow-x-auto">
                         <Dialog v-model:open="createTaskOpen">
                             <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-lg">
                                 <DialogHeader>
@@ -467,12 +443,9 @@ defineOptions({
                                         This task will be linked to this requirement.
                                     </DialogDescription>
                                 </DialogHeader>
-                                <Form
-                                    v-bind="ProjectTaskController.store.form({ project: project.id })"
-                                    class="grid gap-4"
-                                    @success="createTaskOpen = false"
-                                    v-slot="{ errors, processing }"
-                                >
+                                <Form v-bind="ProjectTaskController.store.form({ project: project.id })"
+                                    class="grid gap-4" @success="createTaskOpen = false"
+                                    v-slot="{ errors, processing }">
                                     <input type="hidden" name="project_requirement_id" :value="requirement.id" />
                                     <div class="grid gap-2">
                                         <Label for="req-task-title">Title</Label>
@@ -481,59 +454,34 @@ defineOptions({
                                     </div>
                                     <div class="grid gap-2">
                                         <Label for="req-task-description">Description</Label>
-                                        <textarea
-                                            id="req-task-description"
-                                            name="description"
-                                            rows="3"
-                                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
-                                        />
+                                        <textarea id="req-task-description" name="description" rows="3"
+                                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30" />
                                         <InputError :message="errors.description" />
                                     </div>
                                     <div class="grid gap-2">
                                         <Label for="req-task-status">Status</Label>
-                                        <TaskFormSelect
-                                            id="req-task-status"
-                                            name="status"
-                                            v-model="createTaskStatus"
-                                            required
-                                            placeholder="Status"
-                                            :options="taskStatusSelectOptions"
-                                        />
+                                        <TaskFormSelect id="req-task-status" name="status" v-model="createTaskStatus"
+                                            required placeholder="Status" :options="taskStatusSelectOptions" />
                                         <InputError :message="errors.status" />
                                     </div>
                                     <div class="grid gap-2">
                                         <Label for="req-task-assignee">Assignee</Label>
-                                        <TaskFormSelect
-                                            id="req-task-assignee"
-                                            name="assignee_user_id"
-                                            v-model="createTaskAssignee"
-                                            none-label="Unassigned"
-                                            placeholder="Unassigned"
-                                            :options="taskAssigneeSelectOptions"
-                                        />
+                                        <TaskFormSelect id="req-task-assignee" name="assignee_user_id"
+                                            v-model="createTaskAssignee" none-label="Unassigned"
+                                            placeholder="Unassigned" :options="taskAssigneeSelectOptions" />
                                         <InputError :message="errors.assignee_user_id" />
                                     </div>
                                     <div class="grid gap-2">
                                         <Label for="req-task-parent">Parent task (subtask)</Label>
-                                        <TaskFormSelect
-                                            id="req-task-parent"
-                                            name="parent_project_task_id"
-                                            v-model="createTaskParent"
-                                            placeholder="None"
-                                            :options="taskParentSelectOptions"
-                                        />
+                                        <TaskFormSelect id="req-task-parent" name="parent_project_task_id"
+                                            v-model="createTaskParent" placeholder="None"
+                                            :options="taskParentSelectOptions" />
                                         <InputError :message="errors.parent_project_task_id" />
                                     </div>
                                     <div class="grid gap-2">
                                         <Label for="req-task-estimate">Estimate (minutes)</Label>
-                                        <Input
-                                            id="req-task-estimate"
-                                            name="estimated_minutes"
-                                            type="number"
-                                            min="1"
-                                            step="1"
-                                            :required="project.estimation_required"
-                                        />
+                                        <Input id="req-task-estimate" name="estimated_minutes" type="number" min="1"
+                                            step="1" :required="project.estimation_required" />
                                         <InputError :message="errors.estimated_minutes" />
                                     </div>
                                     <DialogFooter class="gap-2 sm:gap-0">
@@ -557,46 +505,31 @@ defineOptions({
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr
-                                    v-for="task in requirement_tasks"
-                                    :key="task.id"
-                                    class="border-b border-border/60 last:border-0"
-                                >
-                                    <td
-                                        class="max-w-0 px-4 py-3 align-top"
-                                        :style="{
-                                            paddingLeft: `calc(0.75rem + ${task.tree_depth} * 1.25rem)`,
-                                        }"
-                                    >
+                                <tr v-for="task in requirement_tasks" :key="task.id"
+                                    class="border-b border-border/60 last:border-0">
+                                    <td class="max-w-0 px-4 py-3 align-top" :style="{
+                                        paddingLeft: `calc(0.75rem + ${task.tree_depth} * 1.25rem)`,
+                                    }">
                                         <div class="flex min-w-0 items-start gap-1.5">
-                                            <CornerDownRight
-                                                v-if="task.tree_depth > 0"
+                                            <CornerDownRight v-if="task.tree_depth > 0"
                                                 class="mt-0.5 size-4 shrink-0 text-muted-foreground"
-                                                aria-hidden="true"
-                                            />
+                                                aria-hidden="true" />
                                             <div class="min-w-0 flex-1">
-                                                <Button
-                                                    variant="link"
+                                                <Button variant="link"
                                                     class="h-auto w-full min-w-0 justify-start p-0 font-medium text-foreground"
-                                                    as-child
-                                                >
+                                                    as-child>
                                                     <Link
                                                         class="block text-left text-foreground line-clamp-2 break-words hover:underline"
-                                                        :title="task.title"
-                                                        :href="
-                                                            projectTasksShow.url({
-                                                                project: project.id,
-                                                                task: task.id,
-                                                            })
-                                                        "
-                                                    >
+                                                        :title="task.title" :href="projectTasksShow.url({
+                                                            project: project.id,
+                                                            task: task.id,
+                                                        })
+                                                            ">
                                                         {{ task.title }}
                                                     </Link>
                                                 </Button>
-                                                <span
-                                                    v-if="task.children_count > 0"
-                                                    class="mt-0.5 block text-xs text-muted-foreground"
-                                                >
+                                                <span v-if="task.children_count > 0"
+                                                    class="mt-0.5 block text-xs text-muted-foreground">
                                                     ({{ task.children_count }} subtasks)
                                                 </span>
                                             </div>
@@ -611,30 +544,17 @@ defineOptions({
                                     </td>
                                     <td class="px-4 py-3 text-right">
                                         <div class="flex justify-end gap-2">
-                                            <Button
-                                                v-if="task.can_update"
-                                                variant="outline"
-                                                size="sm"
-                                                as-child
-                                            >
-                                                <Link
-                                                    :href="
-                                                        projectTasksIndex.url(project.id, {
-                                                            query: { task_filter: 'linked' },
-                                                        })
-                                                    "
-                                                >
+                                            <Button v-if="task.can_update" variant="outline" size="sm" as-child>
+                                                <Link :href="projectTasksIndex.url(project.id, {
+                                                    query: { task_filter: 'linked' },
+                                                })
+                                                    ">
                                                     Manage on list
                                                 </Link>
                                             </Button>
-                                            <Button
-                                                v-if="task.can_delete"
-                                                variant="outline"
-                                                size="sm"
-                                                class="text-destructive hover:bg-destructive/10"
-                                                type="button"
-                                                @click="openTaskDelete(task)"
-                                            >
+                                            <Button v-if="task.can_delete" variant="outline" size="sm"
+                                                class="text-destructive hover:bg-destructive/10" type="button"
+                                                @click="openTaskDelete(task)">
                                                 Delete
                                             </Button>
                                         </div>
@@ -648,28 +568,28 @@ defineOptions({
                             </tbody>
                         </table>
                     </div>
-            </GlassCard>
+                </GlassCard>
 
                 <GlassCard v-if="requirement.review_understanding" class="lg:col-span-12">
-                <div class="mb-6 space-y-1">
-                    <h2 class="text-lg font-semibold">Review understanding</h2>
-                    <p class="text-sm text-muted-foreground">
-                        What the reviewing party recorded about this requirement
-                    </p>
-                </div>
-<div>
+                    <div class="mb-6 space-y-1">
+                        <h2 class="text-lg font-semibold">Review understanding</h2>
+                        <p class="text-sm text-muted-foreground">
+                            What the reviewing party recorded about this requirement
+                        </p>
+                    </div>
+                    <div>
                         <RequirementRichTextViewer :json="requirement.review_understanding" />
                     </div>
-            </GlassCard>
+                </GlassCard>
 
                 <GlassCard v-if="can_confirm_understanding" class="lg:col-span-12">
-                <div class="mb-6 space-y-1">
-                    <h2 class="text-lg font-semibold">Confirm understanding</h2>
-                    <p class="text-sm text-muted-foreground">
-                        Confirm that this matches your intent as creator or responsible person.
-                    </p>
-                </div>
-<div>
+                    <div class="mb-6 space-y-1">
+                        <h2 class="text-lg font-semibold">Confirm understanding</h2>
+                        <p class="text-sm text-muted-foreground">
+                            Confirm that this matches your intent as creator or responsible person.
+                        </p>
+                    </div>
+                    <div>
                         <Form v-bind="ProjectRequirementController.confirmUnderstanding.form({
                             project: project.id,
                             requirement: requirement.id,
@@ -678,17 +598,17 @@ defineOptions({
                             <Button type="submit" :disabled="processing">Confirm understanding</Button>
                         </Form>
                     </div>
-            </GlassCard>
+                </GlassCard>
 
                 <GlassCard class="lg:col-span-12">
-                <div class="mb-6 space-y-1">
-                    <h2 class="text-lg font-semibold">Description</h2>
-                </div>
-<div>
+                    <div class="mb-6 space-y-1">
+                        <h2 class="text-lg font-semibold">Description</h2>
+                    </div>
+                    <div>
                         <RequirementRichTextViewer v-if="requirement.description" :json="requirement.description" />
                         <p v-else class="text-sm text-muted-foreground">No description.</p>
                     </div>
-            </GlassCard>
+                </GlassCard>
             </div>
         </div>
 

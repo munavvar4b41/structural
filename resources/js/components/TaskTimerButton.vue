@@ -9,12 +9,14 @@ type Props = {
     projectId: number;
     taskId: number;
     label?: string;
+    showLabel?: boolean;
     size?: 'sm' | 'default';
 };
 
 const props = withDefaults(defineProps<Props>(), {
     label: undefined,
     size: 'sm',
+    showLabel: true,
 });
 
 const page = usePage();
@@ -68,30 +70,21 @@ const buttonTitle = computed(() => {
 </script>
 
 <template>
-    <Button
-        v-if="isRunningForThisTask"
-        variant="outline"
-        :size="size"
-        type="button"
+    <Button v-if="isRunningForThisTask" variant="outline" :size="size" type="button"
         class="gap-1.5 border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
-        :title="buttonTitle"
-        @click.stop="stop"
-    >
+        :title="buttonTitle" @click.stop="stop" :class="showLabel ? '' : 'h-8 flex-1'">
         <Square class="size-3.5" />
-        <span v-if="label">{{ label ?? 'Stop' }}</span>
-        <span v-else>Stop</span>
+        <template v-if="showLabel">
+            <span v-if="label">{{ label ?? 'Stop' }}</span>
+            <span v-else>Stop</span>
+        </template>
     </Button>
-    <Button
-        v-else
-        variant="outline"
-        :size="size"
-        type="button"
-        class="gap-1.5"
-        :title="buttonTitle"
-        @click.stop="start"
-    >
+    <Button v-else variant="outline" :size="size" type="button" class="gap-1.5" :title="buttonTitle"
+        @click.stop="start" :class="showLabel ? '' : 'h-8 flex-1'">
         <Play class="size-3.5" />
-        <span v-if="label">{{ label }}</span>
-        <span v-else>{{ isRunningElsewhere ? 'Switch' : 'Start' }}</span>
+        <template v-if="showLabel">
+            <span v-if="label">{{ label }}</span>
+            <span v-else>{{ isRunningElsewhere ? 'Switch' : 'Start' }}</span>
+        </template>
     </Button>
 </template>

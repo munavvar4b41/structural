@@ -6,26 +6,20 @@ const props = withDefaults(
     defineProps<{
         class?: HTMLAttributes['class'];
         hover?: boolean;
-        padding?: boolean;
     }>(),
     {
         hover: false,
-        padding: true,
     },
 );
 </script>
 
 <template>
-    <div
-        :class="
-            cn(
-                'glass-panel rounded-3xl',
-                padding && 'p-6',
-                hover && 'hover-lift cursor-default',
-                props.class,
-            )
-        "
-    >
+    <div :class="cn(
+        'glass-panel rounded-3xl p-6',
+        hover && 'hover-lift cursor-default',
+        props.class,
+    )
+        ">
         <slot />
     </div>
 </template>

@@ -374,14 +374,11 @@ onMounted(() => {
 </script>
 
 <template>
+
     <Head :title="`Tasks · ${project.name}`" />
 
-    <ConfirmDestructiveDialog
-        v-model:open="deleteDialogOpen"
-        title="Delete task?"
-        :description="deleteTaskDescription"
-        @confirm="executeDelete"
-    />
+    <ConfirmDestructiveDialog v-model:open="deleteDialogOpen" title="Delete task?" :description="deleteTaskDescription"
+        @confirm="executeDelete" />
 
     <div class="flex flex-col gap-8">
         <div class="flex flex-col gap-4">
@@ -389,32 +386,16 @@ onMounted(() => {
                 <PageHeader :title="`Tasks · ${project.name}`"
                     description="Project work items; optionally link each task to a requirement or a parent task." />
                 <div class="flex flex-wrap gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        :data-active="task_filter === 'all'"
-                        :class="task_filter === 'all' ? 'border-primary' : ''"
-                        type="button"
-                        @click="setFilter('all')"
-                    >
+                    <Button variant="outline" size="sm" :data-active="task_filter === 'all'"
+                        :class="task_filter === 'all' ? 'border-primary' : ''" type="button" @click="setFilter('all')">
                         All
                     </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        :class="task_filter === 'linked' ? 'border-primary' : ''"
-                        type="button"
-                        @click="setFilter('linked')"
-                    >
+                    <Button variant="outline" size="sm" :class="task_filter === 'linked' ? 'border-primary' : ''"
+                        type="button" @click="setFilter('linked')">
                         Linked to requirement
                     </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        :class="task_filter === 'unlinked' ? 'border-primary' : ''"
-                        type="button"
-                        @click="setFilter('unlinked')"
-                    >
+                    <Button variant="outline" size="sm" :class="task_filter === 'unlinked' ? 'border-primary' : ''"
+                        type="button" @click="setFilter('unlinked')">
                         No requirement
                     </Button>
                     <Button v-if="can_create_tasks" type="button" @click="createOpen = true">
@@ -423,42 +404,22 @@ onMounted(() => {
                 </div>
             </div>
 
-            <ListToolbar
-                :model-value="filters.search"
-                placeholder="Search title or description…"
-                @update:model-value="onSearch"
-            >
+            <ListToolbar :model-value="filters.search" placeholder="Search title or description…"
+                @update:model-value="onSearch">
                 <template #filters>
                     <div class="flex flex-col gap-3">
                         <div class="flex flex-wrap items-center gap-4">
                             <div class="grid gap-1">
-                                <Label class="text-xs text-muted-foreground" for="filter-assignee"
-                                    >Assignee</Label
-                                >
-                                <TaskFormSelect
-                                    id="filter-assignee"
-                                    name="assignee_id"
-                                    class="min-w-[12rem]"
-                                    :model-value="assigneeFilter"
-                                    :options="assigneeSelectOptions"
-                                    placeholder="Anyone"
-                                    none-label="Anyone"
-                                    exclude-from-submit
-                                    @update:model-value="onAssignee"
-                                />
+                                <Label class="text-xs text-muted-foreground" for="filter-assignee">Assignee</Label>
+                                <TaskFormSelect id="filter-assignee" name="assignee_id" class="min-w-[12rem]"
+                                    :model-value="assigneeFilter" :options="assigneeSelectOptions" placeholder="Anyone"
+                                    none-label="Anyone" exclude-from-submit @update:model-value="onAssignee" />
                             </div>
                             <div class="grid gap-1">
-                                <Label class="text-xs text-muted-foreground" for="filter-status"
-                                    >Status</Label
-                                >
-                                <MultiSelectDropdown
-                                    id="filter-status"
-                                    :model-value="filters.status"
-                                    :options="status_options"
-                                    placeholder="All statuses"
-                                    menu-label="Statuses"
-                                    @update:model-value="onStatusFilter"
-                                />
+                                <Label class="text-xs text-muted-foreground" for="filter-status">Status</Label>
+                                <MultiSelectDropdown id="filter-status" :model-value="filters.status"
+                                    :options="status_options" placeholder="All statuses" menu-label="Statuses"
+                                    @update:model-value="onStatusFilter" />
                             </div>
                         </div>
                     </div>
@@ -475,12 +436,8 @@ onMounted(() => {
                         <span v-else>Optional time estimate in minutes.</span>
                     </DialogDescription>
                 </DialogHeader>
-                <Form
-                    v-bind="ProjectTaskController.store.form({ project: project.id })"
-                    class="grid gap-4"
-                    @success="createOpen = false"
-                    v-slot="{ errors, processing }"
-                >
+                <Form v-bind="ProjectTaskController.store.form({ project: project.id })" class="grid gap-4"
+                    @success="createOpen = false" v-slot="{ errors, processing }">
                     <div class="grid gap-2">
                         <Label for="create-title">Title</Label>
                         <Input id="create-title" name="title" type="text" required />
@@ -488,70 +445,38 @@ onMounted(() => {
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-description">Description</Label>
-                        <textarea
-                            id="create-description"
-                            name="description"
-                            rows="3"
-                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
-                        />
+                        <textarea id="create-description" name="description" rows="3"
+                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30" />
                         <InputError :message="errors.description" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-status">Status</Label>
-                        <TaskFormSelect
-                            id="create-status"
-                            name="status"
-                            v-model="createStatus"
-                            required
-                            placeholder="Status"
-                            :options="statusSelectOptions"
-                        />
+                        <TaskFormSelect id="create-status" name="status" v-model="createStatus" required
+                            placeholder="Status" :options="statusSelectOptions" />
                         <InputError :message="errors.status" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-assignee">Assignee</Label>
-                        <TaskFormSelect
-                            id="create-assignee"
-                            name="assignee_user_id"
-                            v-model="createAssignee"
-                            none-label="Unassigned"
-                            placeholder="Unassigned"
-                            :options="assigneeSelectOptions"
-                        />
+                        <TaskFormSelect id="create-assignee" name="assignee_user_id" v-model="createAssignee"
+                            none-label="Unassigned" placeholder="Unassigned" :options="assigneeSelectOptions" />
                         <InputError :message="errors.assignee_user_id" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-requirement">Requirement</Label>
-                        <TaskFormSelect
-                            id="create-requirement"
-                            name="project_requirement_id"
-                            v-model="createRequirement"
-                            placeholder="None"
-                            :options="requirementSelectOptions"
-                        />
+                        <TaskFormSelect id="create-requirement" name="project_requirement_id"
+                            v-model="createRequirement" placeholder="None" :options="requirementSelectOptions" />
                         <InputError :message="errors.project_requirement_id" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-parent">Parent task (subtask)</Label>
-                        <TaskFormSelect
-                            id="create-parent"
-                            name="parent_project_task_id"
-                            v-model="createParent"
-                            placeholder="None"
-                            :options="parentSelectOptions"
-                        />
+                        <TaskFormSelect id="create-parent" name="parent_project_task_id" v-model="createParent"
+                            placeholder="None" :options="parentSelectOptions" />
                         <InputError :message="errors.parent_project_task_id" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-estimate">Estimate (minutes)</Label>
-                        <Input
-                            id="create-estimate"
-                            name="estimated_minutes"
-                            type="number"
-                            min="1"
-                            step="1"
-                            :required="project.estimation_required"
-                        />
+                        <Input id="create-estimate" name="estimated_minutes" type="number" min="1" step="1"
+                            :required="project.estimation_required" />
                         <InputError :message="errors.estimated_minutes" />
                     </div>
                     <DialogFooter class="gap-2 sm:gap-0">
@@ -565,109 +490,59 @@ onMounted(() => {
         </Dialog>
 
         <Dialog :open="editOpen" @update:open="(v: boolean) => !v && closeEdit()">
-            <DialogContent
-                v-if="editingTask"
-                class="max-h-[90vh] overflow-y-auto sm:max-w-lg"
-            >
+            <DialogContent v-if="editingTask" class="max-h-[90vh] overflow-y-auto sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>Edit task</DialogTitle>
                     <DialogDescription>{{ editingTask.title }}</DialogDescription>
                 </DialogHeader>
-                <Form
-                    :key="editingTask.id"
-                    v-bind="
-                        ProjectTaskController.update.form({
-                            project: project.id,
-                            task: editingTask.id,
-                        })
-                    "
-                    class="grid gap-4"
-                    @success="closeEdit()"
-                    v-slot="{ errors, processing }"
-                >
+                <Form :key="editingTask.id" v-bind="ProjectTaskController.update.form({
+                    project: project.id,
+                    task: editingTask.id,
+                })
+                    " class="grid gap-4" @success="closeEdit()" v-slot="{ errors, processing }">
                     <div class="grid gap-2">
                         <Label for="edit-title">Title</Label>
-                        <Input
-                            id="edit-title"
-                            name="title"
-                            type="text"
-                            required
-                            :default-value="editingTask.title"
-                        />
+                        <Input id="edit-title" name="title" type="text" required :default-value="editingTask.title" />
                         <InputError :message="errors.title" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="edit-description">Description</Label>
-                        <textarea
-                            id="edit-description"
-                            name="description"
-                            rows="3"
+                        <textarea id="edit-description" name="description" rows="3"
                             :default-value="editingTask.description ?? ''"
-                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
-                        />
+                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30" />
                         <InputError :message="errors.description" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="edit-status">Status</Label>
-                        <TaskFormSelect
-                            id="edit-status"
-                            name="status"
-                            v-model="editStatus"
-                            required
-                            placeholder="Status"
-                            :options="editStatusSelectOptions"
-                        />
+                        <TaskFormSelect id="edit-status" name="status" v-model="editStatus" required
+                            placeholder="Status" :options="editStatusSelectOptions" />
                         <InputError :message="errors.status" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="edit-assignee">Assignee</Label>
-                        <TaskFormSelect
-                            id="edit-assignee"
-                            name="assignee_user_id"
-                            v-model="editAssignee"
-                            none-label="Unassigned"
-                            placeholder="Unassigned"
-                            :options="assigneeSelectOptions"
-                        />
+                        <TaskFormSelect id="edit-assignee" name="assignee_user_id" v-model="editAssignee"
+                            none-label="Unassigned" placeholder="Unassigned" :options="assigneeSelectOptions" />
                         <InputError :message="errors.assignee_user_id" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="edit-requirement">Requirement</Label>
-                        <TaskFormSelect
-                            id="edit-requirement"
-                            name="project_requirement_id"
-                            v-model="editRequirement"
-                            placeholder="None"
-                            :options="requirementSelectOptions"
-                        />
+                        <TaskFormSelect id="edit-requirement" name="project_requirement_id" v-model="editRequirement"
+                            placeholder="None" :options="requirementSelectOptions" />
                         <InputError :message="errors.project_requirement_id" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="edit-parent">Parent task</Label>
-                        <TaskFormSelect
-                            id="edit-parent"
-                            name="parent_project_task_id"
-                            v-model="editParent"
-                            placeholder="None"
-                            :options="parentSelectOptionsForEdit"
-                        />
+                        <TaskFormSelect id="edit-parent" name="parent_project_task_id" v-model="editParent"
+                            placeholder="None" :options="parentSelectOptionsForEdit" />
                         <InputError :message="errors.parent_project_task_id" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="edit-estimate">Estimate (minutes)</Label>
-                        <Input
-                            id="edit-estimate"
-                            name="estimated_minutes"
-                            type="number"
-                            min="1"
-                            step="1"
-                            :required="project.estimation_required"
-                            :default-value="
-                                editingTask.estimated_minutes !== null
+                        <Input id="edit-estimate" name="estimated_minutes" type="number" min="1" step="1"
+                            :required="project.estimation_required" :default-value="editingTask.estimated_minutes !== null
                                     ? String(editingTask.estimated_minutes)
                                     : ''
-                            "
-                        />
+                                " />
                         <InputError :message="errors.estimated_minutes" />
                     </div>
                     <DialogFooter class="gap-2 sm:gap-0">
@@ -680,14 +555,14 @@ onMounted(() => {
             </DialogContent>
         </Dialog>
 
-        <GlassCard :padding="false">
-                <div class="mb-6 space-y-1">
-                    <h2 class="text-lg font-semibold">Task list</h2>
-                    <p class="text-sm text-muted-foreground">
-                        Subtasks are shown under their parent; estimates are shown as hours and minutes.
-                    </p>
-                </div>
-<div class="overflow-x-auto p-0 sm:p-6">
+        <GlassCard>
+            <div class="mb-6 space-y-1">
+                <h2 class="text-lg font-semibold">Task list</h2>
+                <p class="text-sm text-muted-foreground">
+                    Subtasks are shown under their parent; estimates are shown as hours and minutes.
+                </p>
+            </div>
+            <div class="overflow-x-auto">
                 <table class="w-full min-w-[720px] table-fixed text-left text-sm">
                     <thead class="border-b bg-muted/40">
                         <tr>
@@ -700,46 +575,29 @@ onMounted(() => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr
-                            v-for="task in tasks"
-                            :key="task.id"
-                            class="border-b border-border/60 last:border-0"
-                        >
-                            <td
-                                class="max-w-0 px-4 py-3 align-top"
-                                :style="{
-                                    paddingLeft: `calc(0.75rem + ${task.tree_depth} * 1.25rem)`,
-                                }"
-                            >
+                        <tr v-for="task in tasks" :key="task.id" class="border-b border-border/60 last:border-0">
+                            <td class="max-w-0 px-4 py-3 align-top" :style="{
+                                paddingLeft: `calc(0.75rem + ${task.tree_depth} * 1.25rem)`,
+                            }">
                                 <div class="flex min-w-0 items-start gap-1.5">
-                                    <CornerDownRight
-                                        v-if="task.tree_depth > 0"
-                                        class="mt-0.5 size-4 shrink-0 text-muted-foreground"
-                                        aria-hidden="true"
-                                    />
+                                    <CornerDownRight v-if="task.tree_depth > 0"
+                                        class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                                     <div class="min-w-0 flex-1">
-                                        <Button
-                                            variant="link"
+                                        <Button variant="link"
                                             class="h-auto w-full min-w-0 justify-start p-0 font-medium text-foreground"
-                                            as-child
-                                        >
+                                            as-child>
                                             <Link
                                                 class="block text-left text-foreground line-clamp-2 break-words hover:underline"
-                                                :title="task.title"
-                                                :href="
-                                                    projectTasksShow.url({
-                                                        project: project.id,
-                                                        task: task.id,
-                                                    })
-                                                "
-                                            >
+                                                :title="task.title" :href="projectTasksShow.url({
+                                                    project: project.id,
+                                                    task: task.id,
+                                                })
+                                                    ">
                                                 {{ task.title }}
                                             </Link>
                                         </Button>
-                                        <span
-                                            v-if="task.children_count > 0"
-                                            class="mt-0.5 block text-xs text-muted-foreground"
-                                        >
+                                        <span v-if="task.children_count > 0"
+                                            class="mt-0.5 block text-xs text-muted-foreground">
                                             ({{ task.children_count }} subtasks)
                                         </span>
                                     </div>
@@ -752,14 +610,11 @@ onMounted(() => {
                             <td class="px-4 py-3">
                                 <template v-if="task.project_requirement_id">
                                     <Button variant="link" class="h-auto p-0" as-child>
-                                        <Link
-                                            :href="
-                                                requirementsShow.url({
-                                                    project: project.id,
-                                                    requirement: task.project_requirement_id,
-                                                })
-                                            "
-                                        >
+                                        <Link :href="requirementsShow.url({
+                                            project: project.id,
+                                            requirement: task.project_requirement_id,
+                                        })
+                                            ">
                                             {{ task.requirement_title ?? 'View' }}
                                         </Link>
                                     </Button>
@@ -771,32 +626,17 @@ onMounted(() => {
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex flex-wrap justify-end gap-2">
-                                    <Button
-                                        v-if="task.can_submit_task_completion"
-                                        variant="secondary"
-                                        size="sm"
-                                        type="button"
-                                        @click="submitForCompletionFromList(task)"
-                                    >
+                                    <Button v-if="task.can_submit_task_completion" variant="secondary" size="sm"
+                                        type="button" @click="submitForCompletionFromList(task)">
                                         Submit for completion
                                     </Button>
-                                    <Button
-                                        v-if="task.can_update"
-                                        variant="outline"
-                                        size="sm"
-                                        type="button"
-                                        @click="openEdit(task)"
-                                    >
+                                    <Button v-if="task.can_update" variant="outline" size="sm" type="button"
+                                        @click="openEdit(task)">
                                         Edit
                                     </Button>
-                                    <Button
-                                        v-if="task.can_delete"
-                                        variant="outline"
-                                        size="sm"
-                                        class="text-destructive hover:bg-destructive/10"
-                                        type="button"
-                                        @click="openDeleteDialog(task)"
-                                    >
+                                    <Button v-if="task.can_delete" variant="outline" size="sm"
+                                        class="text-destructive hover:bg-destructive/10" type="button"
+                                        @click="openDeleteDialog(task)">
                                         Delete
                                     </Button>
                                 </div>
@@ -810,6 +650,6 @@ onMounted(() => {
                     </tbody>
                 </table>
             </div>
-            </GlassCard>
+        </GlassCard>
     </div>
 </template>
