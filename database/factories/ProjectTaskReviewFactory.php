@@ -26,7 +26,7 @@ class ProjectTaskReviewFactory extends Factory
     {
         return [
             'project_task_id' => ProjectTask::factory(),
-            'reviewer_user_id' => User::factory(),
+            'reviewer_user_id' => User::first()->id,
             'review_notes' => fake()->optional(0.7)->sentence(),
             'task_rating' => fake()->numberBetween(1, 5),
             'assignee_rating' => fake()->optional(0.9)->numberBetween(1, 5),

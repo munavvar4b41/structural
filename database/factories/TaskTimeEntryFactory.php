@@ -24,7 +24,8 @@ class TaskTimeEntryFactory extends Factory
      */
     public function definition(): array
     {
-        $start = now()->subMinutes(fake()->numberBetween(15, 240));
+        $now = now()->subDays(fake()->numberBetween(0, 30));
+        $start = $now->subMinutes(fake()->numberBetween(15, 240));
         $end = (clone $start)->addMinutes(fake()->numberBetween(5, 60));
 
         return [
@@ -34,7 +35,7 @@ class TaskTimeEntryFactory extends Factory
 
                 return $task?->project_id ?? Project::factory()->create()->id;
             },
-            'user_id' => User::factory(),
+            'user_id' => User::first()->id,
             'started_at' => $start,
             'ended_at' => $end,
             'duration_seconds' => $start->diffInSeconds($end),

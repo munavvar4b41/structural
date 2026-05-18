@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\MyWorkController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\ProjectRequirementController;
 use App\Http\Controllers\Admin\ProjectRequirementMessageController;
+use App\Http\Controllers\Admin\ProjectTaskChecklistItemController;
 use App\Http\Controllers\Admin\ProjectTaskController;
 use App\Http\Controllers\Admin\TaskCompletionReviewController;
 use App\Http\Controllers\Admin\TaskRatingReportController;
@@ -71,5 +72,8 @@ Route::post('time-entries/pause', [TaskTimerController::class, 'pause'])->name('
 Route::post('time-entries/resume', [TaskTimerController::class, 'resume'])->name('time-entries.resume');
 Route::resource('projects.tasks.time-entries', TaskTimeEntryController::class)
     ->only(['store', 'update', 'destroy'])
+    ->scoped();
+Route::resource('projects.tasks.checklist-items', ProjectTaskChecklistItemController::class)
+    ->only(['index', 'store', 'update', 'destroy'])
     ->scoped();
 Route::get('time-report', [TimeReportController::class, 'index'])->name('time-report.index');

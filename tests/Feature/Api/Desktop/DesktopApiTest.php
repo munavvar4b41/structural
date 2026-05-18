@@ -72,7 +72,10 @@ class DesktopApiTest extends TestCase
 
         Sanctum::actingAs($staff);
 
-        $this->actingAs($staff)->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+        $this->postJson(route('api.desktop.timer.start'), [
+            'project_id' => $project->id,
+            'task_id' => $task->id,
+        ])->assertOk();
 
         $response = $this->getJson(route('api.desktop.tray'))->assertOk();
 
@@ -109,7 +112,9 @@ class DesktopApiTest extends TestCase
         ])->assertOk()->assertJsonPath('active.task_id', $second->id);
 
         $first = TaskTimeEntry::query()->where('project_task_id', $task->id)->firstOrFail();
-        $this->assertNotNull($first->ended_at);
+        $this->assertNull($first->ended_at);
+        $this->assertNotNull($first->paused_at);
+        $this->assertSame(30 * 60, $first->elapsedSeconds());
 
         Carbon::setTestNow();
     }
@@ -145,9 +150,34 @@ class DesktopApiTest extends TestCase
 
         Sanctum::actingAs($staff);
 
+        $toDoIndex = array_search(ProjectTaskStatus::ToDo, ProjectTaskStatus::boardOrder(), true);
+        $this->assertNotFalse($toDoIndex);
+
         $this->getJson(route('api.desktop.my-work'))
             ->assertOk()
-            ->assertJsonStructure(['columns', 'status_options']);
+            ->assertJsonStructure([
+                'columns',
+                'status_options',
+                'project_options',
+                'filters' => ['project_id'],
+            ])
+            ->assertJsonPath("columns.{$toDoIndex}.meta.per_page", 20)
+            ->assertJsonPath("columns.{$toDoIndex}.tasks.0.timer_state", 'idle')
+            ->assertJsonStructure([
+                'columns' => [
+                    [
+                        'status',
+                        'label',
+                        'tasks',
+                        'meta' => [
+                            'total',
+                            'current_page',
+                            'last_page',
+                            'per_page',
+                        ],
+                    ],
+                ],
+            ]);
     }
 
     public function test_logout_revokes_token(): void

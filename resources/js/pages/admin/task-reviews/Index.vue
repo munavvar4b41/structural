@@ -338,7 +338,7 @@ function submittedLabel(at: string | null): string {
                     <InputError :message="form.errors.creator_rating" />
                 </div>
 
-                <DialogFooter class="gap-2 sm:gap-0">
+                <DialogFooter class="gap-3">
                     <Button type="button" variant="outline" @click="closeConfirm">Cancel</Button>
                     <Button type="submit" :disabled="form.processing">Confirm & mark done</Button>
                 </DialogFooter>

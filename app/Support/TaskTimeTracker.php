@@ -7,6 +7,7 @@ use App\Enums\TimeEntrySource;
 use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -14,50 +15,55 @@ use Illuminate\Validation\ValidationException;
 /**
  * Single point of entry for time-tracking writes. Enforces:
  * - one running entry per user (transactional, lockForUpdate)
+ * - switching tasks pauses the prior entry; same-day return resumes it
  * - non-overlapping closed entries per user (manual create/update)
  * - duration_seconds is always populated when an entry is closed.
  */
 class TaskTimeTracker
 {
     /**
-     * Start a fresh timer entry for $user on $task. If the user already has a
-     * running entry it is stopped first inside the same transaction.
+     * Start or resume a timer on $task for today. Pauses any other running entry
+     * instead of closing it. Reuses today's open paused entry when switching back.
      */
     public function start(User $user, ProjectTask $task, ?string $notes = null): TaskTimeEntry
     {
         return DB::transaction(function () use ($user, $task, $notes): TaskTimeEntry {
-            $running = TaskTimeEntry::query()
-                ->where('user_id', $user->id)
-                ->whereNull('ended_at')
-                ->lockForUpdate()
-                ->first();
-
             $now = now();
 
+            $this->closeStaleOpenEntriesForUser($user, $now);
+
+            TaskTimeEntry::query()
+                ->where('user_id', $user->id)
+                ->open()
+                ->lockForUpdate()
+                ->get();
+
+            $todayOpen = $this->findTodayOpenEntry($user, $task, $now);
+
+            $running = TaskTimeEntry::query()
+                ->where('user_id', $user->id)
+                ->running()
+                ->first();
+
+            if ($todayOpen !== null && $todayOpen->isRunning()) {
+                return $todayOpen;
+            }
+
+            if ($todayOpen !== null && $todayOpen->isPaused()) {
+                if ($running !== null && $running->id !== $todayOpen->id) {
+                    $this->pauseEntry($running, $now);
+                }
+
+                $this->resumeEntry($todayOpen, $now);
+
+                return $todayOpen->refresh();
+            }
+
             if ($running !== null) {
-                $this->closeEntry($running, $now);
+                $this->pauseEntry($running, $now);
             }
 
-            $task->refresh();
-            $previousStatus = $this->statusShouldAutoTransition($task->status) ? $task->status : null;
-
-            $entry = TaskTimeEntry::query()->create([
-                'project_task_id' => $task->id,
-                'project_id' => $task->project_id,
-                'user_id' => $user->id,
-                'started_at' => $now,
-                'ended_at' => null,
-                'duration_seconds' => null,
-                'source' => TimeEntrySource::Timer,
-                'previous_task_status' => $previousStatus?->value,
-                'notes' => $notes,
-            ]);
-
-            if ($previousStatus !== null) {
-                $task->forceFill(['status' => ProjectTaskStatus::InProgress])->save();
-            }
-
-            return $entry;
+            return $this->createTimerEntry($user, $task, $notes, $now);
         });
     }
 
@@ -67,10 +73,12 @@ class TaskTimeTracker
     public function pause(User $user): ?TaskTimeEntry
     {
         return DB::transaction(function () use ($user): ?TaskTimeEntry {
+            $now = now();
+            $this->closeStaleOpenEntriesForUser($user, $now);
+
             $running = TaskTimeEntry::query()
                 ->where('user_id', $user->id)
-                ->whereNull('ended_at')
-                ->whereNull('paused_at')
+                ->running()
                 ->lockForUpdate()
                 ->first();
 
@@ -78,22 +86,36 @@ class TaskTimeTracker
                 return null;
             }
 
-            $running->forceFill(['paused_at' => now()])->save();
+            $this->pauseEntry($running, $now);
 
             return $running->refresh();
         });
     }
 
     /**
-     * Resume the user's paused entry, if any.
+     * Resume the user's most recently paused open entry, if any.
      */
     public function resume(User $user): ?TaskTimeEntry
     {
         return DB::transaction(function () use ($user): ?TaskTimeEntry {
+            $now = now();
+            $this->closeStaleOpenEntriesForUser($user, $now);
+
+            $running = TaskTimeEntry::query()
+                ->where('user_id', $user->id)
+                ->running()
+                ->lockForUpdate()
+                ->first();
+
+            if ($running !== null) {
+                $this->pauseEntry($running, $now);
+            }
+
             $paused = TaskTimeEntry::query()
                 ->where('user_id', $user->id)
-                ->whereNull('ended_at')
+                ->open()
                 ->whereNotNull('paused_at')
+                ->orderByDesc('paused_at')
                 ->lockForUpdate()
                 ->first();
 
@@ -101,26 +123,26 @@ class TaskTimeTracker
                 return null;
             }
 
-            $pauseDuration = $paused->paused_at->diffInSeconds(now());
-
-            $paused->forceFill([
-                'accumulated_pause_seconds' => (int) ($paused->accumulated_pause_seconds ?? 0) + $pauseDuration,
-                'paused_at' => null,
-            ])->save();
+            $this->resumeEntry($paused, $now);
 
             return $paused->refresh();
         });
     }
 
     /**
-     * Stop the user's currently open entry (running or paused), if any.
+     * Stop the user's active open entry (running, or paused if none running).
      */
     public function stop(User $user): ?TaskTimeEntry
     {
         return DB::transaction(function () use ($user): ?TaskTimeEntry {
+            $now = now();
+            $this->closeStaleOpenEntriesForUser($user, $now);
+
             $open = TaskTimeEntry::query()
                 ->where('user_id', $user->id)
-                ->whereNull('ended_at')
+                ->open()
+                ->orderByRaw('CASE WHEN paused_at IS NULL THEN 0 ELSE 1 END')
+                ->orderByDesc('started_at')
                 ->lockForUpdate()
                 ->first();
 
@@ -128,7 +150,7 @@ class TaskTimeTracker
                 return null;
             }
 
-            $this->closeEntry($open, now());
+            $this->closeEntry($open, $now);
 
             return $open->refresh();
         });
@@ -182,6 +204,95 @@ class TaskTimeTracker
         return $entry->refresh();
     }
 
+    private function createTimerEntry(
+        User $user,
+        ProjectTask $task,
+        ?string $notes,
+        CarbonInterface $now,
+    ): TaskTimeEntry {
+        $task->refresh();
+        $previousStatus = $this->statusShouldAutoTransition($task->status) ? $task->status : null;
+
+        $entry = TaskTimeEntry::query()->create([
+            'project_task_id' => $task->id,
+            'project_id' => $task->project_id,
+            'user_id' => $user->id,
+            'started_at' => $now,
+            'ended_at' => null,
+            'duration_seconds' => null,
+            'source' => TimeEntrySource::Timer,
+            'previous_task_status' => $previousStatus?->value,
+            'notes' => $notes,
+        ]);
+
+        if ($previousStatus !== null) {
+            $task->forceFill(['status' => ProjectTaskStatus::InProgress])->save();
+        }
+
+        return $entry;
+    }
+
+    private function findTodayOpenEntry(User $user, ProjectTask $task, CarbonInterface $at): ?TaskTimeEntry
+    {
+        [$startOfDay, $endOfDay] = $this->dayBounds($at);
+
+        return TaskTimeEntry::query()
+            ->where('user_id', $user->id)
+            ->where('project_task_id', $task->id)
+            ->open()
+            ->whereBetween('started_at', [$startOfDay, $endOfDay])
+            ->first();
+    }
+
+    /**
+     * @return array{0: CarbonImmutable, 1: CarbonImmutable}
+     */
+    private function dayBounds(CarbonInterface $at): array
+    {
+        $day = CarbonImmutable::parse($at);
+
+        return [$day->startOfDay(), $day->endOfDay()];
+    }
+
+    private function closeStaleOpenEntriesForUser(User $user, CarbonInterface $now): void
+    {
+        [$startOfDay] = $this->dayBounds($now);
+
+        $stale = TaskTimeEntry::query()
+            ->where('user_id', $user->id)
+            ->open()
+            ->where('started_at', '<', $startOfDay)
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($stale as $entry) {
+            $this->closeEntry($entry, $now);
+        }
+    }
+
+    private function pauseEntry(TaskTimeEntry $entry, CarbonInterface $at): void
+    {
+        if ($entry->paused_at !== null) {
+            return;
+        }
+
+        $entry->forceFill(['paused_at' => $at])->save();
+    }
+
+    private function resumeEntry(TaskTimeEntry $entry, CarbonInterface $at): void
+    {
+        if ($entry->paused_at === null) {
+            return;
+        }
+
+        $pauseDuration = $entry->paused_at->diffInSeconds($at);
+
+        $entry->forceFill([
+            'accumulated_pause_seconds' => (int) ($entry->accumulated_pause_seconds ?? 0) + $pauseDuration,
+            'paused_at' => null,
+        ])->save();
+    }
+
     private function closeEntry(TaskTimeEntry $entry, CarbonInterface $endedAt): void
     {
         if ($endedAt->lessThan($entry->started_at)) {
@@ -209,8 +320,6 @@ class TaskTimeTracker
             return;
         }
 
-        // Only restore if the task is still parked at InProgress; if the user
-        // moved it elsewhere mid-run we respect their explicit choice.
         if ($task->status === ProjectTaskStatus::InProgress) {
             $task->forceFill(['status' => $previousStatus])->save();
         }
@@ -250,8 +359,13 @@ class TaskTimeTracker
             ->where('user_id', $userId)
             ->where('started_at', '<', $end)
             ->where(function ($q) use ($start): void {
-                $q->whereNull('ended_at')
-                    ->orWhere('ended_at', '>', $start);
+                $q->where(function ($q2): void {
+                    $q2->whereNull('ended_at')
+                        ->whereNull('paused_at');
+                })->orWhere(function ($q2) use ($start): void {
+                    $q2->whereNotNull('ended_at')
+                        ->where('ended_at', '>', $start);
+                });
             });
 
         if ($excludeEntryId !== null) {

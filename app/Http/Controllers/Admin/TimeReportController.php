@@ -59,7 +59,7 @@ class TimeReportController extends Controller
         $entries = (clone $entriesQuery)
             ->with(['project:id,name,code', 'task:id,title,project_id'])
             ->orderByDesc('started_at')
-            ->limit(500)
+            ->limit(50)
             ->get();
 
         $perDay = $this->aggregatePerDay($entries);
