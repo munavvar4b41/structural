@@ -1,14 +1,23 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { CheckCircle, Eye, List } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
 import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin/TaskCompletionReviewController';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import TaskShowPanel from '@/components/tasks/TaskShowPanel.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogScrollContent,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
@@ -16,6 +25,8 @@ import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { index as myWorkIndex } from '@/routes/admin/my-work/index';
 import { index as projectsIndex } from '@/routes/admin/projects/index';
+import { show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
+import type { TaskShowPayload } from '@/types/projectTaskShow';
 
 type TaskCard = {
     id: number;
@@ -55,11 +66,17 @@ const props = defineProps<{
     status_options: StatusOption[];
     project_options: ProjectOption[];
     filters: { project_id: number | null };
+    task_preview?: TaskShowPayload | null;
 }>();
+
+const page = usePage();
 
 const projectValue = ref(
     props.filters.project_id !== null ? String(props.filters.project_id) : '',
 );
+
+const taskPreviewOpen = ref(false);
+const taskPreviewLoading = ref(false);
 
 watch(
     () => props.filters.project_id,
@@ -71,6 +88,16 @@ watch(
     },
 );
 
+watch(
+    () => props.task_preview,
+    (preview) => {
+        if (preview) {
+            taskPreviewOpen.value = true;
+            taskPreviewLoading.value = false;
+        }
+    },
+);
+
 const projectSelectOptions = computed(() => [
     { value: '', label: 'All projects' },
     ...props.project_options.map((o) => ({
@@ -79,7 +106,27 @@ const projectSelectOptions = computed(() => [
     })),
 ]);
 
+const taskPreviewShowUrl = computed(() => {
+    const preview = props.task_preview;
+
+    if (preview === null || preview === undefined) {
+        return null;
+    }
+
+    return projectTasksShow.url({
+        project: preview.project.id,
+        task: preview.task.id,
+    });
+});
+
 const doneStatusValue = 'done';
+
+function parseTaskIdFromUrl(): number | null {
+    const url = new URL(page.url, window.location.origin);
+    const id = Number.parseInt(url.searchParams.get('task_id') ?? '', 10);
+
+    return id > 0 ? id : null;
+}
 
 function boardQuery(extra: Record<string, string | number> = {}): Record<string, string | number> {
     const query: Record<string, string | number> = { ...extra };
@@ -88,7 +135,65 @@ function boardQuery(extra: Record<string, string | number> = {}): Record<string,
         query.project_id = props.filters.project_id;
     }
 
+    const url = new URL(page.url, window.location.origin);
+    url.searchParams.forEach((value, key) => {
+        if (key.startsWith('page_') && !(key in query)) {
+            query[key] = value;
+        }
+    });
+
     return query;
+}
+
+function openTaskPreview(task: TaskCard): void {
+    taskPreviewOpen.value = true;
+    taskPreviewLoading.value = true;
+
+    router.get(myWorkIndex.url(), boardQuery({ task_id: task.id }), {
+        preserveState: true,
+        preserveScroll: true,
+        only: ['task_preview'],
+        onFinish: () => {
+            taskPreviewLoading.value = false;
+        },
+    });
+}
+
+function openTaskPreviewById(taskId: number): void {
+    taskPreviewLoading.value = true;
+
+    router.get(myWorkIndex.url(), boardQuery({ task_id: taskId }), {
+        preserveState: true,
+        preserveScroll: true,
+        only: ['task_preview'],
+        onFinish: () => {
+            taskPreviewLoading.value = false;
+        },
+    });
+}
+
+function closeTaskPreview(): void {
+    taskPreviewOpen.value = false;
+    taskPreviewLoading.value = false;
+
+    router.get(myWorkIndex.url(), boardQuery(), {
+        preserveState: true,
+        preserveScroll: true,
+        only: ['task_preview'],
+    });
+}
+
+function onTaskPreviewOpenChange(open: boolean): void {
+    if (!open) {
+        closeTaskPreview();
+    }
+}
+
+function onCardKeydown(event: KeyboardEvent, task: TaskCard): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openTaskPreview(task);
+    }
 }
 
 function applyProjectFilter(value: string): void {
@@ -145,7 +250,7 @@ function submitForCompletion(task: TaskCard): void {
         {
             preserveScroll: true,
             onSuccess: () => {
-                router.reload({ only: ['columns'] });
+                router.reload({ only: ['columns', 'task_preview'] });
             },
         },
     );
@@ -174,20 +279,62 @@ function patchTaskStatus(task: TaskCard, status: string): void {
         {
             preserveScroll: true,
             onSuccess: () => {
-                router.reload({ only: ['columns'] });
+                router.reload({ only: ['columns', 'task_preview'] });
             },
         },
     );
 }
+
+onMounted(() => {
+    const taskId = parseTaskIdFromUrl();
+
+    if (taskId !== null) {
+        taskPreviewOpen.value = true;
+
+        if (props.task_preview === null || props.task_preview === undefined) {
+            taskPreviewLoading.value = true;
+        }
+    }
+});
 </script>
 
 <template>
 
     <Head title="My work" />
 
+    <Dialog :open="taskPreviewOpen" @update:open="onTaskPreviewOpenChange">
+        <DialogScrollContent class="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
+            <DialogHeader>
+                <DialogTitle>{{ task_preview?.task.title ?? 'Task details' }}</DialogTitle>
+                <DialogDescription v-if="task_preview">
+                    {{ task_preview.project.name }}
+                    <span v-if="task_preview.project.code">({{ task_preview.project.code }})</span>
+                </DialogDescription>
+            </DialogHeader>
+
+            <div v-if="taskPreviewLoading" class="flex flex-col gap-4 py-2">
+                <div class="h-8 w-2/3 animate-pulse rounded-md bg-muted" />
+                <div class="h-24 animate-pulse rounded-xl bg-muted/60" />
+                <div class="h-32 animate-pulse rounded-xl bg-muted/60" />
+                <div class="h-40 animate-pulse rounded-xl bg-muted/60" />
+            </div>
+
+            <TaskShowPanel v-else-if="task_preview" embedded :project="task_preview.project" :task="task_preview.task"
+                :can_manage_project="task_preview.can_manage_project" :checklist="task_preview.checklist"
+                :time_tracking="task_preview.time_tracking" @close="closeTaskPreview"
+                @open-task="openTaskPreviewById" />
+
+            <DialogFooter v-if="task_preview && taskPreviewShowUrl" class="gap-3 sm:justify-between">
+                <Button variant="outline" as-child>
+                    <Link :href="taskPreviewShowUrl">Open full page</Link>
+                </Button>
+            </DialogFooter>
+        </DialogScrollContent>
+    </Dialog>
+
     <div class="flex flex-col gap-8">
         <PageHeader title="My work"
-            description="Tasks assigned to you, grouped by status. Click a card to open the task, or use Move to to change status." />
+            description="Tasks assigned to you, grouped by status. Click a card to view details, or use the status control to change status." />
 
         <div class="flex flex-wrap items-end gap-4">
             <div class="grid gap-1">
@@ -210,7 +357,9 @@ function patchTaskStatus(task: TaskCard, status: string): void {
                 </div>
                 <div class="flex flex-col gap-2">
                     <GlassCard v-for="task in col.tasks" :key="task.id" class="overflow-hidden p-0" hover>
-                        <Link class="block min-w-0 p-3 pb-0 hover:bg-muted/40" :href="task.task_show_url">
+                        <button type="button"
+                            class="block min-w-0 w-full cursor-pointer p-3 pb-0 text-left hover:bg-muted/40"
+                            @click="openTaskPreview(task)" @keydown="onCardKeydown($event, task)">
                             <p class="line-clamp-2 break-words text-sm font-medium leading-snug text-foreground"
                                 :title="task.title">
                                 {{ task.title }}
@@ -227,7 +376,7 @@ function patchTaskStatus(task: TaskCard, status: string): void {
                             <p class="mt-2 text-xs text-muted-foreground">
                                 Est.: {{ formatTaskMinutes(task.estimated_minutes) }}
                             </p>
-                        </Link>
+                        </button>
                         <div class="flex flex-col gap-2 p-3 pt-2" @click.stop>
                             <TaskFormSelect :id="`st-${task.id}`" :name="`status-${task.id}`" class="text-xs"
                                 :model-value="task.status" required placeholder="Status"
@@ -254,13 +403,12 @@ function patchTaskStatus(task: TaskCard, status: string): void {
                                 </Tooltip>
                                 <Tooltip>
                                     <TooltipTrigger class="w-full flex-1">
-                                        <Button variant="outline" size="sm" class="h-8 w-full text-xs" as-child>
-                                            <Link :href="task.task_show_url">
-                                                <Eye class="size-3.5" />
-                                            </Link>
+                                        <Button variant="outline" size="sm" class="h-8 w-full text-xs" type="button"
+                                            @click="openTaskPreview(task)">
+                                            <Eye class="size-3.5" />
                                         </Button>
                                     </TooltipTrigger>
-                                    <TooltipContent> Open task </TooltipContent>
+                                    <TooltipContent> View task </TooltipContent>
                                 </Tooltip>
                                 <Tooltip>
                                     <TooltipTrigger class="w-full flex-1">
