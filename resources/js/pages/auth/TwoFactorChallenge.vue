@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Form, Head, setLayoutProps } from '@inertiajs/vue3';
 import { computed, ref, watchEffect } from 'vue';
+import FormField from '@/components/dashboard/FormField.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,11 +52,11 @@ const code = ref<string>('');
 <template>
     <Head title="Two-factor authentication" />
 
-    <div class="space-y-6">
+    <div class="flex flex-col gap-6">
         <template v-if="!showRecoveryInput">
             <Form
                 v-bind="store.form()"
-                class="space-y-4"
+                class="flex flex-col gap-6"
                 reset-on-error
                 @error="code = ''"
                 #default="{ errors, processing, clearErrors }"
@@ -102,18 +103,25 @@ const code = ref<string>('');
         <template v-else>
             <Form
                 v-bind="store.form()"
-                class="space-y-4"
+                class="flex flex-col gap-6"
                 reset-on-error
                 #default="{ errors, processing, clearErrors }"
             >
-                <Input
-                    name="recovery_code"
-                    type="text"
-                    placeholder="Enter recovery code"
-                    :autofocus="showRecoveryInput"
+                <FormField
+                    label="Recovery code"
+                    html-for="recovery_code"
+                    :error="errors.recovery_code"
                     required
-                />
-                <InputError :message="errors.recovery_code" />
+                >
+                    <Input
+                        id="recovery_code"
+                        name="recovery_code"
+                        type="text"
+                        placeholder="Enter recovery code"
+                        :autofocus="showRecoveryInput"
+                        required
+                    />
+                </FormField>
                 <Button type="submit" class="w-full" :disabled="processing"
                     >Continue</Button
                 >

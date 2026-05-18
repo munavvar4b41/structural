@@ -3,16 +3,11 @@ import { Form, Head, Link } from '@inertiajs/vue3';
 import { ChevronDown } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
-import Heading from '@/components/Heading.vue';
+import FormField from '@/components/dashboard/FormField.vue';
+import GlassCard from '@/components/dashboard/GlassCard.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -144,7 +139,7 @@ defineOptions({
     <Head :title="`Edit ${user.name}`" />
 
     <div class="flex flex-col gap-8">
-        <Heading
+        <PageHeader
             title="Edit user"
             :description="`Update ${user.name}`"
         />
@@ -164,16 +159,19 @@ defineOptions({
                 :value="id"
             />
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Account</CardTitle>
-                    <CardDescription>
+            <GlassCard class="p-6">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Account</h2>
+                    <p class="text-sm text-muted-foreground">
                         Name, email, role, and optional new password
-                    </CardDescription>
-                </CardHeader>
-                <CardContent class="grid gap-6">
-                    <div class="grid gap-2">
-                        <Label for="name">Name</Label>
+                    </p>
+                </div>
+                <div class="grid gap-6">
+                    <FormField
+                        label="Name"
+                        html-for="name"
+                        :error="errors.name" required
+                    >
                         <Input
                             id="name"
                             name="name"
@@ -182,10 +180,12 @@ defineOptions({
                             autocomplete="name"
                             :default-value="user.name"
                         />
-                        <InputError :message="errors.name" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="email">Email</Label>
+                    </FormField>
+                    <FormField
+                        label="Email"
+                        html-for="email"
+                        :error="errors.email" required
+                    >
                         <Input
                             id="email"
                             name="email"
@@ -194,8 +194,7 @@ defineOptions({
                             autocomplete="username"
                             :default-value="user.email"
                         />
-                        <InputError :message="errors.email" />
-                    </div>
+                    </FormField>
                     <div class="grid gap-2">
                         <Label id="role-label">Role</Label>
                         <DropdownMenu>
@@ -302,8 +301,11 @@ defineOptions({
                         </p>
                         <InputError :message="errors.team_ids" />
                     </div>
-                    <div class="grid gap-2">
-                        <Label for="password">New password</Label>
+                    <FormField
+                        label="New password"
+                        html-for="password"
+                        :error="errors.password"
+                    >
                         <Input
                             id="password"
                             name="password"
@@ -311,22 +313,21 @@ defineOptions({
                             autocomplete="new-password"
                             placeholder="Leave blank to keep current password"
                         />
-                        <InputError :message="errors.password" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="password_confirmation">
-                            Confirm new password
-                        </Label>
+                    </FormField>
+                    <FormField
+                        label="Confirm new password"
+                        html-for="password_confirmation"
+                        :error="errors.password_confirmation"
+                    >
                         <Input
                             id="password_confirmation"
                             name="password_confirmation"
                             type="password"
                             autocomplete="new-password"
                         />
-                        <InputError :message="errors.password_confirmation" />
-                    </div>
-                </CardContent>
-            </Card>
+                    </FormField>
+                </div>
+            </GlassCard>
 
             <div class="flex items-center gap-4">
                 <Button type="submit" :disabled="processing">Save</Button>

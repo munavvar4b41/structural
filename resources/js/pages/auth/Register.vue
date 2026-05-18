@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { Form, Head, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/dashboard/FormField.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
@@ -48,8 +47,12 @@ const emailPlaceholder = computed(
                 email address to create an account.
             </p>
 
-            <div class="grid gap-2">
-                <Label for="name">Name</Label>
+            <FormField
+                label="Name"
+                html-for="name"
+                :error="errors.name"
+                required
+            >
                 <Input
                     id="name"
                     type="text"
@@ -60,11 +63,14 @@ const emailPlaceholder = computed(
                     name="name"
                     placeholder="Full name"
                 />
-                <InputError :message="errors.name" />
-            </div>
+            </FormField>
 
-            <div class="grid gap-2">
-                <Label for="email">Email address</Label>
+            <FormField
+                label="Email address"
+                html-for="email"
+                :error="errors.email"
+                required
+            >
                 <Input
                     id="email"
                     type="email"
@@ -74,11 +80,14 @@ const emailPlaceholder = computed(
                     name="email"
                     :placeholder="emailPlaceholder"
                 />
-                <InputError :message="errors.email" />
-            </div>
+            </FormField>
 
-            <div class="grid gap-2">
-                <Label for="password">Password</Label>
+            <FormField
+                label="Password"
+                html-for="password"
+                :error="errors.password"
+                required
+            >
                 <PasswordInput
                     id="password"
                     required
@@ -87,11 +96,14 @@ const emailPlaceholder = computed(
                     name="password"
                     placeholder="Password"
                 />
-                <InputError :message="errors.password" />
-            </div>
+            </FormField>
 
-            <div class="grid gap-2">
-                <Label for="password_confirmation">Confirm password</Label>
+            <FormField
+                label="Confirm password"
+                html-for="password_confirmation"
+                :error="errors.password_confirmation"
+                required
+            >
                 <PasswordInput
                     id="password_confirmation"
                     required
@@ -100,8 +112,7 @@ const emailPlaceholder = computed(
                     name="password_confirmation"
                     placeholder="Confirm password"
                 />
-                <InputError :message="errors.password_confirmation" />
-            </div>
+            </FormField>
 
             <Button
                 type="submit"

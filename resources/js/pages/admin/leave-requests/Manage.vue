@@ -2,7 +2,8 @@
 import { Head, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import LeaveRequestController from '@/actions/App/Http/Controllers/Admin/LeaveRequestController';
-import Heading from '@/components/Heading.vue';
+import DataTable from '@/components/dashboard/DataTable.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import { Button } from '@/components/ui/button';
@@ -188,8 +189,8 @@ const filteredLeaveRequests = computed(() => {
 <template>
     <Head title="Leave approvals" />
 
-    <div class="flex flex-col gap-8">
-        <Heading
+    <div class="flex flex-col gap-6">
+        <PageHeader
             title="Leave approvals"
             description="Approve or reject pending requests from staff and team heads."
         />
@@ -199,7 +200,7 @@ const filteredLeaveRequests = computed(() => {
                 <CardTitle>All leave requests</CardTitle>
                 <CardDescription>Pending items appear first.</CardDescription>
             </CardHeader>
-            <CardContent class="overflow-x-auto">
+            <CardContent>
                 <div class="mb-4 flex flex-col gap-4">
                     <ListToolbar
                         v-model="searchText"
@@ -256,30 +257,44 @@ const filteredLeaveRequests = computed(() => {
                     </ListToolbar>
                 </div>
 
-                <table class="w-full min-w-[880px] text-left text-sm">
+                <DataTable min-width="880px">
                     <thead>
-                        <tr class="border-b">
-                            <th class="p-2 font-medium">Requester</th>
-                            <th class="p-2 font-medium">Date</th>
-                            <th class="p-2 font-medium">Type</th>
-                            <th class="p-2 font-medium">Detail</th>
-                            <th class="p-2 font-medium">Status</th>
-                            <th class="p-2 font-medium"></th>
+                        <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Requester
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Date
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Type
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Detail
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Status
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground" />
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="row in filteredLeaveRequests" :key="row.id" class="border-b">
-                            <td class="p-2">
+                        <tr
+                            v-for="row in filteredLeaveRequests"
+                            :key="row.id"
+                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
+                        >
+                            <td class="px-5 py-3.5">
                                 <div class="font-medium">{{ row.user?.name ?? '—' }}</div>
-                                <div class="text-muted-foreground text-xs">
+                                <div class="text-xs text-muted-foreground">
                                     {{ row.user?.email }}
                                 </div>
                             </td>
-                            <td class="p-2">{{ row.date }}</td>
-                            <td class="p-2">{{ row.type_label }}</td>
-                            <td class="p-2">{{ detailLabel(row) }}</td>
-                            <td class="p-2">{{ row.status_label }}</td>
-                            <td class="p-2 text-right whitespace-nowrap">
+                            <td class="px-5 py-3.5">{{ row.date }}</td>
+                            <td class="px-5 py-3.5">{{ row.type_label }}</td>
+                            <td class="px-5 py-3.5">{{ detailLabel(row) }}</td>
+                            <td class="px-5 py-3.5">{{ row.status_label }}</td>
+                            <td class="px-5 py-3.5 text-right whitespace-nowrap">
                                 <template v-if="row.status === 'pending'">
                                     <Button
                                         type="button"
@@ -306,7 +321,7 @@ const filteredLeaveRequests = computed(() => {
                             </td>
                         </tr>
                         <tr v-if="filteredLeaveRequests.length === 0">
-                            <td colspan="6" class="text-muted-foreground p-4 text-center">
+                            <td colspan="6" class="px-5 py-8 text-center text-muted-foreground">
                                 {{
                                     leave_requests.length === 0
                                         ? 'No leave requests yet.'
@@ -315,7 +330,7 @@ const filteredLeaveRequests = computed(() => {
                             </td>
                         </tr>
                     </tbody>
-                </table>
+                </DataTable>
             </CardContent>
         </Card>
     </div>

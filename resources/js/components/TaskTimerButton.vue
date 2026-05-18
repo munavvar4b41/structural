@@ -58,9 +58,11 @@ const buttonTitle = computed(() => {
     if (isRunningForThisTask.value) {
         return 'Stop timer';
     }
+
     if (isRunningElsewhere.value) {
         return 'Switch timer to this task';
     }
+
     return 'Start timer';
 });
 </script>

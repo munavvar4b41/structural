@@ -3,11 +3,13 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import TeamController from '@/actions/App/Http/Controllers/Admin/TeamController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
-import Heading from '@/components/Heading.vue';
+import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTablePagination from '@/components/dashboard/DataTablePagination.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import { Button } from '@/components/ui/button';
+import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import {
     create as teamsCreate,
     edit as teamsEdit,
@@ -49,7 +51,7 @@ defineOptions({
     },
 });
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 const deleteDialogOpen = ref(false);
 const teamPendingDelete = ref<TeamRow | null>(null);
@@ -103,93 +105,76 @@ const deleteTeamDescription = computed(() => {
         @confirm="executeDelete"
     />
 
-    <div class="flex flex-col gap-8">
-        <div class="flex flex-col gap-4">
-            <Heading
-                title="Teams"
-                description="Manage teams and cross-team assignments"
-            />
+    <div class="flex flex-col gap-6">
+        <PageHeader
+            title="Teams"
+            description="Manage teams and cross-team assignments"
+        >
+            <template #actions>
+                <Button as-child>
+                    <Link :href="teamsCreate()">Add team</Link>
+                </Button>
+            </template>
+        </PageHeader>
 
-            <ListToolbar
-                :model-value="filters.search"
-                placeholder="Search team name, code, member…"
-                @update:model-value="reloadSearch"
-            >
-                <template #actions>
-                    <Button as-child>
-                        <Link :href="teamsCreate()">Add team</Link>
-                    </Button>
-                </template>
-            </ListToolbar>
-        </div>
+        <ListToolbar
+            :model-value="filters.search"
+            placeholder="Search team name, code, member…"
+            @update:model-value="reloadSearch"
+        />
 
         <InputError :message="errors.team" />
 
-        <div
-            class="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-        >
-            <table class="w-full text-left text-sm">
-                <thead
-                    class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border"
+        <DataTable>
+            <thead>
+                <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
+                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Name
+                    </th>
+                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Code
+                    </th>
+                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Members
+                    </th>
+                    <th class="px-5 py-3.5 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Actions
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    v-for="team in teams.data"
+                    :key="team.id"
+                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
                 >
-                    <tr>
-                        <th class="px-4 py-3 font-medium">Name</th>
-                        <th class="px-4 py-3 font-medium">Code</th>
-                        <th class="px-4 py-3 font-medium">Members</th>
-                        <th class="px-4 py-3 font-medium text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="team in teams.data" :key="team.id">
-                        <td class="px-4 py-3">{{ team.name }}</td>
-                        <td class="px-4 py-3 text-muted-foreground">
-                            {{ team.code ?? '-' }}
-                        </td>
-                        <td class="px-4 py-3 text-muted-foreground">
-                            {{ team.users_count }}
-                        </td>
-                        <td class="px-4 py-3 text-right">
-                            <div class="flex justify-end gap-2">
-                                <Button variant="outline" size="sm" as-child>
-                                    <Link :href="teamsEdit(team.id)">Edit</Link>
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    class="text-destructive hover:bg-destructive/10"
-                                    type="button"
-                                    @click="openDeleteDialog(team)"
-                                >
-                                    Delete
-                                </Button>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                    <td class="px-5 py-3.5 font-medium">{{ team.name }}</td>
+                    <td class="px-5 py-3.5 text-muted-foreground">
+                        {{ team.code ?? '-' }}
+                    </td>
+                    <td class="px-5 py-3.5 text-muted-foreground">
+                        {{ team.users_count }}
+                    </td>
+                    <td class="px-5 py-3.5 text-right">
+                        <div class="flex justify-end gap-2">
+                            <Button variant="outline" size="sm" as-child>
+                                <Link :href="teamsEdit(team.id)">Edit</Link>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                class="text-destructive hover:bg-destructive/10"
+                                type="button"
+                                @click="openDeleteDialog(team)"
+                            >
+                                Delete
+                            </Button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </DataTable>
 
-        <nav
-            v-if="teams.links.length > 3"
-            class="flex flex-wrap items-center justify-center gap-1"
-            aria-label="Pagination"
-        >
-            <template v-for="(link, i) in teams.links" :key="i">
-                <Button
-                    v-if="link.url"
-                    variant="outline"
-                    size="sm"
-                    :disabled="link.active"
-                    as-child
-                >
-                    <Link :href="link.url" preserve-scroll v-html="link.label" />
-                </Button>
-                <span
-                    v-else
-                    class="px-3 py-1.5 text-sm text-muted-foreground"
-                    v-html="link.label"
-                />
-            </template>
-        </nav>
+        <DataTablePagination :links="teams.links" />
     </div>
 </template>

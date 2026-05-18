@@ -67,6 +67,8 @@ Route::post('projects/{project}/tasks/{task}/timer/start', [TaskTimerController:
     ->scopeBindings()
     ->name('projects.tasks.timer.start');
 Route::post('time-entries/stop', [TaskTimerController::class, 'stop'])->name('time-entries.stop');
+Route::post('time-entries/pause', [TaskTimerController::class, 'pause'])->name('time-entries.pause');
+Route::post('time-entries/resume', [TaskTimerController::class, 'resume'])->name('time-entries.resume');
 Route::resource('projects.tasks.time-entries', TaskTimeEntryController::class)
     ->only(['store', 'update', 'destroy'])
     ->scoped();

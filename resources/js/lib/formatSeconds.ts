@@ -26,6 +26,7 @@ export function formatSeconds(
         if (withSeconds) {
             return `${h}h ${m}m ${s}s`;
         }
+
         return m > 0 ? `${h}h ${m}m` : `${h}h`;
     }
 

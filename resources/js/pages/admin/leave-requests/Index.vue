@@ -2,7 +2,8 @@
 import { Form, Head, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import LeaveRequestController from '@/actions/App/Http/Controllers/Admin/LeaveRequestController';
-import Heading from '@/components/Heading.vue';
+import DataTable from '@/components/dashboard/DataTable.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
@@ -166,9 +167,17 @@ const filteredLeaveRequests = computed(() => {
 
     <Head title="Leave requests" />
 
-    <div class="flex flex-col gap-8">
-        <Heading title="Leave requests"
-            description="Request time off. Super admins and admins must approve before leave is authorized." />
+    <div class="flex flex-col gap-6">
+        <PageHeader
+            title="Leave requests"
+            description="Request time off. Super admins and admins must approve before leave is authorized."
+        >
+            <template #actions>
+                <Button variant="outline" size="sm" type="button" @click="leaveRequestOpen = true">
+                    Add leave request
+                </Button>
+            </template>
+        </PageHeader>
 
         <Dialog v-model:open="leaveRequestOpen">
             <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-lg">
@@ -234,17 +243,11 @@ const filteredLeaveRequests = computed(() => {
         </Dialog>
 
         <Card>
-            <CardHeader class="flex items-center justify-between">
-                <div>
-                    <CardTitle>Your requests</CardTitle>
-                    <CardDescription>Track status and cancel pending requests.</CardDescription>
-                </div>
-                <div><Button variant="outline" size="sm" type="button" @click="leaveRequestOpen = true">
-                        Add leave request
-                    </Button>
-                </div>
+            <CardHeader>
+                <CardTitle>Your requests</CardTitle>
+                <CardDescription>Track status and cancel pending requests.</CardDescription>
             </CardHeader>
-            <CardContent class="overflow-x-auto">
+            <CardContent>
                 <div class="mb-4 flex flex-col gap-4">
                     <ListToolbar v-model="searchText" placeholder="Search reason, date, type, status…">
                         <template #filters>
@@ -267,21 +270,33 @@ const filteredLeaveRequests = computed(() => {
                         </template>
                     </ListToolbar>
                 </div>
-                <table class="w-full min-w-[640px] text-left text-sm">
+                <DataTable min-width="640px">
                     <thead>
-                        <tr class="border-b">
-                            <th class="p-2 font-medium">Date</th>
-                            <th class="p-2 font-medium">Type</th>
-                            <th class="p-2 font-medium">Detail</th>
-                            <th class="p-2 font-medium">Status</th>
-                            <th class="p-2 font-medium"></th>
+                        <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Date
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Type
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Detail
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Status
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground" />
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="row in filteredLeaveRequests" :key="row.id" class="border-b">
-                            <td class="p-2">{{ row.date }}</td>
-                            <td class="p-2">{{ row.type_label }}</td>
-                            <td class="p-2">
+                        <tr
+                            v-for="row in filteredLeaveRequests"
+                            :key="row.id"
+                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
+                        >
+                            <td class="px-5 py-3.5">{{ row.date }}</td>
+                            <td class="px-5 py-3.5">{{ row.type_label }}</td>
+                            <td class="px-5 py-3.5">
                                 <span v-if="row.type === 'half_day'">{{
                                     row.half_day_period_label
                                     }}</span>
@@ -302,8 +317,8 @@ const filteredLeaveRequests = computed(() => {
                                 </span>
                                 <span v-else class="text-muted-foreground">—</span>
                             </td>
-                            <td class="p-2">{{ row.status_label }}</td>
-                            <td class="p-2 text-right">
+                            <td class="px-5 py-3.5">{{ row.status_label }}</td>
+                            <td class="px-5 py-3.5 text-right">
                                 <Button v-if="row.status === 'pending'" type="button" variant="outline" size="sm"
                                     @click="cancelRequest(row)">
                                     Cancel
@@ -311,7 +326,7 @@ const filteredLeaveRequests = computed(() => {
                             </td>
                         </tr>
                         <tr v-if="filteredLeaveRequests.length === 0">
-                            <td colspan="5" class="text-muted-foreground p-4 text-center">
+                            <td colspan="5" class="px-5 py-8 text-center text-muted-foreground">
                                 {{
                                     leave_requests.length === 0
                                         ? 'No requests yet.'
@@ -320,7 +335,7 @@ const filteredLeaveRequests = computed(() => {
                             </td>
                         </tr>
                     </tbody>
-                </table>
+                </DataTable>
             </CardContent>
         </Card>
     </div>

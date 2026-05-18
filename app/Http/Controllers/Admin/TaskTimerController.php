@@ -46,4 +46,32 @@ class TaskTimerController extends Controller
 
         return back()->with('toast', __('Timer stopped.'));
     }
+
+    public function pause(Request $request): RedirectResponse
+    {
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
+        $this->authorize('stop', TaskTimeEntry::class);
+
+        if ($this->tracker->pause($actor) === null) {
+            return back()->with('toast', __('No running timer to pause.'));
+        }
+
+        return back()->with('toast', __('Timer paused.'));
+    }
+
+    public function resume(Request $request): RedirectResponse
+    {
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
+        $this->authorize('stop', TaskTimeEntry::class);
+
+        if ($this->tracker->resume($actor) === null) {
+            return back()->with('toast', __('No paused timer to resume.'));
+        }
+
+        return back()->with('toast', __('Timer resumed.'));
+    }
 }

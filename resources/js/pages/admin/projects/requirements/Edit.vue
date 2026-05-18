@@ -3,18 +3,12 @@ import { Form, Head, Link } from '@inertiajs/vue3';
 import { ChevronDown } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementController';
-import Heading from '@/components/Heading.vue';
+import GlassCard from '@/components/dashboard/GlassCard.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import RequirementRichTextEditor from '@/components/RequirementRichTextEditor.vue';
 import RequirementRichTextViewer from '@/components/RequirementRichTextViewer.vue';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -156,7 +150,7 @@ defineOptions({
     <Head :title="`Edit requirement · ${project.name}`" />
 
     <div class="flex flex-col gap-8">
-        <Heading title="Edit requirement" :description="`Project ${project.name}`" />
+        <PageHeader title="Edit requirement" :description="`Project ${project.name}`" />
 
         <Form
             v-bind="
@@ -185,14 +179,14 @@ defineOptions({
                 <input type="hidden" name="responsible_user_id" :value="responsibleUserId" />
             </template>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Details</CardTitle>
-                    <CardDescription>
+            <GlassCard class="p-6">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Details</h2>
+                    <p class="text-sm text-muted-foreground">
                         Created by {{ requirement.creator?.name ?? 'Unknown' }}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent class="grid gap-6">
+                    </p>
+                </div>
+                <div class="grid gap-6">
                     <div class="grid gap-2">
                         <Label for="title">Title</Label>
                         <Input
@@ -226,15 +220,17 @@ defineOptions({
                         />
                         <InputError :message="errors.description" />
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </GlassCard>
 
-            <Card v-if="can_update_assignments">
-                <CardHeader>
-                    <CardTitle>Responsible</CardTitle>
-                    <CardDescription>Who owns triage for this requirement</CardDescription>
-                </CardHeader>
-                <CardContent class="grid gap-2">
+            <GlassCard v-if="can_update_assignments" class="p-6">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Responsible</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Who owns triage for this requirement
+                    </p>
+                </div>
+                <div class="grid gap-2">
                     <Label id="responsible_user_id-label">Responsible user</Label>
                     <DropdownMenu>
                         <DropdownMenuTrigger as-child>
@@ -264,15 +260,17 @@ defineOptions({
                         </DropdownMenuContent>
                     </DropdownMenu>
                     <InputError :message="errors.responsible_user_id" />
-                </CardContent>
-            </Card>
+                </div>
+            </GlassCard>
 
-            <Card v-if="can_update_assignments">
-                <CardHeader>
-                    <CardTitle>Reviewer</CardTitle>
-                    <CardDescription>Assign a staff member on this project to check the requirement</CardDescription>
-                </CardHeader>
-                <CardContent class="grid gap-2">
+            <GlassCard v-if="can_update_assignments" class="p-6">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Reviewer</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Assign a staff member on this project to check the requirement
+                    </p>
+                </div>
+                <div class="grid gap-2">
                     <Label id="reviewer_user_id-label">Reviewer (staff)</Label>
                     <DropdownMenu>
                         <DropdownMenuTrigger as-child>
@@ -305,8 +303,8 @@ defineOptions({
                         No staff on this project's teams yet.
                     </p>
                     <InputError :message="errors.reviewer_user_id" />
-                </CardContent>
-            </Card>
+                </div>
+            </GlassCard>
 
             <div class="flex items-center gap-4">
                 <Button type="submit" :disabled="processing">Save</Button>

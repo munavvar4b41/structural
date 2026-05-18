@@ -34,6 +34,8 @@ declare module '@inertiajs/core' {
                 project_name: string;
                 project_code: string | null;
                 started_at: string;
+                is_paused: boolean;
+                elapsed_seconds: number;
             } | null;
             [key: string]: unknown;
         };

@@ -1,16 +1,10 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
 import CompanySettingsController from '@/actions/App/Http/Controllers/Admin/CompanySettingsController';
-import Heading from '@/components/Heading.vue';
+import GlassCard from '@/components/dashboard/GlassCard.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { edit as adminCompanyEdit } from '@/routes/admin/company/index';
@@ -55,25 +49,23 @@ function dv(value: string | null | undefined): string {
     <Head title="Company settings" />
 
     <div class="flex flex-col gap-8">
-        <Heading
-            title="Company settings"
-            description="Details for your organization and who may self-register"
-        />
+        <PageHeader title="Company settings"
+            description="Details for your organization and who may self-register" />
 
         <Form
             v-bind="CompanySettingsController.update.form()"
             class="flex flex-col gap-8"
             v-slot="{ errors, processing, recentlySuccessful }"
         >
-            <Card>
-                <CardHeader>
-                    <CardTitle>Company details</CardTitle>
-                    <CardDescription>
+            <GlassCard class="p-6">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Company details</h2>
+                    <p class="text-sm text-muted-foreground">
                         Basic information shown internally and in customer-facing
                         contexts where appropriate.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent class="grid max-w-xl gap-6">
+                    </p>
+                </div>
+                <div class="grid max-w-xl gap-6">
                     <div class="grid gap-2">
                         <Label for="name">Company name</Label>
                         <Input
@@ -200,19 +192,19 @@ function dv(value: string | null | undefined): string {
                             />
                         </div>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </GlassCard>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Self-service registration</CardTitle>
-                    <CardDescription>
+            <GlassCard class="p-6">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Self-service registration</h2>
+                    <p class="text-sm text-muted-foreground">
                         Only email addresses at this domain may create an
                         account via the public registration form. Existing users
                         are not affected when you change this.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent class="grid max-w-xl gap-6">
+                    </p>
+                </div>
+                <div class="grid max-w-xl gap-6">
                     <div class="grid gap-2">
                         <Label for="email_domain">Allowed email domain</Label>
                         <Input
@@ -228,8 +220,8 @@ function dv(value: string | null | undefined): string {
                             :message="errors.email_domain"
                         />
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </GlassCard>
 
             <div class="flex items-center gap-4">
                 <Button type="submit" :disabled="processing">
