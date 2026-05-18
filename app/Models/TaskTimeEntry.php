@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'user_id',
     'started_at',
     'ended_at',
+    'paused_at',
+    'accumulated_pause_seconds',
     'duration_seconds',
     'source',
     'previous_task_status',
@@ -35,6 +37,8 @@ class TaskTimeEntry extends Model
         return [
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
+            'paused_at' => 'datetime',
+            'accumulated_pause_seconds' => 'integer',
             'duration_seconds' => 'integer',
             'source' => TimeEntrySource::class,
             'previous_task_status' => ProjectTaskStatus::class,
@@ -56,9 +60,45 @@ class TaskTimeEntry extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function isRunning(): bool
+    public function isOpen(): bool
     {
         return $this->ended_at === null;
+    }
+
+    public function isPaused(): bool
+    {
+        return $this->isOpen() && $this->paused_at !== null;
+    }
+
+    public function isRunning(): bool
+    {
+        return $this->isOpen() && $this->paused_at === null;
+    }
+
+    public function elapsedSeconds(?\DateTimeInterface $at = null): int
+    {
+        $at = $at ?? now();
+
+        if ($this->ended_at !== null) {
+            return max(0, (int) $this->duration_seconds);
+        }
+
+        $gross = $this->started_at->diffInSeconds($at);
+        $paused = (int) ($this->accumulated_pause_seconds ?? 0);
+
+        if ($this->paused_at !== null) {
+            $paused += $this->paused_at->diffInSeconds($at);
+        }
+
+        return max(0, $gross - $paused);
+    }
+
+    /**
+     * @param  Builder<TaskTimeEntry>  $query
+     */
+    public function scopeOpen(Builder $query): void
+    {
+        $query->whereNull('ended_at');
     }
 
     /**
@@ -66,7 +106,7 @@ class TaskTimeEntry extends Model
      */
     public function scopeRunning(Builder $query): void
     {
-        $query->whereNull('ended_at');
+        $query->whereNull('ended_at')->whereNull('paused_at');
     }
 
     /**

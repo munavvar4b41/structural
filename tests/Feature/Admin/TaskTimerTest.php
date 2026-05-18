@@ -253,4 +253,50 @@ class TaskTimerTest extends TestCase
 
         $this->assertSame(ProjectTaskStatus::Review, $task->fresh()->status);
     }
+
+    public function test_pause_and_resume_accumulate_pause_duration(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 12:00:00'));
+        $this->actingAs($staff)->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 12:10:00'));
+        $this->actingAs($staff)->post(route('admin.time-entries.pause'))->assertRedirect();
+
+        $entry = TaskTimeEntry::query()->firstOrFail();
+        $this->assertNotNull($entry->paused_at);
+        $this->assertSame(10 * 60, $entry->elapsedSeconds());
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 12:25:00'));
+        $this->actingAs($staff)->post(route('admin.time-entries.resume'))->assertRedirect();
+
+        $entry->refresh();
+        $this->assertNull($entry->paused_at);
+        $this->assertSame(15 * 60, $entry->accumulated_pause_seconds);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 12:35:00'));
+        $this->assertSame(10 * 60 + 10 * 60, $entry->elapsedSeconds());
+
+        Carbon::setTestNow();
+    }
+
+    public function test_stop_after_pause_excludes_pause_from_duration(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 13:00:00'));
+        $this->actingAs($staff)->post(route('admin.projects.tasks.timer.start', [$project, $task]));
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 13:05:00'));
+        $this->actingAs($staff)->post(route('admin.time-entries.pause'));
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 13:20:00'));
+        $this->actingAs($staff)->post(route('admin.time-entries.stop'));
+
+        $entry = TaskTimeEntry::query()->firstOrFail();
+        $this->assertSame(5 * 60, $entry->duration_seconds);
+
+        Carbon::setTestNow();
+    }
 }

@@ -1,0 +1,94 @@
+<?php
+
+namespace App\Support;
+
+use App\Enums\ProjectTaskStatus;
+use App\Models\Project;
+use App\Models\ProjectTask;
+use App\Models\User;
+
+class MyWorkBoardBuilder
+{
+    /**
+     * @return array{columns: list<array{status: string, label: string, tasks: list<array<string, mixed>>}>, status_options: list<array{value: string, label: string}>}
+     */
+    public function build(User $actor): array
+    {
+        $tasks = ProjectTask::query()
+            ->where('assignee_user_id', $actor->id)
+            ->whereIn('project_id', Project::query()->visibleToUser($actor)->select('projects.id'))
+            ->with(['project:id,name,code', 'requirement:id,title'])
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $grouped = [];
+        foreach (ProjectTaskStatus::boardOrder() as $status) {
+            $grouped[$status->value] = [];
+        }
+
+        foreach ($tasks as $task) {
+            $grouped[$task->status->value][] = $this->taskCard($task, $actor);
+        }
+
+        $columns = [];
+        foreach (ProjectTaskStatus::boardOrder() as $status) {
+            $columns[] = [
+                'status' => $status->value,
+                'label' => $status->label(),
+                'tasks' => $grouped[$status->value] ?? [],
+            ];
+        }
+
+        return [
+            'columns' => $columns,
+            'status_options' => collect(ProjectTaskStatus::cases())
+                ->map(static fn (ProjectTaskStatus $s): array => [
+                    'value' => $s->value,
+                    'label' => $s->label(),
+                ])
+                ->all(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function taskCard(ProjectTask $task, User $actor): array
+    {
+        $project = $task->project;
+
+        return [
+            'id' => $task->id,
+            'project_id' => $project->id,
+            'title' => $task->title,
+            'status' => $task->status->value,
+            'estimated_minutes' => $task->estimated_minutes,
+            'project' => [
+                'id' => $project->id,
+                'name' => $project->name,
+                'code' => $project->code,
+            ],
+            'requirement' => $task->requirement === null ? null : [
+                'id' => $task->requirement->id,
+                'title' => $task->requirement->title,
+            ],
+            'project_tasks_url' => route('admin.projects.tasks.index', $project),
+            'task_show_url' => route('admin.projects.tasks.show', [$project, $task]),
+            'is_assignee_only_limited' => ProjectTaskAssigneeCapabilities::isAssigneeOnlyLimited($actor, $task),
+            'can_submit_task_completion' => $this->canSubmitTaskCompletion($actor, $task),
+        ];
+    }
+
+    private function canSubmitTaskCompletion(User $actor, ProjectTask $task): bool
+    {
+        if (! $actor->can('submitCompletion', $task)) {
+            return false;
+        }
+
+        return ! in_array($task->status, [
+            ProjectTaskStatus::Review,
+            ProjectTaskStatus::Done,
+            ProjectTaskStatus::Cancelled,
+        ], true);
+    }
+}

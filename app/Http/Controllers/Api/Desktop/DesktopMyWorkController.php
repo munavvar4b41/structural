@@ -1,26 +1,25 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\Api\Desktop;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\MyWorkBoardBuilder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
 
-class MyWorkController extends Controller
+class DesktopMyWorkController extends Controller
 {
     public function __construct(private readonly MyWorkBoardBuilder $boardBuilder)
     {
         //
     }
 
-    public function index(Request $request): Response
+    public function index(Request $request): JsonResponse
     {
         $actor = $request->user();
         abort_if(! $actor instanceof User, 403);
 
-        return Inertia::render('admin/my-work/Index', $this->boardBuilder->build($actor));
+        return response()->json($this->boardBuilder->build($actor));
     }
 }

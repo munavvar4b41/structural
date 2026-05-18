@@ -66,7 +66,7 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{id: int, task_id: int, project_id: int, task_title: string, project_name: string, project_code: string|null, started_at: string}|null
+     * @return array{id: int, task_id: int, project_id: int, task_title: string, project_name: string, project_code: string|null, started_at: string, is_paused: bool, elapsed_seconds: int}|null
      */
     protected function activeTimeEntryProps(Request $request): ?array
     {
@@ -77,7 +77,7 @@ class HandleInertiaRequests extends Middleware
 
         $entry = TaskTimeEntry::query()
             ->where('user_id', $user->id)
-            ->whereNull('ended_at')
+            ->open()
             ->with(['task:id,title', 'project:id,name,code'])
             ->latest('started_at')
             ->first();
@@ -94,6 +94,8 @@ class HandleInertiaRequests extends Middleware
             'project_name' => $entry->project?->name ?? '',
             'project_code' => $entry->project?->code,
             'started_at' => $entry->started_at->toIso8601String(),
+            'is_paused' => $entry->isPaused(),
+            'elapsed_seconds' => $entry->elapsedSeconds(),
         ];
     }
 }
