@@ -22,7 +22,7 @@ class LeaveRequestFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => User::factory(),
+            'user_id' => User::first()->id,
             'type' => LeaveType::FullDay,
             'date' => now()->addDays(1)->toDateString(),
             'half_day_period' => null,

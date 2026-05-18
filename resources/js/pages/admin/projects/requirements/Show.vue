@@ -484,7 +484,7 @@ defineOptions({
                                             step="1" :required="project.estimation_required" />
                                         <InputError :message="errors.estimated_minutes" />
                                     </div>
-                                    <DialogFooter class="gap-2 sm:gap-0">
+                                    <DialogFooter class="gap-3">
                                         <Button type="button" variant="outline" @click="createTaskOpen = false">
                                             Cancel
                                         </Button>

@@ -1,5 +1,15 @@
 import type { ApexOptions } from 'apexcharts';
 
+export function colorForProjectId(projectId: number): string {
+    const hue = (projectId * 137.508) % 360;
+
+    return `hsl(${hue} 62% 52%)`;
+}
+
+export function colorsForProjectIds(projectIds: number[]): string[] {
+    return projectIds.map((id) => colorForProjectId(id));
+}
+
 export function getChartColors(): string[] {
     if (typeof document === 'undefined') {
         return ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899'];

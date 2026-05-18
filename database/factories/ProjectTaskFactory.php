@@ -34,7 +34,7 @@ class ProjectTaskFactory extends Factory
             'description' => fake()->optional()->paragraph(),
             'status' => fake()->randomElement(ProjectTaskStatus::cases()),
             'assignee_user_id' => null,
-            'created_by_user_id' => User::factory(),
+            'created_by_user_id' => User::first()->id,
             'estimated_minutes' => fake()->optional(0.6)->randomElement([15, 30, 60, 120, 240]),
         ];
     }

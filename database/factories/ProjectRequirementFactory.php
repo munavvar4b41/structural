@@ -21,7 +21,7 @@ class ProjectRequirementFactory extends Factory
     {
         return [
             'project_id' => Project::factory(),
-            'created_by_user_id' => User::factory(),
+            'created_by_user_id' => User::first()->id,
             'responsible_user_id' => null,
             'reviewer_user_id' => null,
             'title' => fake()->sentence(4),

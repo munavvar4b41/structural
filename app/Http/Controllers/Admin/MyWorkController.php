@@ -21,6 +21,6 @@ class MyWorkController extends Controller
         $actor = $request->user();
         abort_if(! $actor instanceof User, 403);
 
-        return Inertia::render('admin/my-work/Index', $this->boardBuilder->build($actor));
+        return Inertia::render('admin/my-work/Index', $this->boardBuilder->build($actor, $request));
     }
 }
