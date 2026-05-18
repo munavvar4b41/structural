@@ -130,12 +130,14 @@ class TaskTimeEntry extends Model
 
     public static function activeSessionForUser(int $userId): ?self
     {
-        return self::query()
-            ->where('user_id', $userId)
-            ->open()
-            ->orderByRaw('CASE WHEN paused_at IS NULL THEN 0 ELSE 1 END')
-            ->orderByDesc('started_at')
-            ->first();
+        return once(function () use ($userId): ?self {
+            return self::query()
+                ->where('user_id', $userId)
+                ->open()
+                ->orderByRaw('CASE WHEN paused_at IS NULL THEN 0 ELSE 1 END')
+                ->orderByDesc('started_at')
+                ->first();
+        });
     }
 
     public static function todayElapsedSecondsForUserOnTask(
@@ -143,29 +145,59 @@ class TaskTimeEntry extends Model
         int $taskId,
         ?\DateTimeInterface $at = null,
     ): int {
+        return self::todayElapsedSecondsForUserOnTasks($userId, [$taskId], $at)[$taskId] ?? 0;
+    }
+
+    /**
+     * @param  list<int>  $taskIds
+     * @return array<int, int>
+     */
+    public static function todayElapsedSecondsForUserOnTasks(
+        int $userId,
+        array $taskIds,
+        ?\DateTimeInterface $at = null,
+    ): array {
+        $taskIds = array_values(array_unique($taskIds));
+
+        if ($taskIds === []) {
+            return [];
+        }
+
         $at = $at ?? now();
         $day = CarbonImmutable::parse($at);
         $startOfDay = $day->startOfDay();
         $endOfDay = $day->endOfDay();
 
-        $closedTotal = (int) self::query()
+        /** @var array<int, int> $closedTotals */
+        $closedTotals = self::query()
             ->where('user_id', $userId)
-            ->where('project_task_id', $taskId)
+            ->whereIn('project_task_id', $taskIds)
             ->whereNotNull('ended_at')
             ->whereBetween('started_at', [$startOfDay, $endOfDay])
-            ->sum('duration_seconds');
+            ->groupBy('project_task_id')
+            ->selectRaw('project_task_id, sum(duration_seconds) as total')
+            ->pluck('total', 'project_task_id')
+            ->map(static fn (mixed $total): int => (int) $total)
+            ->all();
 
-        $open = self::query()
+        $openEntries = self::query()
             ->where('user_id', $userId)
-            ->where('project_task_id', $taskId)
+            ->whereIn('project_task_id', $taskIds)
             ->open()
             ->whereBetween('started_at', [$startOfDay, $endOfDay])
-            ->first();
+            ->get()
+            ->keyBy('project_task_id');
 
-        if ($open === null) {
-            return $closedTotal;
+        $result = [];
+        foreach ($taskIds as $taskId) {
+            $closed = $closedTotals[$taskId] ?? 0;
+            $open = $openEntries->get($taskId);
+
+            $result[$taskId] = $open === null
+                ? $closed
+                : $closed + $open->elapsedSeconds($at);
         }
 
-        return $closedTotal + $open->elapsedSeconds($at);
+        return $result;
     }
 }

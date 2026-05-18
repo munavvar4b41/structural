@@ -176,6 +176,46 @@ class TaskTimerTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_today_elapsed_seconds_bulk_matches_per_task_helper(): void
+    {
+        ['staff' => $staff, 'project' => $project] = $this->setupProjectWithTask();
+
+        $taskA = ProjectTask::factory()->forProject($project)->create([
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+        ]);
+        $taskB = ProjectTask::factory()->forProject($project)->create([
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 10:00:00'));
+        $this->tracker()->start($staff, $taskA);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 10:20:00'));
+        $this->tracker()->stop($staff);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 11:00:00'));
+        $this->tracker()->start($staff, $taskB);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 11:10:00'));
+
+        $bulk = TaskTimeEntry::todayElapsedSecondsForUserOnTasks(
+            $staff->id,
+            [$taskA->id, $taskB->id],
+        );
+
+        $this->assertSame(20 * 60, $bulk[$taskA->id]);
+        $this->assertSame(10 * 60, $bulk[$taskB->id]);
+        $this->assertSame(
+            $bulk[$taskA->id],
+            TaskTimeEntry::todayElapsedSecondsForUserOnTask($staff->id, $taskA->id),
+        );
+        $this->assertSame([], TaskTimeEntry::todayElapsedSecondsForUserOnTasks($staff->id, []));
+
+        Carbon::setTestNow();
+    }
+
     public function test_explicit_stop_ends_running_entry(): void
     {
         ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
