@@ -21,7 +21,7 @@ class ProjectRequirementMessageFactory extends Factory
     {
         return [
             'project_requirement_id' => ProjectRequirement::factory(),
-            'user_id' => User::factory(),
+            'user_id' => User::first()->id,
             'body' => fake()->sentences(2, true),
         ];
     }
