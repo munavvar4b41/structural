@@ -20,14 +20,17 @@ export function parseTipTapDocument(json: string | null | undefined): Record<str
     if (json === null || json === undefined || json === '') {
         return { type: 'doc', content: [] };
     }
+
     try {
         const o = JSON.parse(json) as unknown;
+
         if (o && typeof o === 'object' && (o as { type?: string }).type === 'doc') {
             return o as Record<string, unknown>;
         }
     } catch {
         // legacy plain text
     }
+
     return {
         type: 'doc',
         content: [

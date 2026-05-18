@@ -3,7 +3,8 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ClipboardCheck } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin/TaskCompletionReviewController';
-import Heading from '@/components/Heading.vue';
+import DataTable from '@/components/dashboard/DataTable.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
@@ -117,6 +118,7 @@ watch([confirmOpen, taskPendingConfirm], () => {
         form.task_rating = '5';
         form.assignee_rating = '5';
         form.creator_rating = '5';
+
         if (taskPendingConfirm.value.assignee === null) {
             form.assignee_rating = '';
         }
@@ -139,6 +141,7 @@ function closeConfirm(): void {
 
 function submitConfirm(): void {
     const row = taskPendingConfirm.value;
+
     if (row === null) {
         return;
     }
@@ -161,6 +164,7 @@ function submittedLabel(at: string | null): string {
     if (!at) {
         return '—';
     }
+
     return new Date(at).toLocaleString();
 }
 </script>
@@ -168,13 +172,13 @@ function submittedLabel(at: string | null): string {
 <template>
     <Head title="Task reviews" />
 
-    <div class="flex flex-col gap-8">
-        <div class="flex flex-col gap-3">
-            <Heading
-                title="Task reviews"
-                description="Tasks submitted by assignees for completion. Confirm to mark done and record ratings."
-            />
-            <ListToolbar v-model="searchText" placeholder="Search task, project, assignee…">
+    <div class="flex flex-col gap-6">
+        <PageHeader
+            title="Task reviews"
+            description="Tasks submitted by assignees for completion. Confirm to mark done and record ratings."
+        />
+
+        <ListToolbar v-model="searchText" placeholder="Search task, project, assignee…">
                 <template #filters>
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="tr-stage">Stage</Label>
@@ -191,8 +195,7 @@ function submittedLabel(at: string | null): string {
                         />
                     </div>
                 </template>
-            </ListToolbar>
-        </div>
+        </ListToolbar>
 
         <Card>
             <CardHeader>
@@ -207,38 +210,48 @@ function submittedLabel(at: string | null): string {
                     </div>
                 </div>
             </CardHeader>
-            <CardContent class="overflow-x-auto">
-                <table v-if="filteredTasks.length > 0" class="w-full min-w-[720px] text-sm">
+            <CardContent>
+                <DataTable v-if="filteredTasks.length > 0" min-width="720px">
                     <thead>
-                        <tr class="border-b border-border text-left text-xs font-medium text-muted-foreground">
-                            <th class="pb-3 pr-4">Task</th>
-                            <th class="pb-3 pr-4">Project</th>
-                            <th class="pb-3 pr-4">Assignee</th>
-                            <th class="pb-3 pr-4">Submitted</th>
-                            <th class="pb-3 pr-4 text-right">Actions</th>
+                        <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Task
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Project
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Assignee
+                            </th>
+                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Submitted
+                            </th>
+                            <th class="px-5 py-3.5 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Actions
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr
                             v-for="row in filteredTasks"
                             :key="row.id"
-                            class="border-b border-border/60 align-top last:border-0"
+                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
                         >
-                            <td class="py-3 pr-4 font-medium">{{ row.title }}</td>
-                            <td class="py-3 pr-4 text-muted-foreground">
+                            <td class="px-5 py-3.5 align-top font-medium">{{ row.title }}</td>
+                            <td class="px-5 py-3.5 align-top text-muted-foreground">
                                 {{ row.project.name }}
                                 <span v-if="row.project.code">({{ row.project.code }})</span>
                             </td>
-                            <td class="py-3 pr-4 text-muted-foreground">
+                            <td class="px-5 py-3.5 align-top text-muted-foreground">
                                 {{ row.assignee?.name ?? '—' }}
                             </td>
-                            <td class="py-3 pr-4 text-muted-foreground">
+                            <td class="px-5 py-3.5 align-top text-muted-foreground">
                                 <span class="block">{{ submittedLabel(row.completion_submitted_at) }}</span>
                                 <span v-if="row.completion_submitted_by" class="text-xs">
                                     by {{ row.completion_submitted_by.name }}
                                 </span>
                             </td>
-                            <td class="py-3 pl-4 text-right">
+                            <td class="px-5 py-3.5 text-right">
                                 <div class="flex flex-wrap justify-end gap-2">
                                     <Button variant="outline" size="sm" as-child>
                                         <Link :href="row.task_show_url">Open task</Link>
@@ -250,10 +263,10 @@ function submittedLabel(at: string | null): string {
                             </td>
                         </tr>
                     </tbody>
-                </table>
-                <p v-else class="text-sm text-muted-foreground">
+                </DataTable>
+                <div v-else class="text-sm text-muted-foreground">
                     {{ tasks.length === 0 ? 'No tasks awaiting review.' : 'No tasks match your filters.' }}
-                </p>
+                </div>
             </CardContent>
         </Card>
     </div>

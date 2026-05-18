@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/dashboard/FormField.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
@@ -43,8 +43,12 @@ defineProps<{
         class="flex flex-col gap-6"
     >
         <div class="grid gap-6">
-            <div class="grid gap-2">
-                <Label for="email">Email address</Label>
+            <FormField
+                label="Email address"
+                html-for="email"
+                :error="errors.email"
+                required
+            >
                 <Input
                     id="email"
                     type="email"
@@ -55,8 +59,7 @@ defineProps<{
                     autocomplete="email"
                     placeholder="email@example.com"
                 />
-                <InputError :message="errors.email" />
-            </div>
+            </FormField>
 
             <div class="grid gap-2">
                 <div class="flex items-center justify-between">
@@ -78,7 +81,9 @@ defineProps<{
                     autocomplete="current-password"
                     placeholder="Password"
                 />
-                <InputError :message="errors.password" />
+                <p v-if="errors.password" class="text-sm text-destructive" role="alert">
+                    {{ errors.password }}
+                </p>
             </div>
 
             <div class="flex items-center justify-between">

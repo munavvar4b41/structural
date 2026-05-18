@@ -6,18 +6,12 @@ import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectT
 import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin/TaskCompletionReviewController';
 import TaskTimeEntryController from '@/actions/App/Http/Controllers/Admin/TaskTimeEntryController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
-import Heading from '@/components/Heading.vue';
+import GlassCard from '@/components/dashboard/GlassCard.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -529,7 +523,7 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                 <div class="grid gap-2">
                     <Label for="show-review-notes">Review notes</Label>
                     <textarea id="show-review-notes" v-model="confirmForm.review_notes" rows="3" maxlength="10000"
-                        class="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-transparent"
+                        class="flex min-h-[80px] w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-transparent"
                         placeholder="Optional feedback for the team" />
                     <InputError :message="confirmForm.errors.review_notes" />
                 </div>
@@ -568,7 +562,7 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
 
     <div class="flex flex-col gap-8">
         <div class="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <Heading :title="task.title" :description="`Project ${project.name}`" title-line-clamp />
+            <PageHeader :title="task.title" :description="`Project ${project.name}`" />
             <div class="flex flex-wrap gap-2">
                 <Button v-if="task.can_submit_task_completion" variant="secondary" type="button"
                     @click="submitForCompletion()">
@@ -597,28 +591,31 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
             </div>
         </div>
 
-        <Card v-if="task.status === 'review'"
-            class="border-amber-200/80 bg-amber-50/40 dark:border-amber-500/35 dark:bg-amber-500/10">
-            <CardHeader>
-                <CardTitle class="text-base">Awaiting review</CardTitle>
-                <CardDescription>
-                    This task was submitted for completion
+        <GlassCard v-if="task.status === 'review'"
+            class="border-amber-200/80 bg-amber-50/40 dark:border-amber-500/35 dark:bg-amber-500/10" p-6>
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Awaiting review</h2>
+                    <p class="text-sm text-muted-foreground">
+                        This task was submitted for completion
                     <template v-if="task.completion_submitted_at">
                         on {{ new Date(task.completion_submitted_at).toLocaleString() }}
                     </template>
                     <template v-if="task.completion_submitted_by">
                         by {{ task.completion_submitted_by.name }}.
                     </template>
-                </CardDescription>
-            </CardHeader>
-        </Card>
+                    </p>
+                </div>
 
-        <Card>
-            <CardHeader>
-                <CardTitle>Details</CardTitle>
-                <CardDescription>Status, ownership, and links for this task.</CardDescription>
-            </CardHeader>
-            <CardContent class="grid gap-6 text-sm">
+            </GlassCard>
+
+        <GlassCard :padding="false">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Details</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Status, ownership, and links for this task.
+                    </p>
+                </div>
+                <div class="grid gap-6 text-sm">
                 <div class="grid gap-1">
                     <span class="text-xs font-medium text-muted-foreground">Title</span>
                     <p class="max-w-md text-sm font-medium leading-snug text-foreground line-clamp-2 break-words"
@@ -676,26 +673,22 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                     <span class="text-xs font-medium text-muted-foreground">Description</span>
                     <p class="whitespace-pre-wrap text-muted-foreground">{{ task.description }}</p>
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+            </GlassCard>
 
-        <Card>
-            <CardHeader class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                    <CardTitle>Time tracked</CardTitle>
-                    <CardDescription>
-                        Start a timer or log past work. Totals reflect closed entries only.
-                    </CardDescription>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <TaskTimerButton v-if="time_tracking.can_track" :project-id="project.id" :task-id="task.id" />
-                    <Button v-if="time_tracking.can_track" variant="outline" size="sm" type="button"
-                        @click="openManualDialog">
-                        Add manual entry
+        <GlassCard :padding="false">
+                <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="space-y-1">
+                        <h2 class="text-lg font-semibold">Time tracked</h2>
+                        <p class="text-sm text-muted-foreground">
+                            Start a timer or log past work. Totals reflect closed entries only.
+                        </p>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" @click="openManualDialog">
+                        Log time
                     </Button>
                 </div>
-            </CardHeader>
-            <CardContent class="grid gap-6">
+                <div class="grid gap-6">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div class="rounded-lg border border-border/60 bg-muted/20 p-3">
                         <p class="text-xs text-muted-foreground">My time today</p>
@@ -774,17 +767,17 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                         </tbody>
                     </table>
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+            </GlassCard>
 
-        <Card>
-            <CardHeader>
-                <CardTitle>Subtasks</CardTitle>
-                <CardDescription>
-                    Direct children of this task. Same layout as the project task list.
-                </CardDescription>
-            </CardHeader>
-            <CardContent class="overflow-x-auto p-0 sm:p-6">
+        <GlassCard :padding="false">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Subtasks</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Direct children of this task. Same layout as the project task list.
+                    </p>
+                </div>
+<div class="overflow-x-auto p-0 sm:p-6">
                 <table class="w-full min-w-[720px] table-fixed text-left text-sm">
                     <thead class="border-b bg-muted/40">
                         <tr>
@@ -875,7 +868,7 @@ function submitForCompletionSubtask(row: SubtaskRow): void {
                         </tr>
                     </tbody>
                 </table>
-            </CardContent>
-        </Card>
+            </div>
+            </GlassCard>
     </div>
 </template>

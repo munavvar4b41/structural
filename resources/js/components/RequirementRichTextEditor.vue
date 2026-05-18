@@ -52,11 +52,14 @@ watch(
     () => props.modelValue,
     (v) => {
         const ed = editor.value;
+
         if (!ed) {
             return;
         }
+
         const next = JSON.stringify(parseTipTapDocument(v));
         const cur = JSON.stringify(ed.getJSON());
+
         if (next !== cur) {
             ed.commands.setContent(parseTipTapDocument(v));
         }
@@ -76,18 +79,24 @@ onBeforeUnmount(() => {
 
 function setLink(): void {
     const ed = editor.value;
+
     if (!ed) {
         return;
     }
+
     const prev = ed.getAttributes('link').href as string | undefined;
     const url = window.prompt('Link URL', prev ?? 'https://');
+
     if (url === null) {
         return;
     }
+
     if (url === '') {
         ed.chain().focus().extendMarkRange('link').unsetLink().run();
+
         return;
     }
+
     ed.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
 }
 </script>

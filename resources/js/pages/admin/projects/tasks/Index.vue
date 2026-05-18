@@ -5,20 +5,13 @@ import { computed, onMounted, ref, watch } from 'vue';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
 import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin/TaskCompletionReviewController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
-import Heading from '@/components/Heading.vue';
+import GlassCard from '@/components/dashboard/GlassCard.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
+import MultiSelectDropdown from '@/components/MultiSelectDropdown.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
-import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -29,6 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
 import {
@@ -138,23 +132,8 @@ function onAssignee(v: string): void {
     reloadTasks({ assignee_id: v });
 }
 
-function toggleTaskStatus(value: string, checked: boolean): void {
-    const next = [...props.filters.status];
-    const ix = next.indexOf(value);
-
-    if (checked && ix === -1) {
-        next.push(value);
-    }
-
-    if (!checked && ix !== -1) {
-        next.splice(ix, 1);
-    }
-
-    reloadTasks({ status: next });
-}
-
-function statusChecked(value: string): boolean {
-    return props.filters.status.includes(value);
+function onStatusFilter(status: string[]): void {
+    reloadTasks({ status });
 }
 
 defineOptions({
@@ -217,9 +196,11 @@ const statusSelectOptions = computed(() =>
 const editStatusSelectOptions = computed(() => {
     const base = statusSelectOptions.value;
     const row = editingTask.value;
+
     if (row !== null && row.is_assignee_only_limited) {
         return base.filter((o) => o.value !== 'done');
     }
+
     return base;
 });
 
@@ -405,10 +386,8 @@ onMounted(() => {
     <div class="flex flex-col gap-8">
         <div class="flex flex-col gap-4">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <Heading
-                    :title="`Tasks · ${project.name}`"
-                    description="Project work items; optionally link each task to a requirement or a parent task."
-                />
+                <PageHeader :title="`Tasks · ${project.name}`"
+                    description="Project work items; optionally link each task to a requirement or a parent task." />
                 <div class="flex flex-wrap gap-2">
                     <Button
                         variant="outline"
@@ -468,25 +447,18 @@ onMounted(() => {
                                     @update:model-value="onAssignee"
                                 />
                             </div>
-                            <div class="grid gap-2">
-                                <span class="text-xs text-muted-foreground">Status</span>
-                                <div class="flex max-w-2xl flex-wrap gap-x-4 gap-y-2">
-                                    <label
-                                        v-for="opt in status_options"
-                                        :key="opt.value"
-                                        class="flex cursor-pointer items-center gap-2 text-sm"
-                                    >
-                                        <Checkbox
-                                            :model-value="statusChecked(opt.value)"
-                                            class="border-muted-foreground"
-                                            @update:model-value="
-                                                (v: boolean | 'indeterminate') =>
-                                                    toggleTaskStatus(opt.value, v === true)
-                                            "
-                                        />
-                                        {{ opt.label }}
-                                    </label>
-                                </div>
+                            <div class="grid gap-1">
+                                <Label class="text-xs text-muted-foreground" for="filter-status"
+                                    >Status</Label
+                                >
+                                <MultiSelectDropdown
+                                    id="filter-status"
+                                    :model-value="filters.status"
+                                    :options="status_options"
+                                    placeholder="All statuses"
+                                    menu-label="Statuses"
+                                    @update:model-value="onStatusFilter"
+                                />
                             </div>
                         </div>
                     </div>
@@ -520,7 +492,7 @@ onMounted(() => {
                             id="create-description"
                             name="description"
                             rows="3"
-                            class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
                         />
                         <InputError :message="errors.description" />
                     </div>
@@ -631,7 +603,7 @@ onMounted(() => {
                             name="description"
                             rows="3"
                             :default-value="editingTask.description ?? ''"
-                            class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
                         />
                         <InputError :message="errors.description" />
                     </div>
@@ -708,14 +680,14 @@ onMounted(() => {
             </DialogContent>
         </Dialog>
 
-        <Card>
-            <CardHeader>
-                <CardTitle>Task list</CardTitle>
-                <CardDescription>
-                    Subtasks are shown under their parent; estimates are shown as hours and minutes.
-                </CardDescription>
-            </CardHeader>
-            <CardContent class="overflow-x-auto p-0 sm:p-6">
+        <GlassCard :padding="false">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Task list</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Subtasks are shown under their parent; estimates are shown as hours and minutes.
+                    </p>
+                </div>
+<div class="overflow-x-auto p-0 sm:p-6">
                 <table class="w-full min-w-[720px] table-fixed text-left text-sm">
                     <thead class="border-b bg-muted/40">
                         <tr>
@@ -837,7 +809,7 @@ onMounted(() => {
                         </tr>
                     </tbody>
                 </table>
-            </CardContent>
-        </Card>
+            </div>
+            </GlassCard>
     </div>
 </template>

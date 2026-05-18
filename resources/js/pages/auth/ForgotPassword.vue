@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
-import InputError from '@/components/InputError.vue';
+import FormField from '@/components/dashboard/FormField.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { login } from '@/routes';
 import { email } from '@/routes/password';
@@ -31,10 +30,17 @@ defineProps<{
         {{ status }}
     </div>
 
-    <div class="space-y-6">
-        <Form v-bind="email.form()" v-slot="{ errors, processing }">
-            <div class="grid gap-2">
-                <Label for="email">Email address</Label>
+    <div class="flex flex-col gap-6">
+        <Form
+            v-bind="email.form()"
+            v-slot="{ errors, processing }"
+            class="flex flex-col gap-6"
+        >
+            <FormField
+                label="Email address"
+                html-for="email"
+                :error="errors.email"
+            >
                 <Input
                     id="email"
                     type="email"
@@ -43,19 +49,16 @@ defineProps<{
                     autofocus
                     placeholder="email@example.com"
                 />
-                <InputError :message="errors.email" />
-            </div>
+            </FormField>
 
-            <div class="my-6 flex items-center justify-start">
-                <Button
-                    class="w-full"
-                    :disabled="processing"
-                    data-test="email-password-reset-link-button"
-                >
-                    <Spinner v-if="processing" />
-                    Email password reset link
-                </Button>
-            </div>
+            <Button
+                class="w-full"
+                :disabled="processing"
+                data-test="email-password-reset-link-button"
+            >
+                <Spinner v-if="processing" />
+                Email password reset link
+            </Button>
         </Form>
 
         <div class="space-x-1 text-center text-sm text-muted-foreground">

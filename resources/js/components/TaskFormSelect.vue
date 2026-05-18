@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AcceptableValue } from 'reka-ui';
 import { computed } from 'vue';
 import {
     Select,
@@ -42,6 +43,11 @@ const emit = defineEmits<{
     'update:modelValue': [value: string];
 }>();
 
+/** Reka UI rejects SelectItem with value=""; "clear" uses noneLabel + NONE_SENTINEL instead. */
+const itemOptions = computed(() =>
+    props.options.filter((opt) => opt.value !== ''),
+);
+
 const selectModelValue = computed(() => {
     if (props.required) {
         return props.modelValue;
@@ -50,8 +56,8 @@ const selectModelValue = computed(() => {
     return props.modelValue === '' ? NONE_SENTINEL : props.modelValue;
 });
 
-function onSelectUpdate(v: string | undefined): void {
-    const raw = v ?? '';
+function onSelectUpdate(v: AcceptableValue): void {
+    const raw = v === null || v === undefined ? '' : String(v);
 
     if (!props.required && raw === NONE_SENTINEL) {
         emit('update:modelValue', '');
@@ -73,7 +79,11 @@ function onSelectUpdate(v: string | undefined): void {
                 <SelectItem v-if="!required" :value="NONE_SENTINEL">
                     {{ noneLabel }}
                 </SelectItem>
-                <SelectItem v-for="opt in options" :key="opt.value" :value="opt.value">
+                <SelectItem
+                    v-for="opt in itemOptions"
+                    :key="opt.value"
+                    :value="opt.value"
+                >
                     {{ opt.label }}
                 </SelectItem>
             </SelectContent>

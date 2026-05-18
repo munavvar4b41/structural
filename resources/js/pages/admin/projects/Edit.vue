@@ -3,16 +3,10 @@ import { Form, Head, Link } from '@inertiajs/vue3';
 import { ChevronDown } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import ProjectController from '@/actions/App/Http/Controllers/Admin/ProjectController';
-import Heading from '@/components/Heading.vue';
+import GlassCard from '@/components/dashboard/GlassCard.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -153,7 +147,7 @@ defineOptions({
     <Head :title="`Edit ${project.name}`" />
 
     <div class="flex flex-col gap-8">
-        <Heading title="Edit project" :description="`Update ${project.name}`" />
+        <PageHeader title="Edit project" :description="`Update ${project.name}`" />
 
         <Form
             v-bind="ProjectController.update.form(project.id)"
@@ -181,14 +175,14 @@ defineOptions({
                 :value="estimationRequired ? '1' : '0'"
             />
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Project details</CardTitle>
-                    <CardDescription>
+            <GlassCard class="p-6">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Project details</h2>
+                    <p class="text-sm text-muted-foreground">
                         Name, optional code, description, client contact, and assigned teams
-                    </CardDescription>
-                </CardHeader>
-                <CardContent class="grid gap-6">
+                    </p>
+                </div>
+                <div class="grid gap-6">
                     <div class="grid gap-2">
                         <Label for="name">Name</Label>
                         <Input
@@ -217,7 +211,7 @@ defineOptions({
                             name="description"
                             rows="4"
                             :default-value="project.description ?? ''"
-                            class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
                         />
                         <InputError :message="errors.description" />
                     </div>
@@ -343,8 +337,8 @@ defineOptions({
                             <InputError :message="errors.estimation_required" />
                         </div>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </GlassCard>
 
             <div class="flex items-center gap-4">
                 <Button type="submit" :disabled="processing">Save</Button>

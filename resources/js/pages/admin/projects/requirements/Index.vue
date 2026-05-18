@@ -3,12 +3,14 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
-import Heading from '@/components/Heading.vue';
+import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTablePagination from '@/components/dashboard/DataTablePagination.vue';
+import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
-import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
 import {
     create as requirementsCreate,
@@ -193,24 +195,22 @@ const deleteRequirementDescription = computed(() => {
         @confirm="executeDelete"
     />
 
-    <div class="flex flex-col gap-8">
-        <div class="flex flex-col gap-4">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <Heading
-                    :title="`Requirements`"
-                    :description="`Project ${project.name}${project.code ? ` (${project.code})` : ''}`"
-                />
-                <div class="flex flex-wrap gap-2">
-                    <Button v-if="canCreateRequirements" as-child>
-                        <Link :href="requirementsCreate.url(project.id)">Add requirement</Link>
-                    </Button>
-                    <Button v-if="canManageProject" variant="outline" as-child>
-                        <Link :href="projectsEdit.url(project.id)">Edit project</Link>
-                    </Button>
-                </div>
-            </div>
+    <div class="flex flex-col gap-6">
+        <PageHeader
+            title="Requirements"
+            :description="`Project ${project.name}${project.code ? ` (${project.code})` : ''}`"
+        >
+            <template #actions>
+                <Button v-if="canCreateRequirements" as-child>
+                    <Link :href="requirementsCreate.url(project.id)">Add requirement</Link>
+                </Button>
+                <Button v-if="canManageProject" variant="outline" as-child>
+                    <Link :href="projectsEdit.url(project.id)">Edit project</Link>
+                </Button>
+            </template>
+        </PageHeader>
 
-            <ListToolbar
+        <ListToolbar
                 :model-value="filters.search"
                 placeholder="Search title or description…"
                 @update:model-value="onSearch"
@@ -252,26 +252,34 @@ const deleteRequirementDescription = computed(() => {
                     </div>
                 </template>
             </ListToolbar>
-        </div>
 
-        <div
-            class="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-        >
-            <table class="w-full text-left text-sm">
-                <thead
-                    class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border"
+        <DataTable>
+            <thead>
+                <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
+                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Title
+                    </th>
+                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Responsible
+                    </th>
+                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Reviewer
+                    </th>
+                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Review
+                    </th>
+                    <th class="px-5 py-3.5 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Actions
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    v-for="row in requirements.data"
+                    :key="row.id"
+                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
                 >
-                    <tr>
-                        <th class="px-4 py-3 font-medium">Title</th>
-                        <th class="px-4 py-3 font-medium">Responsible</th>
-                        <th class="px-4 py-3 font-medium">Reviewer</th>
-                        <th class="px-4 py-3 font-medium">Review</th>
-                        <th class="px-4 py-3 font-medium text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="row in requirements.data" :key="row.id" class="border-b border-sidebar-border/70">
-                        <td class="px-4 py-3 align-top">
+                    <td class="px-5 py-3.5 align-top">
                             <div class="font-medium">{{ row.title }}</div>
                             <p
                                 v-if="row.description_preview"
@@ -280,13 +288,13 @@ const deleteRequirementDescription = computed(() => {
                                 {{ row.description_preview }}
                             </p>
                         </td>
-                        <td class="px-4 py-3 text-muted-foreground">
-                            {{ row.responsible_user?.name ?? '—' }}
-                        </td>
-                        <td class="px-4 py-3 text-muted-foreground">
-                            {{ row.reviewer?.name ?? '—' }}
-                        </td>
-                        <td class="px-4 py-3 text-muted-foreground">
+                    <td class="px-5 py-3.5 text-muted-foreground">
+                        {{ row.responsible_user?.name ?? '—' }}
+                    </td>
+                    <td class="px-5 py-3.5 text-muted-foreground">
+                        {{ row.reviewer?.name ?? '—' }}
+                    </td>
+                    <td class="px-5 py-3.5 text-muted-foreground">
                             <div class="flex flex-col gap-1">
                                 <span v-if="row.understanding_confirmed_at" class="inline-flex w-fit items-center rounded-md border border-transparent bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
                                     Confirmed
@@ -302,8 +310,8 @@ const deleteRequirementDescription = computed(() => {
                                     {{ new Date(row.reviewed_at).toLocaleString() }}
                                 </span>
                             </div>
-                        </td>
-                        <td class="px-4 py-3 text-right">
+                    </td>
+                    <td class="px-5 py-3.5 text-right">
                             <div class="flex justify-end gap-2">
                                 <Button variant="ghost" size="sm" as-child>
                                     <Link
@@ -342,39 +350,14 @@ const deleteRequirementDescription = computed(() => {
                             </div>
                         </td>
                     </tr>
-                    <tr v-if="requirements.data.length === 0">
-                        <td colspan="5" class="px-4 py-8 text-center text-muted-foreground">
-                            No requirements yet.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                <tr v-if="requirements.data.length === 0">
+                    <td colspan="5" class="px-5 py-8 text-center text-muted-foreground">
+                        No requirements yet.
+                    </td>
+                </tr>
+            </tbody>
+        </DataTable>
 
-        <nav
-            v-if="requirements.links.length > 3"
-            class="flex flex-wrap justify-center gap-1 text-sm"
-            aria-label="Pagination"
-        >
-            <template v-for="(link, i) in requirements.links" :key="i">
-                <Button
-                    v-if="link.url"
-                    variant="outline"
-                    size="sm"
-                    as-child
-                    :class="{ 'border-primary': link.active }"
-                >
-                    <Link :href="link.url" preserve-scroll v-html="link.label" />
-                </Button>
-                <Button
-                    v-else
-                    variant="outline"
-                    size="sm"
-                    disabled
-                    :class="{ 'border-primary': link.active }"
-                    v-html="link.label"
-                />
-            </template>
-        </nav>
+        <DataTablePagination :links="requirements.links" />
     </div>
 </template>

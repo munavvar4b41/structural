@@ -32,7 +32,7 @@ defineProps<{
 
     <Form
         v-bind="send.form()"
-        class="space-y-6 text-center"
+        class="flex flex-col gap-6 text-center"
         v-slot="{ processing }"
     >
         <Button :disabled="processing" variant="secondary">

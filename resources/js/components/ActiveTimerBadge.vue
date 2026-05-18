@@ -36,6 +36,7 @@ const elapsedSeconds = computed(() => {
     }
 
     const startedMs = Date.parse(active.value.started_at);
+
     if (Number.isNaN(startedMs)) {
         return active.value.elapsed_seconds;
     }

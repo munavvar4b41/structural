@@ -75,11 +75,11 @@ function clearSearch(): void {
                     <X class="size-4" />
                 </Button>
             </div>
-            <div v-if="$slots.filters" class="flex flex-wrap items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2 empty:hidden">
                 <slot name="filters" />
             </div>
         </div>
-        <div v-if="$slots.actions" class="flex shrink-0 flex-wrap items-center gap-2">
+        <div class="flex shrink-0 flex-wrap items-center gap-2 empty:hidden">
             <slot name="actions" />
         </div>
     </div>
