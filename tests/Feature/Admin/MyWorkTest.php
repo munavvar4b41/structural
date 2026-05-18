@@ -125,4 +125,70 @@ class MyWorkTest extends TestCase
 
         $this->assertSame(ProjectTaskStatus::ToDo, $task->fresh()->status);
     }
+
+    public function test_task_preview_includes_show_payload_when_task_id_query_present(): void
+    {
+        $team = Team::factory()->create();
+        $head = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $task = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+                'status' => ProjectTaskStatus::InProgress,
+                'title' => 'Preview me',
+            ]);
+
+        $this->actingAs($staff)
+            ->get(route('admin.my-work.index', ['task_id' => $task->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/my-work/Index')
+                ->has('task_preview')
+                ->where('task_preview.task.title', 'Preview me')
+                ->where('task_preview.project.id', $project->id)
+                ->has('task_preview.checklist')
+                ->has('task_preview.time_tracking'));
+    }
+
+    public function test_task_preview_returns_404_for_unknown_task_id(): void
+    {
+        $team = Team::factory()->create();
+        User::factory()->withPrimaryTeam($team)->create();
+
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+
+        $this->actingAs($staff)
+            ->get(route('admin.my-work.index', ['task_id' => 999_999]))
+            ->assertNotFound();
+    }
+
+    public function test_task_preview_denied_when_user_cannot_view_task(): void
+    {
+        $teamA = Team::factory()->create();
+        $teamB = Team::factory()->create();
+        $head = User::factory()->teamHead()->withPrimaryTeam($teamA)->create();
+        $assignee = User::factory()->withPrimaryTeam($teamA)->create();
+        $outsider = User::factory()->withPrimaryTeam($teamB)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$teamA->id]);
+
+        $task = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $assignee->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $this->actingAs($outsider)
+            ->get(route('admin.my-work.index', ['task_id' => $task->id]))
+            ->assertForbidden();
+    }
 }
