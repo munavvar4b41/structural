@@ -84,11 +84,11 @@ class TaskTimeEntry extends Model
             return max(0, (int) $this->duration_seconds);
         }
 
-        $gross = $this->started_at->diffInSeconds($at);
+        $gross = self::wholeSecondsBetween($this->started_at, $at);
         $paused = (int) ($this->accumulated_pause_seconds ?? 0);
 
         if ($this->paused_at !== null) {
-            $paused += $this->paused_at->diffInSeconds($at);
+            $paused += self::wholeSecondsBetween($this->paused_at, $at);
         }
 
         return max(0, $gross - $paused);
@@ -199,5 +199,13 @@ class TaskTimeEntry extends Model
         }
 
         return $result;
+    }
+
+    /**
+     * Whole-second difference; Carbon's diffInSeconds() can return floats.
+     */
+    private static function wholeSecondsBetween(\DateTimeInterface $from, \DateTimeInterface $to): int
+    {
+        return (int) round(CarbonImmutable::parse($from)->diffInSeconds($to));
     }
 }
