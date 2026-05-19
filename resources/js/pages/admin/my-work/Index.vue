@@ -384,7 +384,7 @@ onMounted(() => {
                                 @update:model-value="patchTaskStatus(task, $event)" />
                             <div class="flex max-w-full flex-wrap justify-between gap-2">
                                 <Tooltip>
-                                    <TooltipTrigger class="w-full flex-1">
+                                    <TooltipTrigger as-child class="w-full flex-1">
                                         <Button v-if="task.can_submit_task_completion" variant="secondary" size="sm"
                                             class="h-8 w-full text-xs" type="button" @click="submitForCompletion(task)">
                                             <CheckCircle class="size-3.5" />
@@ -393,16 +393,16 @@ onMounted(() => {
                                     <TooltipContent> Submit for completion </TooltipContent>
                                 </Tooltip>
                                 <Tooltip>
-                                    <TooltipTrigger class="w-full flex-1">
+                                    <TooltipTrigger as-child class="w-full flex-1">
                                         <TaskTimerButton :project-id="task.project_id" :task-id="task.id"
-                                            :show-label="false" class="w-full"
+                                            :show-label="false"
                                             :timer-today-seconds="task.timer_today_seconds"
                                             :timer-state="task.timer_state" />
                                     </TooltipTrigger>
                                     <TooltipContent> Timer </TooltipContent>
                                 </Tooltip>
                                 <Tooltip>
-                                    <TooltipTrigger class="w-full flex-1">
+                                    <TooltipTrigger as-child class="w-full flex-1">
                                         <Button variant="outline" size="sm" class="h-8 w-full text-xs" type="button"
                                             @click="openTaskPreview(task)">
                                             <Eye class="size-3.5" />
@@ -411,7 +411,7 @@ onMounted(() => {
                                     <TooltipContent> View task </TooltipContent>
                                 </Tooltip>
                                 <Tooltip>
-                                    <TooltipTrigger class="w-full flex-1">
+                                    <TooltipTrigger as-child class="w-full flex-1">
                                         <Button variant="outline" size="sm" class="h-8 w-full text-xs" as-child>
                                             <Link :href="task.project_tasks_url">
                                                 <List class="size-3.5" />

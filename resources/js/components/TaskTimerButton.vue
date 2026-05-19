@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { router, usePage } from '@inertiajs/vue3';
-import { Play, Square } from 'lucide-vue-next';
+import { Pause, Play } from 'lucide-vue-next';
 import { computed } from 'vue';
 import TaskTimerController from '@/actions/App/Http/Controllers/Admin/TaskTimerController';
 import { Button } from '@/components/ui/button';
@@ -37,10 +37,9 @@ const isRunningForThisTask = computed(
 
 const isPausedForThisTask = computed(
     () =>
-        (active.value !== null
-            && active.value.task_id === props.taskId
-            && active.value.is_paused)
-        || props.timerState === 'paused',
+        active.value !== null
+        && active.value.task_id === props.taskId
+        && active.value.is_paused,
 );
 
 const isRunningElsewhere = computed(
@@ -77,9 +76,9 @@ function start(): void {
     );
 }
 
-function stop(): void {
+function pause(): void {
     router.post(
-        TaskTimerController.stop.url(),
+        TaskTimerController.pause.url(),
         {},
         {
             preserveScroll: true,
@@ -88,9 +87,19 @@ function stop(): void {
     );
 }
 
+function onClick(): void {
+    if (isRunningForThisTask.value) {
+        pause();
+
+        return;
+    }
+
+    start();
+}
+
 const buttonTitle = computed(() => {
     if (isRunningForThisTask.value) {
-        return 'Stop timer';
+        return 'Pause timer';
     }
 
     if (isPausedForThisTask.value) {
@@ -106,7 +115,7 @@ const buttonTitle = computed(() => {
 
 const actionLabel = computed(() => {
     if (isRunningForThisTask.value) {
-        return props.label ?? 'Stop';
+        return props.label ?? 'Pause';
     }
 
     if (isPausedForThisTask.value) {
@@ -119,28 +128,27 @@ const actionLabel = computed(() => {
 
     return isRunningElsewhere.value ? 'Switch' : 'Start';
 });
+
+const buttonClass = computed(() => {
+    const sizeClass = props.showLabel ? '' : 'h-8 flex-1 w-full';
+    
+    if (isRunningForThisTask.value) {
+        return `gap-1.5 border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20 ${sizeClass}`;
+    }
+
+    return `gap-1.5 ${sizeClass}`;
+});
 </script>
 
 <template>
-    <div class="flex items-center gap-1.5">
-        <Button v-if="isRunningForThisTask" variant="outline" :size="size" type="button"
-            class="gap-1.5 border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
-            :title="buttonTitle" :class="showLabel ? '' : 'h-8 flex-1'" @click.stop="stop">
-            <Square class="size-3.5" />
-            <template v-if="showLabel">
-                <span>{{ actionLabel }}</span>
-            </template>
-        </Button>
-        <Button v-else variant="outline" :size="size" type="button" class="gap-1.5" :title="buttonTitle"
-            :class="showLabel ? '' : 'h-8 flex-1'" @click.stop="start">
-            <Play class="size-3.5" />
-            <template v-if="showLabel">
-                <span>{{ actionLabel }}</span>
-            </template>
-            <span v-if="todayLabel" class="font-mono text-[10px] tabular-nums text-muted-foreground"
-                :title="`Time today: ${todayLabel}`">
-                {{ todayLabel }}
-            </span>
-        </Button>
-    </div>
+    <Button variant="outline" :size="size" type="button" :class="buttonClass" :title="buttonTitle"
+        @click.stop="onClick">
+        <Pause v-if="isRunningForThisTask" class="size-3.5" />
+        <Play v-else class="size-3.5" />
+        <span v-if="showLabel">{{ actionLabel }}</span>
+        <span v-if="showLabel && todayLabel" class="font-mono text-[10px] tabular-nums text-muted-foreground"
+            :title="`Time today: ${todayLabel}`">
+            {{ todayLabel }}
+        </span>
+    </Button>
 </template>

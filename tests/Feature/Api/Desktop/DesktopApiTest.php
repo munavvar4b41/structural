@@ -84,6 +84,55 @@ class DesktopApiTest extends TestCase
         $pendingIds = collect($response->json('pending_tasks'))->pluck('id')->all();
         $this->assertContains($pending->id, $pendingIds);
         $this->assertNotContains($task->id, $pendingIds);
+
+        $pendingItem = collect($response->json('pending_tasks'))
+            ->firstWhere('id', $pending->id);
+        $this->assertIsArray($pendingItem);
+        $this->assertSame(ProjectTaskStatus::ToDo->value, $pendingItem['status']);
+        $this->assertSame(ProjectTaskStatus::ToDo->label(), $pendingItem['status_label']);
+    }
+
+    public function test_tray_pending_tasks_sort_in_progress_before_to_do_and_cap_at_fifteen(): void
+    {
+        ['staff' => $staff, 'project' => $project] = $this->setupProjectWithTask();
+
+        Sanctum::actingAs($staff);
+
+        $inProgress = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'assignee_user_id' => $staff->id,
+                'status' => ProjectTaskStatus::InProgress,
+                'title' => 'In progress task',
+                'updated_at' => now()->subHour(),
+            ]);
+
+        $toDo = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'assignee_user_id' => $staff->id,
+                'status' => ProjectTaskStatus::ToDo,
+                'title' => 'To do task',
+                'updated_at' => now(),
+            ]);
+
+        for ($i = 0; $i < 16; $i++) {
+            ProjectTask::factory()
+                ->forProject($project)
+                ->create([
+                    'assignee_user_id' => $staff->id,
+                    'status' => ProjectTaskStatus::ToDo,
+                    'title' => "Extra todo {$i}",
+                ]);
+        }
+
+        $response = $this->getJson(route('api.desktop.tray'))->assertOk();
+
+        $pending = $response->json('pending_tasks');
+        $this->assertCount(15, $pending);
+        $this->assertSame($inProgress->id, $pending[0]['id']);
+        $this->assertSame(ProjectTaskStatus::InProgress->value, $pending[0]['status']);
+        $this->assertContains($toDo->id, collect($pending)->pluck('id')->all());
     }
 
     public function test_timer_start_via_api_switches_running_task(): void

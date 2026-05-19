@@ -175,7 +175,7 @@ class TaskTimeTracker
             'user_id' => $user->id,
             'started_at' => $start,
             'ended_at' => $end,
-            'duration_seconds' => $start->diffInSeconds($end),
+            'duration_seconds' => (int) round($start->diffInSeconds($end)),
             'source' => TimeEntrySource::Manual,
             'notes' => $notes,
         ]);
@@ -197,7 +197,7 @@ class TaskTimeTracker
         $entry->forceFill([
             'started_at' => $start,
             'ended_at' => $end,
-            'duration_seconds' => $start->diffInSeconds($end),
+            'duration_seconds' => (int) round($start->diffInSeconds($end)),
             'notes' => $notes,
         ])->save();
 
@@ -285,7 +285,7 @@ class TaskTimeTracker
             return;
         }
 
-        $pauseDuration = $entry->paused_at->diffInSeconds($at);
+        $pauseDuration = (int) round($entry->paused_at->diffInSeconds($at));
 
         $entry->forceFill([
             'accumulated_pause_seconds' => (int) ($entry->accumulated_pause_seconds ?? 0) + $pauseDuration,
@@ -300,7 +300,7 @@ class TaskTimeTracker
         }
 
         if ($entry->paused_at !== null) {
-            $pauseDuration = $entry->paused_at->diffInSeconds($endedAt);
+            $pauseDuration = (int) round($entry->paused_at->diffInSeconds($endedAt));
             $entry->accumulated_pause_seconds = (int) ($entry->accumulated_pause_seconds ?? 0) + $pauseDuration;
             $entry->paused_at = null;
         }
