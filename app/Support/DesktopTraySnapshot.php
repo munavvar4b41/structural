@@ -11,6 +11,8 @@ use Illuminate\Support\Str;
 
 class DesktopTraySnapshot
 {
+    private const PENDING_LIMIT = 15;
+
     private const TITLE_LIMIT = 24;
 
     private const TRAY_ICON_TITLE_LIMIT = 15;
@@ -75,18 +77,30 @@ class DesktopTraySnapshot
      */
     private function pendingTasks(User $actor): array
     {
-        return ProjectTask::query()
+        $activeEntry = TaskTimeEntry::activeSessionForUser($actor->id);
+        $activeTaskId = $activeEntry?->project_task_id;
+
+        $query = ProjectTask::query()
             ->where('assignee_user_id', $actor->id)
-            ->where('status', ProjectTaskStatus::ToDo)
+            ->whereIn('status', [ProjectTaskStatus::ToDo, ProjectTaskStatus::InProgress])
             ->whereIn('project_id', Project::query()->visibleToUser($actor)->select('projects.id'))
-            ->with('project:id,name,code')
+            ->with('project:id,name,code');
+
+        if ($activeTaskId !== null) {
+            $query->where('id', '!=', $activeTaskId);
+        }
+
+        return $query
+            ->orderByRaw(
+                'CASE WHEN status = ? THEN 0 ELSE 1 END',
+                [ProjectTaskStatus::InProgress->value],
+            )
             ->orderByDesc('updated_at')
-            ->limit(5)
+            ->limit(self::PENDING_LIMIT)
             ->get()
             ->map(function (ProjectTask $task): array {
                 $projectLabel = $task->project?->code ?: ($task->project?->name ?? '');
                 $description = $this->taskDescription($projectLabel, $task->title);
-
                 return [
                     'id' => $task->id,
                     'project_id' => $task->project_id,
@@ -96,6 +110,8 @@ class DesktopTraySnapshot
                     'project_name_short' => Str::limit($projectLabel, self::PROJECT_LIMIT),
                     'description' => Str::limit($description, self::TITLE_LIMIT),
                     'description_tray' => Str::limit($description, self::TRAY_ICON_TITLE_LIMIT),
+                    'status' => $task->status?->value ?? '',
+                    'status_label' => $task->status?->label(),
                 ];
             })
             ->all();

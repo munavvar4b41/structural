@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { Square } from 'lucide-vue-next';
+import { Pause, Play, Square } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import TaskTimerController from '@/actions/App/Http/Controllers/Admin/TaskTimerController';
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,28 @@ const elapsedSeconds = computed(() => {
 
 const elapsedLabel = computed(() => formatSeconds(elapsedSeconds.value, { withSeconds: true }));
 
+function pauseTimer(): void {
+    router.post(
+        TaskTimerController.pause.url(),
+        {},
+        {
+            preserveScroll: true,
+            preserveState: true,
+        },
+    );
+}
+
+function resumeTimer(): void {
+    router.post(
+        TaskTimerController.resume.url(),
+        {},
+        {
+            preserveScroll: true,
+            preserveState: true,
+        },
+    );
+}
+
 function stopTimer(): void {
     router.post(
         TaskTimerController.stop.url(),
@@ -81,6 +103,16 @@ function stopTimer(): void {
             {{ active.task_title }}
         </Link>
         <span class="shrink-0 font-mono text-xs tabular-nums">{{ elapsedLabel }}</span>
+        <Button v-if="!active.is_paused" variant="ghost" size="icon"
+            class="size-6 shrink-0 rounded-full text-emerald-700 hover:bg-emerald-200/60 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+            type="button" title="Pause timer" @click="pauseTimer">
+            <Pause class="size-3" />
+        </Button>
+        <Button v-else variant="ghost" size="icon"
+            class="size-6 shrink-0 rounded-full text-emerald-700 hover:bg-emerald-200/60 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+            type="button" title="Resume timer" @click="resumeTimer">
+            <Play class="size-3" />
+        </Button>
         <Button variant="ghost" size="icon"
             class="size-6 shrink-0 rounded-full text-emerald-700 hover:bg-emerald-200/60 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
             type="button" title="Stop timer" @click="stopTimer">
