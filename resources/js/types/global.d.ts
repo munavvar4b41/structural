@@ -37,6 +37,7 @@ declare module '@inertiajs/core' {
                 is_paused: boolean;
                 elapsed_seconds: number;
                 task_today_seconds: number;
+                my_all_time_seconds: number;
             } | null;
             [key: string]: unknown;
         };

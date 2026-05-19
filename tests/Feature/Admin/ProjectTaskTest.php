@@ -6,9 +6,11 @@ use App\Enums\ProjectTaskStatus;
 use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectTask;
+use App\Models\TaskTimeEntry;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -97,6 +99,49 @@ class ProjectTaskTest extends TestCase
             ->get(route('admin.projects.tasks.show', [$project, $task]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('admin/projects/tasks/Show'));
+    }
+
+    public function test_task_show_includes_remaining_seconds_from_my_time_including_open_entry(): void
+    {
+        extract($this->projectWithTeamHead());
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+
+        $task = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+                'status' => ProjectTaskStatus::ToDo,
+                'estimated_minutes' => 120,
+            ]);
+
+        TaskTimeEntry::factory()
+            ->forTask($task)
+            ->forUser($staff)
+            ->between(
+                Carbon::parse('2026-05-07 08:00:00'),
+                Carbon::parse('2026-05-07 08:30:00'),
+            )
+            ->create();
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 09:10:00'));
+
+        TaskTimeEntry::factory()
+            ->forTask($task)
+            ->forUser($staff)
+            ->running()
+            ->create([
+                'started_at' => Carbon::parse('2026-05-07 09:00:00'),
+            ]);
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.tasks.show', [$project, $task]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('time_tracking.totals.my_all_time_seconds', 40 * 60)
+                ->where('time_tracking.totals.remaining_seconds', 80 * 60));
+
+        Carbon::setTestNow();
     }
 
     public function test_task_show_lists_direct_subtasks(): void

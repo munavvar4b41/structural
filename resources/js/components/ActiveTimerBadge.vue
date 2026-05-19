@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { Pause, Play, Square } from 'lucide-vue-next';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed } from 'vue';
 import TaskTimerController from '@/actions/App/Http/Controllers/Admin/TaskTimerController';
 import { Button } from '@/components/ui/button';
+import {
+    useLiveTaskTodaySeconds,
+    useTimerClock,
+} from '@/composables/useLiveTaskTodaySeconds';
 import { formatSeconds } from '@/lib/formatSeconds';
 import { show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
 
@@ -11,47 +15,9 @@ const page = usePage();
 
 const active = computed(() => page.props.active_time_entry);
 
-const now = ref(Date.now());
-let intervalId: number | undefined;
+const now = useTimerClock();
 
-onMounted(() => {
-    intervalId = window.setInterval(() => {
-        now.value = Date.now();
-    }, 1000);
-});
-
-onBeforeUnmount(() => {
-    if (intervalId !== undefined) {
-        window.clearInterval(intervalId);
-    }
-});
-
-const elapsedSeconds = computed(() => {
-    if (active.value === null) {
-        return 0;
-    }
-
-    const todayBase =
-        active.value.task_today_seconds - active.value.elapsed_seconds;
-
-    if (active.value.is_paused) {
-        return Math.max(0, active.value.task_today_seconds);
-    }
-
-    const startedMs = Date.parse(active.value.started_at);
-
-    if (Number.isNaN(startedMs)) {
-        return Math.max(0, active.value.task_today_seconds);
-    }
-
-    const segmentTick = Math.max(
-        0,
-        Math.floor((now.value - startedMs) / 1000),
-    );
-    const segmentElapsed = Math.max(active.value.elapsed_seconds, segmentTick);
-
-    return Math.max(0, todayBase + segmentElapsed);
-});
+const elapsedSeconds = useLiveTaskTodaySeconds(active, now);
 
 const elapsedLabel = computed(() => formatSeconds(elapsedSeconds.value, { withSeconds: true }));
 

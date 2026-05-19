@@ -66,7 +66,7 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{id: int, task_id: int, project_id: int, task_title: string, project_name: string, project_code: string|null, started_at: string, is_paused: bool, elapsed_seconds: int, task_today_seconds: int}|null
+     * @return array{id: int, task_id: int, project_id: int, task_title: string, project_name: string, project_code: string|null, started_at: string, is_paused: bool, elapsed_seconds: int, task_today_seconds: int, my_all_time_seconds: int}|null
      */
     protected function activeTimeEntryProps(Request $request): ?array
     {
@@ -93,6 +93,10 @@ class HandleInertiaRequests extends Middleware
             'is_paused' => $entry->isPaused(),
             'elapsed_seconds' => $entry->elapsedSeconds(),
             'task_today_seconds' => TaskTimeEntry::todayElapsedSecondsForUserOnTask(
+                $user->id,
+                $entry->project_task_id,
+            ),
+            'my_all_time_seconds' => TaskTimeEntry::elapsedSecondsForUserOnTask(
                 $user->id,
                 $entry->project_task_id,
             ),
