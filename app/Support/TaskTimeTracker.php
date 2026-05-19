@@ -277,6 +277,8 @@ class TaskTimeTracker
         }
 
         $entry->forceFill(['paused_at' => $at])->save();
+
+        $this->revertTaskStatusFromEntry($entry);
     }
 
     private function resumeEntry(TaskTimeEntry $entry, CarbonInterface $at): void
@@ -291,6 +293,8 @@ class TaskTimeTracker
             'accumulated_pause_seconds' => (int) ($entry->accumulated_pause_seconds ?? 0) + $pauseDuration,
             'paused_at' => null,
         ])->save();
+
+        $this->applyInProgressFromEntry($entry);
     }
 
     private function closeEntry(TaskTimeEntry $entry, CarbonInterface $endedAt): void
@@ -310,6 +314,11 @@ class TaskTimeTracker
             'duration_seconds' => $entry->elapsedSeconds($endedAt),
         ])->save();
 
+        $this->revertTaskStatusFromEntry($entry);
+    }
+
+    private function revertTaskStatusFromEntry(TaskTimeEntry $entry): void
+    {
         $previousStatus = $entry->previous_task_status;
         if ($previousStatus === null) {
             return;
@@ -322,6 +331,23 @@ class TaskTimeTracker
 
         if ($task->status === ProjectTaskStatus::InProgress) {
             $task->forceFill(['status' => $previousStatus])->save();
+        }
+    }
+
+    private function applyInProgressFromEntry(TaskTimeEntry $entry): void
+    {
+        $previousStatus = $entry->previous_task_status;
+        if ($previousStatus === null) {
+            return;
+        }
+
+        $task = $entry->task()->first();
+        if ($task === null) {
+            return;
+        }
+
+        if ($task->status === $previousStatus) {
+            $task->forceFill(['status' => ProjectTaskStatus::InProgress])->save();
         }
     }
 

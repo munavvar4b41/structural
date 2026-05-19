@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Link, router, useForm } from '@inertiajs/vue3';
+import { Form, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { CornerDownRight } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import ProjectTaskChecklistItemController from '@/actions/App/Http/Controllers/Admin/ProjectTaskChecklistItemController';
@@ -160,7 +160,12 @@ function toLocalInputValue(iso: string | null | undefined): string {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function formatEntryRange(start: string | null, end: string | null, isRunning: boolean): string {
+function formatEntryRange(
+    start: string | null,
+    end: string | null,
+    isRunning: boolean,
+    isPaused: boolean,
+): string {
     if (start === null) {
         return '—';
     }
@@ -168,6 +173,10 @@ function formatEntryRange(start: string | null, end: string | null, isRunning: b
     const startLabel = new Date(start).toLocaleString();
 
     if (isRunning) {
+        if (isPaused) {
+            return `${startLabel} → paused`;
+        }
+
         return `${startLabel} → running`;
     }
 
@@ -193,22 +202,96 @@ onBeforeUnmount(() => {
     }
 });
 
+const page = usePage();
+
+const activeTimeEntry = computed(() => page.props.active_time_entry);
+
+const myAllTimeAnchorMs = ref(Date.now());
+
+watch(
+    () => [
+        props.time_tracking.totals.my_all_time_seconds,
+        activeTimeEntry.value,
+    ],
+    () => {
+        myAllTimeAnchorMs.value = Date.now();
+    },
+    { deep: true },
+);
+
+const liveMyAllTimeSeconds = computed(() => {
+    const active = activeTimeEntry.value;
+
+    if (active !== null && active.task_id === props.task.id) {
+        if (active.is_paused) {
+            return active.my_all_time_seconds;
+        }
+
+        const delta = Math.max(
+            0,
+            Math.floor((now.value - myAllTimeAnchorMs.value) / 1000),
+        );
+
+        return active.my_all_time_seconds + delta;
+    }
+
+    return props.time_tracking.totals.my_all_time_seconds;
+});
+
+const liveMyTodaySeconds = computed(() => {
+    const active = activeTimeEntry.value;
+
+    if (active !== null && active.task_id === props.task.id) {
+        if (active.is_paused) {
+            return active.task_today_seconds;
+        }
+
+        const delta = Math.max(
+            0,
+            Math.floor((now.value - myAllTimeAnchorMs.value) / 1000),
+        );
+
+        return active.task_today_seconds + delta;
+    }
+
+    return props.time_tracking.totals.my_today_seconds;
+});
+
+const liveRemainingSeconds = computed(() => {
+    const remaining = props.time_tracking.totals.remaining_seconds;
+
+    if (remaining === null) {
+        return null;
+    }
+
+    const spentDelta =
+        liveMyAllTimeSeconds.value
+        - props.time_tracking.totals.my_all_time_seconds;
+
+    return Math.max(0, remaining - spentDelta);
+});
+
 function entryDurationSeconds(entry: TimeEntryRow): number {
     if (!entry.is_running) {
         return entry.duration_seconds ?? 0;
     }
 
-    if (entry.started_at === null) {
-        return 0;
+    const active = activeTimeEntry.value;
+
+    if (active !== null && active.id === entry.id) {
+        if (active.is_paused) {
+            return active.elapsed_seconds;
+        }
+
+        const delta = Math.max(
+            0,
+            Math.floor((now.value - myAllTimeAnchorMs.value) / 1000),
+        );
+
+        return active.elapsed_seconds + delta;
     }
 
-    const startedMs = Date.parse(entry.started_at);
-
-    if (Number.isNaN(startedMs)) {
-        return 0;
-    }
-
-    return Math.max(0, Math.floor((now.value - startedMs) / 1000));
+    return entry.elapsed_seconds ?? 0;
 }
 
 const manualOpen = ref(false);
@@ -277,7 +360,7 @@ const entryDeleteDescription = computed(() => {
         return '';
     }
 
-    return `Delete time entry from ${formatEntryRange(row.started_at, row.ended_at, row.is_running)}? This cannot be undone.`;
+    return `Delete time entry from ${formatEntryRange(row.started_at, row.ended_at, row.is_running, row.is_paused)}? This cannot be undone.`;
 });
 
 const ratingOptions = [1, 2, 3, 4, 5].map((n) => ({
@@ -601,8 +684,13 @@ const checklistDeleteDescription = computed(() => {
                 <Button v-if="task.can_confirm_task_completion" type="button" @click="confirmCompletionOpen = true">
                     Confirm completion
                 </Button>
-                <TaskTimerButton v-if="time_tracking.can_track" :project-id="project.id" :task-id="task.id"
-                    size="default" />
+                <TaskTimerButton
+                    v-if="time_tracking.can_track"
+                    :project-id="project.id"
+                    :task-id="task.id"
+                    size="default"
+                    :reload-props-on-mutation="['time_tracking']"
+                />
                 <Button v-if="!embedded" variant="outline" as-child>
                     <Link :href="projectTasksIndex.url(project.id)">Back to task list</Link>
                 </Button>
@@ -664,6 +752,19 @@ const checklistDeleteDescription = computed(() => {
                 <div class="grid gap-1">
                     <span class="text-xs font-medium text-muted-foreground">Estimate</span>
                     <span>{{ formatTaskMinutes(task.estimated_minutes) }}</span>
+                </div>
+                <div
+                    v-if="time_tracking.totals.remaining_seconds !== null"
+                    class="grid gap-1"
+                >
+                    <span class="text-xs font-medium text-muted-foreground">Remaining</span>
+                    <span class="tabular-nums">
+                        {{
+                            liveRemainingSeconds === 0
+                                ? 'No time left'
+                                : formatSeconds(liveRemainingSeconds ?? 0)
+                        }}
+                    </span>
                 </div>
                 <div class="grid gap-1">
                     <span class="text-xs font-medium text-muted-foreground">Requirement</span>
@@ -793,13 +894,13 @@ const checklistDeleteDescription = computed(() => {
                     <div class="rounded-lg border border-border/60 bg-muted/20 p-3">
                         <p class="text-xs text-muted-foreground">My time today</p>
                         <p class="mt-1 text-lg font-semibold tabular-nums">
-                            {{ formatSeconds(time_tracking.totals.my_today_seconds) }}
+                            {{ formatSeconds(liveMyTodaySeconds) }}
                         </p>
                     </div>
                     <div class="rounded-lg border border-border/60 bg-muted/20 p-3">
                         <p class="text-xs text-muted-foreground">My time on this task</p>
                         <p class="mt-1 text-lg font-semibold tabular-nums">
-                            {{ formatSeconds(time_tracking.totals.my_all_time_seconds) }}
+                            {{ formatSeconds(liveMyAllTimeSeconds) }}
                         </p>
                     </div>
                     <div class="rounded-lg border border-border/60 bg-muted/20 p-3">
@@ -829,10 +930,15 @@ const checklistDeleteDescription = computed(() => {
                                     {{ entry.user_name ?? '—' }}
                                 </td>
                                 <td class="px-3 py-2 align-top text-muted-foreground">
-                                    {{ formatEntryRange(entry.started_at, entry.ended_at, entry.is_running) }}
+                                    {{ formatEntryRange(entry.started_at, entry.ended_at, entry.is_running, entry.is_paused) }}
                                 </td>
                                 <td class="px-3 py-2 align-top tabular-nums">
-                                    <span v-if="entry.is_running" class="text-emerald-600 dark:text-emerald-400">
+                                    <span
+                                        v-if="entry.is_running"
+                                        :class="entry.is_paused
+                                            ? 'text-amber-600 dark:text-amber-400'
+                                            : 'text-emerald-600 dark:text-emerald-400'"
+                                    >
                                         {{ formatSeconds(entryDurationSeconds(entry), { withSeconds: true }) }}
                                     </span>
                                     <span v-else>

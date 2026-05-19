@@ -67,6 +67,8 @@ export type TimeEntryRow = {
     ended_at: string | null;
     duration_seconds: number | null;
     is_running: boolean;
+    is_paused: boolean;
+    elapsed_seconds: number | null;
     source: string;
     source_label: string;
     notes: string | null;
@@ -80,6 +82,7 @@ export type TimeTracking = {
         my_today_seconds: number;
         my_all_time_seconds: number;
         task_all_time_seconds: number;
+        remaining_seconds: number | null;
     };
     entries: TimeEntryRow[];
 };

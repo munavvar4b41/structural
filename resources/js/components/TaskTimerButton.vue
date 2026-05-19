@@ -14,6 +14,8 @@ type Props = {
     size?: 'sm' | 'default';
     timerTodaySeconds?: number;
     timerState?: 'running' | 'paused' | 'idle';
+    /** Partial reload after start/pause so time-tracking props stay in sync. */
+    reloadPropsOnMutation?: string[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -22,6 +24,7 @@ const props = withDefaults(defineProps<Props>(), {
     showLabel: true,
     timerTodaySeconds: 0,
     timerState: 'idle',
+    reloadPropsOnMutation: undefined,
 });
 
 const page = usePage();
@@ -62,6 +65,27 @@ const todayLabel = computed(() => {
     return formatSeconds(seconds, { withSeconds: true });
 });
 
+function timerMutationOptions(): {
+    preserveScroll: boolean;
+    preserveState: boolean;
+    onSuccess: () => void;
+} {
+    return {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            if (props.reloadPropsOnMutation === undefined) {
+                return;
+            }
+
+            router.reload({
+                only: props.reloadPropsOnMutation,
+                preserveScroll: true,
+            });
+        },
+    };
+}
+
 function start(): void {
     router.post(
         TaskTimerController.start.url({
@@ -69,10 +93,7 @@ function start(): void {
             task: props.taskId,
         }),
         {},
-        {
-            preserveScroll: true,
-            preserveState: true,
-        },
+        timerMutationOptions(),
     );
 }
 
@@ -80,10 +101,7 @@ function pause(): void {
     router.post(
         TaskTimerController.pause.url(),
         {},
-        {
-            preserveScroll: true,
-            preserveState: true,
-        },
+        timerMutationOptions(),
     );
 }
 
