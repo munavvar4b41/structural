@@ -8,6 +8,7 @@ use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
 use App\Models\Team;
 use App\Models\User;
+use App\Support\TaskTimeTracker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -189,5 +190,61 @@ class TimeReportTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('totals.seconds', 45 * 60));
+    }
+
+    public function test_report_includes_running_entry_with_elapsed_duration_at_load(): void
+    {
+        ['staff' => $staff, 'task' => $task] = $this->setupProjectWithTask();
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 09:30:00'));
+
+        TaskTimeEntry::factory()
+            ->forTask($task)
+            ->forUser($staff)
+            ->running()
+            ->create([
+                'started_at' => Carbon::parse('2026-05-07 09:00:00'),
+            ]);
+
+        $this->actingAs($staff)
+            ->get(route('admin.time-report.index', ['from' => '2026-05-07', 'to' => '2026-05-07']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('totals.entries', 1)
+                ->where('totals.seconds', 30 * 60)
+                ->has('entries', 1)
+                ->where('entries.0.ended_at', null)
+                ->where('entries.0.is_running', true)
+                ->where('entries.0.is_paused', false)
+                ->where('entries.0.duration_seconds', 30 * 60));
+
+        Carbon::setTestNow();
+    }
+
+    public function test_report_includes_paused_entry_with_elapsed_duration_at_load(): void
+    {
+        ['staff' => $staff, 'task' => $task] = $this->setupProjectWithTask();
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 12:00:00'));
+        app(TaskTimeTracker::class)->start($staff, $task);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 12:10:00'));
+        app(TaskTimeTracker::class)->pause($staff);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 12:25:00'));
+
+        $this->actingAs($staff)
+            ->get(route('admin.time-report.index', ['from' => '2026-05-07', 'to' => '2026-05-07']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('totals.entries', 1)
+                ->where('totals.seconds', 10 * 60)
+                ->has('entries', 1)
+                ->where('entries.0.ended_at', null)
+                ->where('entries.0.is_running', false)
+                ->where('entries.0.is_paused', true)
+                ->where('entries.0.duration_seconds', 10 * 60));
+
+        Carbon::setTestNow();
     }
 }

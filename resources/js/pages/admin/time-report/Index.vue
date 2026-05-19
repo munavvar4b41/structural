@@ -60,7 +60,9 @@ type EntryRow = {
     task_title: string | null;
     started_at: string | null;
     ended_at: string | null;
-    duration_seconds: number | null;
+    duration_seconds: number;
+    is_running: boolean;
+    is_paused: boolean;
     source: string;
     notes: string | null;
 };
@@ -170,18 +172,22 @@ function formatDateLabel(date: string): string {
     }
 }
 
-function formatEntryWhen(start: string | null, end: string | null): string {
-    if (start === null) {
+function formatEntryWhen(entry: EntryRow): string {
+    if (entry.started_at === null) {
         return '—';
     }
 
-    const startLabel = new Date(start).toLocaleString();
+    const startLabel = new Date(entry.started_at).toLocaleString();
 
-    if (end === null) {
+    if (entry.ended_at === null) {
+        if (entry.is_paused) {
+            return `${startLabel} → paused`;
+        }
+
         return `${startLabel} → running`;
     }
 
-    return `${startLabel} → ${new Date(end).toLocaleString()}`;
+    return `${startLabel} → ${new Date(entry.ended_at).toLocaleString()}`;
 }
 
 const entrySearch = ref('');
@@ -555,7 +561,7 @@ const projectChartOptions = computed(() => ({
                             class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
                         >
                             <td class="px-5 py-3.5 text-muted-foreground">
-                                {{ formatEntryWhen(entry.started_at, entry.ended_at) }}
+                                {{ formatEntryWhen(entry) }}
                             </td>
                             <td class="px-5 py-3.5 text-muted-foreground">
                                 {{ entry.project_name ?? `Project #${entry.project_id}` }}

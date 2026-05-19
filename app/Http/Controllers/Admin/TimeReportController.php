@@ -48,10 +48,10 @@ class TimeReportController extends Controller
 
         $allowedProjectIds = $this->allowedProjectIds($actor, $target);
         $projectFilterId = $this->parseProjectFilter($request->query('project_id'), $allowedProjectIds);
+        $reportAt = CarbonImmutable::now();
 
         $entriesQuery = TaskTimeEntry::query()
             ->where('user_id', $target->id)
-            ->whereNotNull('ended_at')
             ->whereBetween('started_at', [$rangeStart, $rangeEnd])
             ->when($allowedProjectIds !== null, fn ($q) => $q->whereIn('project_id', $allowedProjectIds ?: [0]))
             ->when($projectFilterId !== null, fn ($q) => $q->where('project_id', $projectFilterId));
@@ -62,9 +62,9 @@ class TimeReportController extends Controller
             ->limit(50)
             ->get();
 
-        $perDay = $this->aggregatePerDay($entries);
-        $perProject = $this->aggregatePerProject($entries);
-        $perTask = $this->aggregatePerTask($entries);
+        $perDay = $this->aggregatePerDay($entries, $reportAt);
+        $perProject = $this->aggregatePerProject($entries, $reportAt);
+        $perTask = $this->aggregatePerTask($entries, $reportAt);
 
         return Inertia::render('admin/time-report/Index', [
             'filters' => [
@@ -85,7 +85,9 @@ class TimeReportController extends Controller
             'per_project' => $perProject,
             'per_task' => $perTask,
             'totals' => [
-                'seconds' => $entries->sum('duration_seconds'),
+                'seconds' => $entries->sum(
+                    fn (TaskTimeEntry $e): int => $this->effectiveDurationSeconds($e, $reportAt),
+                ),
                 'entries' => $entries->count(),
             ],
             'entries' => $entries->map(fn (TaskTimeEntry $e): array => [
@@ -97,11 +99,22 @@ class TimeReportController extends Controller
                 'task_title' => $e->task?->title,
                 'started_at' => $e->started_at?->toIso8601String(),
                 'ended_at' => $e->ended_at?->toIso8601String(),
-                'duration_seconds' => $e->duration_seconds,
+                'duration_seconds' => $this->effectiveDurationSeconds($e, $reportAt),
+                'is_running' => $e->isRunning(),
+                'is_paused' => $e->isPaused(),
                 'source' => $e->source->value,
                 'notes' => $e->notes,
             ])->all(),
         ]);
+    }
+
+    private function effectiveDurationSeconds(TaskTimeEntry $entry, \DateTimeInterface $at): int
+    {
+        if ($entry->ended_at !== null) {
+            return max(0, (int) $entry->duration_seconds);
+        }
+
+        return $entry->elapsedSeconds($at);
     }
 
     private function parseDate(mixed $value, CarbonImmutable $fallback): CarbonImmutable
@@ -228,11 +241,12 @@ class TimeReportController extends Controller
      * @param  Collection<int, TaskTimeEntry>  $entries
      * @return list<array{date: string, total_seconds: int, projects: list<array{project_id: int, project_name: string|null, total_seconds: int}>}>
      */
-    private function aggregatePerDay($entries): array
+    private function aggregatePerDay($entries, \DateTimeInterface $at): array
     {
         $byDay = [];
 
         foreach ($entries as $entry) {
+            $duration = $this->effectiveDurationSeconds($entry, $at);
             $date = $entry->started_at->copy()->format('Y-m-d');
             $byDay[$date] ??= [
                 'date' => $date,
@@ -240,7 +254,7 @@ class TimeReportController extends Controller
                 'projects' => [],
             ];
 
-            $byDay[$date]['total_seconds'] += (int) $entry->duration_seconds;
+            $byDay[$date]['total_seconds'] += $duration;
 
             $pid = $entry->project_id;
             $byDay[$date]['projects'][$pid] ??= [
@@ -248,7 +262,7 @@ class TimeReportController extends Controller
                 'project_name' => $entry->project?->name,
                 'total_seconds' => 0,
             ];
-            $byDay[$date]['projects'][$pid]['total_seconds'] += (int) $entry->duration_seconds;
+            $byDay[$date]['projects'][$pid]['total_seconds'] += $duration;
         }
 
         $rows = [];
@@ -267,11 +281,12 @@ class TimeReportController extends Controller
      * @param  Collection<int, TaskTimeEntry>  $entries
      * @return list<array{project_id: int, project_name: string|null, project_code: string|null, total_seconds: int, task_count: int}>
      */
-    private function aggregatePerProject($entries): array
+    private function aggregatePerProject($entries, \DateTimeInterface $at): array
     {
         $byProject = [];
 
         foreach ($entries as $entry) {
+            $duration = $this->effectiveDurationSeconds($entry, $at);
             $pid = $entry->project_id;
             $byProject[$pid] ??= [
                 'project_id' => $pid,
@@ -281,7 +296,7 @@ class TimeReportController extends Controller
                 'task_ids' => [],
             ];
 
-            $byProject[$pid]['total_seconds'] += (int) $entry->duration_seconds;
+            $byProject[$pid]['total_seconds'] += $duration;
             $byProject[$pid]['task_ids'][$entry->project_task_id] = true;
         }
 
@@ -301,11 +316,12 @@ class TimeReportController extends Controller
      * @param  Collection<int, TaskTimeEntry>  $entries
      * @return list<array{task_id: int, task_title: string|null, project_id: int, project_name: string|null, total_seconds: int}>
      */
-    private function aggregatePerTask($entries): array
+    private function aggregatePerTask($entries, \DateTimeInterface $at): array
     {
         $byTask = [];
 
         foreach ($entries as $entry) {
+            $duration = $this->effectiveDurationSeconds($entry, $at);
             $tid = $entry->project_task_id;
             $byTask[$tid] ??= [
                 'task_id' => $tid,
@@ -314,7 +330,7 @@ class TimeReportController extends Controller
                 'project_name' => $entry->project?->name,
                 'total_seconds' => 0,
             ];
-            $byTask[$tid]['total_seconds'] += (int) $entry->duration_seconds;
+            $byTask[$tid]['total_seconds'] += $duration;
         }
 
         $rows = array_values($byTask);
