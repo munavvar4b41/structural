@@ -65,20 +65,23 @@ class ProjectTaskShowPayloadBuilder
             ->limit(50)
             ->get();
 
-        $myEntries = $entries->where('user_id', $actor->id);
-
         $myTodayTotal = TaskTimeEntry::todayElapsedSecondsForUserOnTask(
             $actor->id,
             $task->id,
         );
 
-        $myAllTimeTotal = (int) $myEntries
-            ->whereNotNull('duration_seconds')
-            ->sum('duration_seconds');
+        $myAllTimeTotal = TaskTimeEntry::elapsedSecondsForUserOnTask(
+            $actor->id,
+            $task->id,
+        );
 
         $taskAllTimeTotal = (int) $entries
             ->whereNotNull('duration_seconds')
             ->sum('duration_seconds');
+
+        $remainingSeconds = $task->estimated_minutes !== null
+            ? max(0, $task->estimated_minutes * 60 - $myAllTimeTotal)
+            : null;
 
         return [
             'can_track' => $actor->can('start', [TaskTimeEntry::class, $task]),
@@ -86,6 +89,7 @@ class ProjectTaskShowPayloadBuilder
                 'my_today_seconds' => $myTodayTotal,
                 'my_all_time_seconds' => $myAllTimeTotal,
                 'task_all_time_seconds' => $taskAllTimeTotal,
+                'remaining_seconds' => $remainingSeconds,
             ],
             'entries' => $entries->map(fn (TaskTimeEntry $e): array => [
                 'id' => $e->id,
@@ -94,7 +98,9 @@ class ProjectTaskShowPayloadBuilder
                 'started_at' => $e->started_at?->toIso8601String(),
                 'ended_at' => $e->ended_at?->toIso8601String(),
                 'duration_seconds' => $e->duration_seconds,
-                'is_running' => $e->ended_at === null,
+                'is_running' => $e->isOpen(),
+                'is_paused' => $e->isPaused(),
+                'elapsed_seconds' => $e->isOpen() ? $e->elapsedSeconds() : null,
                 'source' => $e->source->value,
                 'source_label' => $e->source->label(),
                 'notes' => $e->notes,

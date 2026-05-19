@@ -574,13 +574,13 @@ onMounted(() => {
                     </thead>
                     <tbody>
                         <tr v-for="task in tasks" :key="task.id" class="border-b border-border/60 last:border-0">
-                            <td class="max-w-0 px-4 py-3 align-top" :style="{
+                            <td class="max-w-0 px-4 py-3 align-middle" :style="{
                                 paddingLeft: `calc(0.75rem + ${task.tree_depth} * 1.25rem)`,
                             }">
-                                <div class="flex min-w-0 items-start gap-1.5">
+                                <div class="flex min-w-0 items-center gap-1.5">
                                     <CornerDownRight v-if="task.tree_depth > 0"
                                         class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                                    <div class="min-w-0 flex-1">
+                                    <div class="min-w-0 flex-1 flex flex-col justify-center">
                                         <Button variant="link"
                                             class="h-auto w-full min-w-0 justify-start p-0 font-medium text-foreground"
                                             as-child>
@@ -601,6 +601,7 @@ onMounted(() => {
                                     </div>
                                 </div>
                             </td>
+          
                             <td class="px-4 py-3 text-muted-foreground">{{ task.status_label }}</td>
                             <td class="px-4 py-3 text-muted-foreground">
                                 {{ task.assignee?.name ?? '—' }}

@@ -283,7 +283,7 @@ class TaskTimerTest extends TestCase
         $this->assertSame(ProjectTaskStatus::ToDo, $task->fresh()->status);
     }
 
-    public function test_switch_pauses_old_task_and_transitions_new_while_old_stays_in_progress(): void
+    public function test_switch_pauses_old_task_and_restores_previous_status_on_new_task(): void
     {
         ['staff' => $staff, 'head' => $head, 'project' => $project, 'task' => $taskA] = $this->setupProjectWithTask();
 
@@ -298,7 +298,7 @@ class TaskTimerTest extends TestCase
         $this->tracker()->start($staff, $taskA);
         $this->tracker()->start($staff, $taskB);
 
-        $this->assertSame(ProjectTaskStatus::InProgress, $taskA->fresh()->status);
+        $this->assertSame(ProjectTaskStatus::ToDo, $taskA->fresh()->status);
         $this->assertSame(ProjectTaskStatus::InProgress, $taskB->fresh()->status);
 
         $entryA = TaskTimeEntry::query()->where('project_task_id', $taskA->id)->firstOrFail();
@@ -307,6 +307,42 @@ class TaskTimerTest extends TestCase
         $this->assertSame(ProjectTaskStatus::ToDo, $entryA->previous_task_status);
         $this->assertSame(ProjectTaskStatus::Review, $entryB->previous_task_status);
         $this->assertNotNull($entryA->paused_at);
+    }
+
+    public function test_pause_restores_previous_status(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+
+        $this->tracker()->start($staff, $task);
+        $this->assertSame(ProjectTaskStatus::InProgress, $task->fresh()->status);
+
+        $this->tracker()->pause($staff);
+
+        $this->assertSame(ProjectTaskStatus::ToDo, $task->fresh()->status);
+    }
+
+    public function test_resume_restores_in_progress(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+
+        $this->tracker()->start($staff, $task);
+        $this->tracker()->pause($staff);
+        $this->assertSame(ProjectTaskStatus::ToDo, $task->fresh()->status);
+
+        $this->tracker()->resume($staff);
+
+        $this->assertSame(ProjectTaskStatus::InProgress, $task->fresh()->status);
+    }
+
+    public function test_pause_does_not_change_status_when_no_snapshot_was_recorded(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+        $task->forceFill(['status' => ProjectTaskStatus::InProgress])->save();
+
+        $this->tracker()->start($staff, $task);
+        $this->tracker()->pause($staff);
+
+        $this->assertSame(ProjectTaskStatus::InProgress, $task->fresh()->status);
     }
 
     public function test_in_progress_task_records_no_snapshot_and_status_unchanged_on_stop(): void

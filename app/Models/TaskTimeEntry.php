@@ -148,6 +148,32 @@ class TaskTimeEntry extends Model
         return self::todayElapsedSecondsForUserOnTasks($userId, [$taskId], $at)[$taskId] ?? 0;
     }
 
+    public static function elapsedSecondsForUserOnTask(
+        int $userId,
+        int $taskId,
+        ?\DateTimeInterface $at = null,
+    ): int {
+        $at = $at ?? now();
+
+        $closedTotal = (int) self::query()
+            ->where('user_id', $userId)
+            ->where('project_task_id', $taskId)
+            ->whereNotNull('ended_at')
+            ->sum('duration_seconds');
+
+        $open = self::query()
+            ->where('user_id', $userId)
+            ->where('project_task_id', $taskId)
+            ->open()
+            ->first();
+
+        if ($open === null) {
+            return $closedTotal;
+        }
+
+        return $closedTotal + $open->elapsedSeconds($at);
+    }
+
     /**
      * @param  list<int>  $taskIds
      * @return array<int, int>
