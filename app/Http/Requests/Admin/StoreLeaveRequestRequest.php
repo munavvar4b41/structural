@@ -71,10 +71,10 @@ class StoreLeaveRequestRequest extends FormRequest
                 $start = CarbonImmutable::parse($startRaw, $tz);
                 $end = CarbonImmutable::parse($endRaw, $tz);
 
-                if (! $start->addHour()->equalTo($end)) {
+                if (! $end->greaterThan($start)) {
                     $validator->errors()->add(
                         'break_ends_at',
-                        __('Break must be exactly one hour.'),
+                        __('Break end must be after the start time.'),
                     );
                 }
 
@@ -82,6 +82,13 @@ class StoreLeaveRequestRequest extends FormRequest
                     $validator->errors()->add(
                         'break_starts_at',
                         __('Break start must fall on the selected date.'),
+                    );
+                }
+
+                if ($end->toDateString() !== $date) {
+                    $validator->errors()->add(
+                        'break_ends_at',
+                        __('Break end must fall on the selected date.'),
                     );
                 }
             },

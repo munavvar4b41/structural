@@ -13,7 +13,7 @@ enum LeaveType: string
         return match ($this) {
             self::FullDay => 'Full day',
             self::HalfDay => 'Half day',
-            self::Break => 'Break (1 hour)',
+            self::Break => 'Break (time range)',
         };
     }
 }
