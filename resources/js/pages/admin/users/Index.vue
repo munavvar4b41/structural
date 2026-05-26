@@ -5,6 +5,8 @@ import UserController from '@/actions/App/Http/Controllers/Admin/UserController'
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
 import DataTablePagination from '@/components/dashboard/DataTablePagination.vue';
+import DataTableTd from '@/components/dashboard/DataTableTd.vue';
+import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
@@ -162,20 +164,14 @@ function roleLabel(role: string): string {
 </script>
 
 <template>
+
     <Head title="Users" />
 
-    <ConfirmDestructiveDialog
-        v-model:open="deleteDialogOpen"
-        title="Delete user?"
-        :description="deleteUserDescription"
-        @confirm="executeDelete"
-    />
+    <ConfirmDestructiveDialog v-model:open="deleteDialogOpen" title="Delete user?" :description="deleteUserDescription"
+        @confirm="executeDelete" />
 
     <div class="flex flex-col gap-6">
-        <PageHeader
-            title="Users"
-            description="Create and manage accounts for your organization"
-        >
+        <PageHeader title="Users" description="Create and manage accounts for your organization">
             <template #actions>
                 <Button as-child>
                     <Link :href="usersCreate()">Add user</Link>
@@ -183,54 +179,26 @@ function roleLabel(role: string): string {
             </template>
         </PageHeader>
 
-        <ListToolbar
-            :model-value="filters.search"
-            placeholder="Search name or email…"
-            @update:model-value="onSearch"
-        >
+        <ListToolbar :model-value="filters.search" placeholder="Search name or email…" @update:model-value="onSearch">
             <template #filters>
                 <div class="flex flex-wrap items-end gap-3">
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-role">Role</Label>
-                        <TaskFormSelect
-                            id="filter-role"
-                            name="role"
-                            class="w-[10rem]"
-                            :model-value="roleFilter"
-                            :options="roleSelectOptions"
-                            placeholder="All roles"
-                            none-label="All roles"
-                            exclude-from-submit
-                            @update:model-value="onRole"
-                        />
+                        <TaskFormSelect id="filter-role" name="role" class="w-[10rem]" :model-value="roleFilter"
+                            :options="roleSelectOptions" placeholder="All roles" none-label="All roles"
+                            exclude-from-submit @update:model-value="onRole" />
                     </div>
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-team">Team</Label>
-                        <TaskFormSelect
-                            id="filter-team"
-                            name="team_id"
-                            class="w-[12rem]"
-                            :model-value="teamFilter"
-                            :options="teamSelectOptions"
-                            placeholder="All teams"
-                            none-label="All teams"
-                            exclude-from-submit
-                            @update:model-value="onTeam"
-                        />
+                        <TaskFormSelect id="filter-team" name="team_id" class="w-[12rem]" :model-value="teamFilter"
+                            :options="teamSelectOptions" placeholder="All teams" none-label="All teams"
+                            exclude-from-submit @update:model-value="onTeam" />
                     </div>
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-verified">Email</Label>
-                        <TaskFormSelect
-                            id="filter-verified"
-                            name="verified"
-                            class="w-[11rem]"
-                            :model-value="verifiedFilter"
-                            :options="filter_options.verified"
-                            placeholder="All"
-                            none-label="All"
-                            exclude-from-submit
-                            @update:model-value="onVerified"
-                        />
+                        <TaskFormSelect id="filter-verified" name="verified" class="w-[11rem]"
+                            :model-value="verifiedFilter" :options="filter_options.verified" placeholder="All"
+                            none-label="All" exclude-from-submit @update:model-value="onVerified" />
                     </div>
                 </div>
             </template>
@@ -239,50 +207,34 @@ function roleLabel(role: string): string {
         <DataTable>
             <thead>
                 <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Name
-                    </th>
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Email
-                    </th>
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Role
-                    </th>
-                    <th class="px-5 py-3.5 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Actions
-                    </th>
+                    <DataTableTh>Name</DataTableTh>
+                    <DataTableTh>Email</DataTableTh>
+                    <DataTableTh>Role</DataTableTh>
+                    <DataTableTh class="text-right">Actions</DataTableTh>
                 </tr>
             </thead>
             <tbody>
-                <tr
-                    v-for="row in users.data"
-                    :key="row.id"
-                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
-                >
-                    <td class="px-5 py-3.5 font-medium">{{ row.name }}</td>
-                    <td class="px-5 py-3.5 text-muted-foreground">
+                <tr v-for="row in users.data" :key="row.id"
+                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                    <DataTableTd label="Name" class="font-medium">{{ row.name }}</DataTableTd>
+                    <DataTableTd label="Email" class="text-muted-foreground">
                         {{ row.email }}
-                    </td>
-                    <td class="px-5 py-3.5 text-muted-foreground">
+                    </DataTableTd>
+                    <DataTableTd label="Role" class="text-muted-foreground">
                         {{ roleLabel(row.role) }}
-                    </td>
-                    <td class="px-5 py-3.5 text-right">
-                            <div class="flex justify-end gap-2">
-                                <Button variant="outline" size="sm" as-child>
-                                    <Link :href="usersEdit(row.id)">Edit</Link>
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    class="text-destructive hover:bg-destructive/10"
-                                    type="button"
-                                    @click="openDeleteDialog(row)"
-                                >
-                                    Delete
-                                </Button>
-                            </div>
-                        </td>
-                    </tr>
+                    </DataTableTd>
+                    <DataTableTd label="Actions" class="text-right">
+                        <div class="flex justify-end gap-2">
+                            <Button variant="outline" size="sm" as-child>
+                                <Link :href="usersEdit(row.id)">Edit</Link>
+                            </Button>
+                            <Button variant="outline" size="sm" class="text-destructive hover:bg-destructive/10"
+                                type="button" @click="openDeleteDialog(row)">
+                                Delete
+                            </Button>
+                        </div>
+                    </DataTableTd>
+                </tr>
             </tbody>
         </DataTable>
 

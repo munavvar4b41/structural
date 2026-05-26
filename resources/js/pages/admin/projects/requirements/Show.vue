@@ -397,7 +397,7 @@ defineOptions({
                                     <span class="font-medium text-foreground">{{ row.user?.name ?? 'Unknown' }}</span>
                                     <span>{{
                                         row.created_at ? new Date(row.created_at).toLocaleString() : '—'
-                                        }}</span>
+                                    }}</span>
                                 </div>
                                 <p class="mt-1 whitespace-pre-wrap break-words">{{ row.body }}</p>
                             </div>
@@ -434,7 +434,7 @@ defineOptions({
                             {{ project.estimation_required ? 'required on this project.' : 'optional.' }}
                         </p>
                     </div>
-                    <div class="overflow-x-auto">
+                    <div class="md:overflow-x-auto">
                         <Dialog v-model:open="createTaskOpen">
                             <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-lg">
                                 <DialogHeader>
@@ -494,7 +494,9 @@ defineOptions({
                             </DialogContent>
                         </Dialog>
 
-                        <table class="w-full min-w-[640px] table-fixed text-left text-sm">
+                        <table data-responsive-table
+                            class="data-table-responsive w-full table-fixed text-left text-sm md:min-w-[640px]"
+                            style="--data-table-min-width: 640px">
                             <thead class="border-b bg-muted/40">
                                 <tr>
                                     <th class="w-[38%] px-4 py-3 font-medium">Title</th>
@@ -507,7 +509,7 @@ defineOptions({
                             <tbody>
                                 <tr v-for="task in requirement_tasks" :key="task.id"
                                     class="border-b border-border/60 last:border-0">
-                                    <td class="max-w-0 px-4 py-3 align-top" :style="{
+                                    <td data-label="Title" class="max-w-0 px-4 py-3 align-top" :style="{
                                         paddingLeft: `calc(0.75rem + ${task.tree_depth} * 1.25rem)`,
                                     }">
                                         <div class="flex min-w-0 items-start gap-1.5">
@@ -535,14 +537,15 @@ defineOptions({
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-4 py-3 text-muted-foreground">{{ task.status_label }}</td>
-                                    <td class="px-4 py-3 text-muted-foreground">
+                                    <td data-label="Status" class="px-4 py-3 text-muted-foreground">{{ task.status_label
+                                        }}</td>
+                                    <td data-label="Assignee" class="px-4 py-3 text-muted-foreground">
                                         {{ task.assignee?.name ?? '—' }}
                                     </td>
-                                    <td class="px-4 py-3 text-muted-foreground">
+                                    <td data-label="Estimate" class="px-4 py-3 text-muted-foreground">
                                         {{ formatTaskMinutes(task.estimated_minutes) }}
                                     </td>
-                                    <td class="px-4 py-3 text-right">
+                                    <td data-label="Actions" class="px-4 py-3 text-right">
                                         <div class="flex justify-end gap-2">
                                             <Button v-if="task.can_update" variant="outline" size="sm" as-child>
                                                 <Link :href="projectTasksIndex.url(project.id, {
@@ -561,7 +564,7 @@ defineOptions({
                                     </td>
                                 </tr>
                                 <tr v-if="requirement_tasks.length === 0">
-                                    <td colspan="5" class="px-4 py-8 text-center text-muted-foreground">
+                                    <td data-label="" colspan="5" class="px-4 py-8 text-center text-muted-foreground">
                                         No tasks yet for this requirement.
                                     </td>
                                 </tr>

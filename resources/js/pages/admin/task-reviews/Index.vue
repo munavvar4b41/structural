@@ -4,6 +4,8 @@ import { ClipboardCheck } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin/TaskCompletionReviewController';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableTd from '@/components/dashboard/DataTableTd.vue';
+import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
@@ -170,31 +172,22 @@ function submittedLabel(at: string | null): string {
 </script>
 
 <template>
+
     <Head title="Task reviews" />
 
     <div class="flex flex-col gap-6">
-        <PageHeader
-            title="Task reviews"
-            description="Tasks submitted by assignees for completion. Confirm to mark done and record ratings."
-        />
+        <PageHeader title="Task reviews"
+            description="Tasks submitted by assignees for completion. Confirm to mark done and record ratings." />
 
         <ListToolbar v-model="searchText" placeholder="Search task, project, assignee…">
-                <template #filters>
-                    <div class="grid gap-1">
-                        <Label class="text-xs text-muted-foreground" for="tr-stage">Stage</Label>
-                        <TaskFormSelect
-                            id="tr-stage"
-                            name="task_review_stage"
-                            class="w-[14rem]"
-                            :model-value="stageFilter"
-                            :options="stageFilterOptions"
-                            placeholder="All stages"
-                            none-label="All stages"
-                            exclude-from-submit
-                            @update:model-value="setStageFilter"
-                        />
-                    </div>
-                </template>
+            <template #filters>
+                <div class="grid gap-1">
+                    <Label class="text-xs text-muted-foreground" for="tr-stage">Stage</Label>
+                    <TaskFormSelect id="tr-stage" name="task_review_stage" class="w-[14rem]" :model-value="stageFilter"
+                        :options="stageFilterOptions" placeholder="All stages" none-label="All stages"
+                        exclude-from-submit @update:model-value="setStageFilter" />
+                </div>
+            </template>
         </ListToolbar>
 
         <Card>
@@ -211,47 +204,34 @@ function submittedLabel(at: string | null): string {
                 </div>
             </CardHeader>
             <CardContent>
-                <DataTable v-if="filteredTasks.length > 0" min-width="720px">
+                <DataTable v-if="filteredTasks.length > 0">
                     <thead>
                         <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Task
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Project
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Assignee
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Submitted
-                            </th>
-                            <th class="px-5 py-3.5 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Actions
-                            </th>
+                            <DataTableTh>Task</DataTableTh>
+                            <DataTableTh>Project</DataTableTh>
+                            <DataTableTh>Assignee</DataTableTh>
+                            <DataTableTh>Submitted</DataTableTh>
+                            <DataTableTh class="text-right">Actions</DataTableTh>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr
-                            v-for="row in filteredTasks"
-                            :key="row.id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
-                        >
-                            <td class="px-5 py-3.5 align-top font-medium">{{ row.title }}</td>
-                            <td class="px-5 py-3.5 align-top text-muted-foreground">
+                        <tr v-for="row in filteredTasks" :key="row.id"
+                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                            <DataTableTd label="Task" class="align-top font-medium">{{ row.title }}</DataTableTd>
+                            <DataTableTd label="Project" class="align-top text-muted-foreground">
                                 {{ row.project.name }}
                                 <span v-if="row.project.code">({{ row.project.code }})</span>
-                            </td>
-                            <td class="px-5 py-3.5 align-top text-muted-foreground">
+                            </DataTableTd>
+                            <DataTableTd label="Assignee" class="align-top text-muted-foreground">
                                 {{ row.assignee?.name ?? '—' }}
-                            </td>
-                            <td class="px-5 py-3.5 align-top text-muted-foreground">
+                            </DataTableTd>
+                            <DataTableTd label="Submitted" class="align-top text-muted-foreground">
                                 <span class="block">{{ submittedLabel(row.completion_submitted_at) }}</span>
                                 <span v-if="row.completion_submitted_by" class="text-xs">
                                     by {{ row.completion_submitted_by.name }}
                                 </span>
-                            </td>
-                            <td class="px-5 py-3.5 text-right">
+                            </DataTableTd>
+                            <DataTableTd label="Actions" class="text-right">
                                 <div class="flex flex-wrap justify-end gap-2">
                                     <Button variant="outline" size="sm" as-child>
                                         <Link :href="row.task_show_url">Open task</Link>
@@ -260,7 +240,7 @@ function submittedLabel(at: string | null): string {
                                         Confirm & rate
                                     </Button>
                                 </div>
-                            </td>
+                            </DataTableTd>
                         </tr>
                     </tbody>
                 </DataTable>
@@ -291,50 +271,30 @@ function submittedLabel(at: string | null): string {
 
                 <div class="grid gap-2">
                     <Label for="review-notes">Review notes</Label>
-                    <textarea
-                        id="review-notes"
-                        v-model="form.review_notes"
-                        rows="3"
-                        maxlength="10000"
+                    <textarea id="review-notes" v-model="form.review_notes" rows="3" maxlength="10000"
                         class="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-transparent"
-                        placeholder="Optional feedback for the team"
-                    />
+                        placeholder="Optional feedback for the team" />
                     <InputError :message="form.errors.review_notes" />
                 </div>
 
                 <div class="grid gap-2">
                     <Label for="task-rating">Task quality (1–5)</Label>
-                    <TaskFormSelect
-                        id="task-rating"
-                        v-model="form.task_rating"
-                        name="task_rating"
-                        required
-                        :options="ratingOptions"
-                    />
+                    <TaskFormSelect id="task-rating" v-model="form.task_rating" name="task_rating" required
+                        :options="ratingOptions" />
                     <InputError :message="form.errors.task_rating" />
                 </div>
 
                 <div v-if="showAssigneeRating" class="grid gap-2">
                     <Label for="assignee-rating">Assignee performance (1–5)</Label>
-                    <TaskFormSelect
-                        id="assignee-rating"
-                        v-model="form.assignee_rating"
-                        name="assignee_rating"
-                        required
-                        :options="ratingOptions"
-                    />
+                    <TaskFormSelect id="assignee-rating" v-model="form.assignee_rating" name="assignee_rating" required
+                        :options="ratingOptions" />
                     <InputError :message="form.errors.assignee_rating" />
                 </div>
 
                 <div class="grid gap-2">
                     <Label for="creator-rating">Task owner / creator (1–5)</Label>
-                    <TaskFormSelect
-                        id="creator-rating"
-                        v-model="form.creator_rating"
-                        name="creator_rating"
-                        required
-                        :options="ratingOptions"
-                    />
+                    <TaskFormSelect id="creator-rating" v-model="form.creator_rating" name="creator_rating" required
+                        :options="ratingOptions" />
                     <InputError :message="form.errors.creator_rating" />
                 </div>
 

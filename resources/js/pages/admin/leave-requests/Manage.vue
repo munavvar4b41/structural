@@ -3,6 +3,8 @@ import { Head, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import LeaveRequestController from '@/actions/App/Http/Controllers/Admin/LeaveRequestController';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableTd from '@/components/dashboard/DataTableTd.vue';
+import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
@@ -51,7 +53,7 @@ defineOptions({
 });
 
 const searchText = ref('');
-const statusFilter = ref('pending');
+const statusFilter = ref('');
 const typeFilter = ref('');
 const userFilter = ref('');
 
@@ -187,13 +189,12 @@ const filteredLeaveRequests = computed(() => {
 </script>
 
 <template>
+
     <Head title="Leave approvals" />
 
     <div class="flex flex-col gap-6">
-        <PageHeader
-            title="Leave approvals"
-            description="Approve or reject pending requests from staff and team heads."
-        />
+        <PageHeader title="Leave approvals"
+            description="Approve or reject pending requests from staff and team heads." />
 
         <Card>
             <CardHeader>
@@ -202,114 +203,64 @@ const filteredLeaveRequests = computed(() => {
             </CardHeader>
             <CardContent>
                 <div class="mb-4 flex flex-col gap-4">
-                    <ListToolbar
-                        v-model="searchText"
-                        placeholder="Search requester, reason, date, type…"
-                    >
+                    <ListToolbar v-model="searchText" placeholder="Search requester, reason, date, type…">
                         <template #filters>
                             <div class="flex flex-wrap items-end gap-3">
                                 <div class="grid gap-1">
-                                    <Label class="text-xs text-muted-foreground" for="lm-status"
-                                        >Status</Label
-                                    >
-                                    <TaskFormSelect
-                                        id="lm-status"
-                                        name="lm_filter_status"
-                                        class="w-[11rem]"
-                                        :model-value="statusFilter"
-                                        :options="statusFilterOptions"
-                                        placeholder="All statuses"
-                                        none-label="All statuses"
-                                        exclude-from-submit
-                                        @update:model-value="setStatusFilter"
-                                    />
+                                    <Label class="text-xs text-muted-foreground" for="lm-status">Status</Label>
+                                    <TaskFormSelect id="lm-status" name="lm_filter_status" class="w-[11rem]"
+                                        :model-value="statusFilter" :options="statusFilterOptions"
+                                        placeholder="All statuses" none-label="All statuses" exclude-from-submit
+                                        @update:model-value="setStatusFilter" />
                                 </div>
                                 <div class="grid gap-1">
                                     <Label class="text-xs text-muted-foreground" for="lm-type">Type</Label>
-                                    <TaskFormSelect
-                                        id="lm-type"
-                                        name="lm_filter_type"
-                                        class="w-[12rem]"
-                                        :model-value="typeFilter"
-                                        :options="typeFilterOptions"
-                                        placeholder="All types"
-                                        none-label="All types"
-                                        exclude-from-submit
-                                        @update:model-value="setTypeFilter"
-                                    />
+                                    <TaskFormSelect id="lm-type" name="lm_filter_type" class="w-[12rem]"
+                                        :model-value="typeFilter" :options="typeFilterOptions" placeholder="All types"
+                                        none-label="All types" exclude-from-submit
+                                        @update:model-value="setTypeFilter" />
                                 </div>
                                 <div class="grid gap-1">
                                     <Label class="text-xs text-muted-foreground" for="lm-user">Requester</Label>
-                                    <TaskFormSelect
-                                        id="lm-user"
-                                        name="lm_filter_user"
-                                        class="min-w-[12rem]"
-                                        :model-value="userFilter"
-                                        :options="userFilterOptions"
-                                        placeholder="Everyone"
-                                        none-label="Everyone"
-                                        exclude-from-submit
-                                        @update:model-value="setUserFilter"
-                                    />
+                                    <TaskFormSelect id="lm-user" name="lm_filter_user" class="min-w-[12rem]"
+                                        :model-value="userFilter" :options="userFilterOptions" placeholder="Everyone"
+                                        none-label="Everyone" exclude-from-submit @update:model-value="setUserFilter" />
                                 </div>
                             </div>
                         </template>
                     </ListToolbar>
                 </div>
 
-                <DataTable min-width="880px">
+                <DataTable>
                     <thead>
                         <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Requester
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Date
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Type
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Detail
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Status
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground" />
+                            <DataTableTh>Requester</DataTableTh>
+                            <DataTableTh>Date</DataTableTh>
+                            <DataTableTh>Type</DataTableTh>
+                            <DataTableTh>Detail</DataTableTh>
+                            <DataTableTh>Status</DataTableTh>
+                            <DataTableTh />
                         </tr>
                     </thead>
                     <tbody>
-                        <tr
-                            v-for="row in filteredLeaveRequests"
-                            :key="row.id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
-                        >
-                            <td class="px-5 py-3.5">
+                        <tr v-for="row in filteredLeaveRequests" :key="row.id"
+                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                            <DataTableTd label="Requester">
                                 <div class="font-medium">{{ row.user?.name ?? '—' }}</div>
                                 <div class="text-xs text-muted-foreground">
                                     {{ row.user?.email }}
                                 </div>
-                            </td>
-                            <td class="px-5 py-3.5">{{ row.date }}</td>
-                            <td class="px-5 py-3.5">{{ row.type_label }}</td>
-                            <td class="px-5 py-3.5">{{ detailLabel(row) }}</td>
-                            <td class="px-5 py-3.5">{{ row.status_label }}</td>
-                            <td class="px-5 py-3.5 text-right whitespace-nowrap">
+                            </DataTableTd>
+                            <DataTableTd label="Date">{{ row.date }}</DataTableTd>
+                            <DataTableTd label="Type">{{ row.type_label }}</DataTableTd>
+                            <DataTableTd label="Detail">{{ detailLabel(row) }}</DataTableTd>
+                            <DataTableTd label="Status">{{ row.status_label }}</DataTableTd>
+                            <DataTableTd label="Actions" class="text-right whitespace-nowrap">
                                 <template v-if="row.status === 'pending'">
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        class="mr-2"
-                                        @click="approve(row)"
-                                    >
+                                    <Button type="button" size="sm" class="mr-2" @click="approve(row)">
                                         Approve
                                     </Button>
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        @click="reject(row)"
-                                    >
+                                    <Button type="button" size="sm" variant="outline" @click="reject(row)">
                                         Reject
                                     </Button>
                                 </template>
@@ -318,16 +269,16 @@ const filteredLeaveRequests = computed(() => {
                                         By {{ row.reviewed_by.name }}
                                     </template>
                                 </span>
-                            </td>
+                            </DataTableTd>
                         </tr>
                         <tr v-if="filteredLeaveRequests.length === 0">
-                            <td colspan="6" class="px-5 py-8 text-center text-muted-foreground">
+                            <DataTableTd label="" :colspan="6" class="py-8 text-center text-muted-foreground">
                                 {{
                                     leave_requests.length === 0
                                         ? 'No leave requests yet.'
                                         : 'No requests match your filters.'
                                 }}
-                            </td>
+                            </DataTableTd>
                         </tr>
                     </tbody>
                 </DataTable>
