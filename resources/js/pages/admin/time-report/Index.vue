@@ -3,6 +3,8 @@ import { Head, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import ChartCard from '@/components/dashboard/ChartCard.vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableTd from '@/components/dashboard/DataTableTd.vue';
+import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import StatCard from '@/components/dashboard/StatCard.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
@@ -254,13 +256,11 @@ const projectChartOptions = computed(() => ({
 </script>
 
 <template>
+
     <Head title="Time report" />
 
     <div class="flex flex-col gap-6">
-        <PageHeader
-            title="Time report"
-            description="Aggregate of completed time entries by day, project, and task."
-        />
+        <PageHeader title="Time report" description="Aggregate of completed time entries by day, project, and task." />
 
         <Card>
             <CardHeader>
@@ -273,41 +273,21 @@ const projectChartOptions = computed(() => ({
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <div class="grid gap-2">
                         <Label for="filter-from">From</Label>
-                        <Input
-                            id="filter-from"
-                            type="date"
-                            v-model="fromValue"
-                        />
+                        <Input id="filter-from" type="date" v-model="fromValue" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="filter-to">To</Label>
-                        <Input
-                            id="filter-to"
-                            type="date"
-                            v-model="toValue"
-                        />
+                        <Input id="filter-to" type="date" v-model="toValue" />
                     </div>
                     <div v-if="can_view_other_users" class="grid gap-2">
                         <Label for="filter-user">User</Label>
-                        <TaskFormSelect
-                            id="filter-user"
-                            name="user_id"
-                            v-model="userValue"
-                            required
-                            placeholder="User"
-                            :options="userSelectOptions"
-                        />
+                        <TaskFormSelect id="filter-user" name="user_id" v-model="userValue" required placeholder="User"
+                            :options="userSelectOptions" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="filter-project">Project</Label>
-                        <TaskFormSelect
-                            id="filter-project"
-                            name="project_id"
-                            v-model="projectValue"
-                            none-label="All projects"
-                            placeholder="All projects"
-                            :options="projectSelectOptions"
-                        />
+                        <TaskFormSelect id="filter-project" name="project_id" v-model="projectValue"
+                            none-label="All projects" placeholder="All projects" :options="projectSelectOptions" />
                     </div>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
@@ -326,47 +306,19 @@ const projectChartOptions = computed(() => ({
         </Card>
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatCard
-                title="Total time"
-                :value="Math.round(totals.seconds / 60)"
-                :description="formatSeconds(totals.seconds)"
-                :animate="false"
-                accent="blue"
-            />
-            <StatCard
-                title="Entries"
-                :value="totals.entries"
-                accent="purple"
-            />
-            <StatCard
-                title="User"
-                :value="target_user.name"
-                :description="target_user.email"
-                :animate="false"
-                accent="green"
-            />
+            <StatCard title="Total time" :value="Math.round(totals.seconds / 60)"
+                :description="formatSeconds(totals.seconds)" :animate="false" accent="blue" />
+            <StatCard title="Entries" :value="totals.entries" accent="purple" />
+            <StatCard title="User" :value="target_user.name" :description="target_user.email" :animate="false"
+                accent="green" />
         </div>
 
-        <div
-            v-if="per_day.length > 0 || per_project.length > 0"
-            class="grid gap-4 lg:grid-cols-2"
-        >
-            <ChartCard
-                v-if="per_day.length > 0"
-                title="Hours per day"
-                description="Time logged across the selected range"
-                type="area"
-                :series="dailyHoursSeries"
-                :options="dailyChartOptions"
-            />
-            <ChartCard
-                v-if="per_project.length > 0"
-                title="Time by project"
-                description="Share of hours per project"
-                type="donut"
-                :series="projectDonutSeries"
-                :options="projectChartOptions"
-            />
+        <div v-if="per_day.length > 0 || per_project.length > 0" class="grid gap-4 lg:grid-cols-2">
+            <ChartCard v-if="per_day.length > 0" title="Hours per day"
+                description="Time logged across the selected range" type="area" :series="dailyHoursSeries"
+                :options="dailyChartOptions" />
+            <ChartCard v-if="per_project.length > 0" title="Time by project" description="Share of hours per project"
+                type="donut" :series="projectDonutSeries" :options="projectChartOptions" />
         </div>
 
         <Card>
@@ -375,31 +327,22 @@ const projectChartOptions = computed(() => ({
                 <CardDescription>Total time logged each day, broken down by project.</CardDescription>
             </CardHeader>
             <CardContent>
-                <DataTable min-width="480px">
+                <DataTable>
                     <thead>
                         <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Date
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Total
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Projects
-                            </th>
+                            <DataTableTh>Date</DataTableTh>
+                            <DataTableTh>Total</DataTableTh>
+                            <DataTableTh>Projects</DataTableTh>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr
-                            v-for="row in per_day"
-                            :key="row.date"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
-                        >
-                            <td class="px-5 py-3.5 align-top">{{ formatDateLabel(row.date) }}</td>
-                            <td class="px-5 py-3.5 align-top font-medium tabular-nums">
+                        <tr v-for="row in per_day" :key="row.date"
+                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                            <DataTableTd label="Date" class="align-top">{{ formatDateLabel(row.date) }}</DataTableTd>
+                            <DataTableTd label="Total" class="align-top font-medium tabular-nums">
                                 {{ formatSeconds(row.total_seconds) }}
-                            </td>
-                            <td class="px-5 py-3.5 align-top text-muted-foreground">
+                            </DataTableTd>
+                            <DataTableTd label="Projects" class="align-top text-muted-foreground">
                                 <ul class="grid gap-1">
                                     <li v-for="p in row.projects" :key="p.project_id">
                                         <span class="font-medium text-foreground">
@@ -410,12 +353,12 @@ const projectChartOptions = computed(() => ({
                                         </span>
                                     </li>
                                 </ul>
-                            </td>
+                            </DataTableTd>
                         </tr>
                         <tr v-if="per_day.length === 0">
-                            <td colspan="3" class="px-5 py-8 text-center text-muted-foreground">
+                            <DataTableTd label="" :colspan="3" class="py-8 text-center text-muted-foreground">
                                 No time tracked in this range.
-                            </td>
+                            </DataTableTd>
                         </tr>
                     </tbody>
                 </DataTable>
@@ -428,43 +371,34 @@ const projectChartOptions = computed(() => ({
                 <CardDescription>Total time spent per project across the date range.</CardDescription>
             </CardHeader>
             <CardContent>
-                <DataTable min-width="480px">
+                <DataTable>
                     <thead>
                         <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Project
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Tasks
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Total
-                            </th>
+                            <DataTableTh>Project</DataTableTh>
+                            <DataTableTh>Tasks</DataTableTh>
+                            <DataTableTh>Total</DataTableTh>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr
-                            v-for="row in per_project"
-                            :key="row.project_id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
-                        >
-                            <td class="px-5 py-3.5">
+                        <tr v-for="row in per_project" :key="row.project_id"
+                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                            <DataTableTd label="Project">
                                 {{ row.project_name ?? `Project #${row.project_id}` }}
                                 <span v-if="row.project_code" class="ml-1 text-xs text-muted-foreground">
                                     ({{ row.project_code }})
                                 </span>
-                            </td>
-                            <td class="px-5 py-3.5 tabular-nums text-muted-foreground">
+                            </DataTableTd>
+                            <DataTableTd label="Tasks" class="tabular-nums text-muted-foreground">
                                 {{ row.task_count }}
-                            </td>
-                            <td class="px-5 py-3.5 font-medium tabular-nums">
+                            </DataTableTd>
+                            <DataTableTd label="Total" class="font-medium tabular-nums">
                                 {{ formatSeconds(row.total_seconds) }}
-                            </td>
+                            </DataTableTd>
                         </tr>
                         <tr v-if="per_project.length === 0">
-                            <td colspan="3" class="px-5 py-8 text-center text-muted-foreground">
+                            <DataTableTd label="" :colspan="3" class="py-8 text-center text-muted-foreground">
                                 No project totals.
-                            </td>
+                            </DataTableTd>
                         </tr>
                     </tbody>
                 </DataTable>
@@ -477,38 +411,29 @@ const projectChartOptions = computed(() => ({
                 <CardDescription>Total time spent per task in the date range.</CardDescription>
             </CardHeader>
             <CardContent>
-                <DataTable min-width="640px">
+                <DataTable>
                     <thead>
                         <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Task
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Project
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Total
-                            </th>
+                            <DataTableTh>Task</DataTableTh>
+                            <DataTableTh>Project</DataTableTh>
+                            <DataTableTh>Total</DataTableTh>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr
-                            v-for="row in per_task"
-                            :key="row.task_id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
-                        >
-                            <td class="px-5 py-3.5">{{ row.task_title ?? `Task #${row.task_id}` }}</td>
-                            <td class="px-5 py-3.5 text-muted-foreground">
+                        <tr v-for="row in per_task" :key="row.task_id"
+                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                            <DataTableTd label="Task">{{ row.task_title ?? `Task #${row.task_id}` }}</DataTableTd>
+                            <DataTableTd label="Project" class="text-muted-foreground">
                                 {{ row.project_name ?? `Project #${row.project_id}` }}
-                            </td>
-                            <td class="px-5 py-3.5 font-medium tabular-nums">
+                            </DataTableTd>
+                            <DataTableTd label="Total" class="font-medium tabular-nums">
                                 {{ formatSeconds(row.total_seconds) }}
-                            </td>
+                            </DataTableTd>
                         </tr>
                         <tr v-if="per_task.length === 0">
-                            <td colspan="3" class="px-5 py-8 text-center text-muted-foreground">
+                            <DataTableTd label="" :colspan="3" class="py-8 text-center text-muted-foreground">
                                 No task totals.
-                            </td>
+                            </DataTableTd>
                         </tr>
                     </tbody>
                 </DataTable>
@@ -524,69 +449,51 @@ const projectChartOptions = computed(() => ({
                             Up to 50 most recent entries in this range.
                         </CardDescription>
                     </div>
-                    <ListToolbar
-                        v-model="entrySearch"
-                        placeholder="Filter by task title or notes…"
-                    />
+                    <ListToolbar v-model="entrySearch" placeholder="Filter by task title or notes…" />
                 </div>
             </CardHeader>
             <CardContent>
-                <DataTable min-width="720px">
+                <DataTable>
                     <thead>
                         <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                When
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Project
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Task
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Duration
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Source
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Notes
-                            </th>
+                            <DataTableTh>When</DataTableTh>
+                            <DataTableTh>Project</DataTableTh>
+                            <DataTableTh>Task</DataTableTh>
+                            <DataTableTh>Duration</DataTableTh>
+                            <DataTableTh>Source</DataTableTh>
+                            <DataTableTh>Notes</DataTableTh>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr
-                            v-for="entry in filteredEntries"
-                            :key="entry.id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
-                        >
-                            <td class="px-5 py-3.5 text-muted-foreground">
+                        <tr v-for="entry in filteredEntries" :key="entry.id"
+                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                            <DataTableTd label="When" class="text-muted-foreground">
                                 {{ formatEntryWhen(entry) }}
-                            </td>
-                            <td class="px-5 py-3.5 text-muted-foreground">
+                            </DataTableTd>
+                            <DataTableTd label="Project" class="text-muted-foreground">
                                 {{ entry.project_name ?? `Project #${entry.project_id}` }}
-                            </td>
-                            <td class="px-5 py-3.5">
+                            </DataTableTd>
+                            <DataTableTd label="Task">
                                 {{ entry.task_title ?? `Task #${entry.task_id}` }}
-                            </td>
-                            <td class="px-5 py-3.5 font-medium tabular-nums">
+                            </DataTableTd>
+                            <DataTableTd label="Duration" class="font-medium tabular-nums">
                                 {{ formatSeconds(entry.duration_seconds) }}
-                            </td>
-                            <td class="px-5 py-3.5 capitalize text-muted-foreground">
+                            </DataTableTd>
+                            <DataTableTd label="Source" class="capitalize text-muted-foreground">
                                 {{ entry.source }}
-                            </td>
-                            <td class="px-5 py-3.5 line-clamp-2 break-words text-muted-foreground">
+                            </DataTableTd>
+                            <DataTableTd label="Notes" class="line-clamp-2 break-words text-muted-foreground">
                                 {{ entry.notes ?? '—' }}
-                            </td>
+                            </DataTableTd>
                         </tr>
                         <tr v-if="filteredEntries.length === 0">
-                            <td colspan="6" class="px-5 py-8 text-center text-muted-foreground">
+                            <DataTableTd label="" :colspan="6" class="py-8 text-center text-muted-foreground">
                                 {{
                                     entries.length === 0
                                         ? 'No entries.'
                                         : 'No entries match your search.'
                                 }}
-                            </td>
+                            </DataTableTd>
                         </tr>
                     </tbody>
                 </DataTable>

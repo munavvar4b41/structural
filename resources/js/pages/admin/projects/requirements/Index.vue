@@ -5,6 +5,8 @@ import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/P
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
 import DataTablePagination from '@/components/dashboard/DataTablePagination.vue';
+import DataTableTd from '@/components/dashboard/DataTableTd.vue';
+import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
@@ -185,20 +187,15 @@ const deleteRequirementDescription = computed(() => {
 </script>
 
 <template>
+
     <Head :title="`Requirements · ${project.name}`" />
 
-    <ConfirmDestructiveDialog
-        v-model:open="deleteDialogOpen"
-        title="Delete requirement?"
-        :description="deleteRequirementDescription"
-        @confirm="executeDelete"
-    />
+    <ConfirmDestructiveDialog v-model:open="deleteDialogOpen" title="Delete requirement?"
+        :description="deleteRequirementDescription" @confirm="executeDelete" />
 
     <div class="flex flex-col gap-6">
-        <PageHeader
-            title="Requirements"
-            :description="`Project ${project.name}${project.code ? ` (${project.code})` : ''}`"
-        >
+        <PageHeader title="Requirements"
+            :description="`Project ${project.name}${project.code ? ` (${project.code})` : ''}`">
             <template #actions>
                 <Button v-if="canCreateRequirements" as-child>
                     <Link :href="requirementsCreate.url(project.id)">Add requirement</Link>
@@ -209,150 +206,99 @@ const deleteRequirementDescription = computed(() => {
             </template>
         </PageHeader>
 
-        <ListToolbar
-                :model-value="filters.search"
-                placeholder="Search title or description…"
-                @update:model-value="onSearch"
-            >
-                <template #filters>
-                    <div class="flex flex-wrap items-end gap-3">
-                        <div class="grid gap-1">
-                            <Label class="text-xs text-muted-foreground" for="filter-review-status"
-                                >Stage</Label
-                            >
-                            <TaskFormSelect
-                                id="filter-review-status"
-                                name="review_status"
-                                class="w-[14rem]"
-                                :model-value="reviewStatusFilter"
-                                :options="reviewStatusSelectOptions"
-                                placeholder="All stages"
-                                none-label="All stages"
-                                exclude-from-submit
-                                @update:model-value="onReviewStatus"
-                            />
-                        </div>
-                        <div class="grid gap-1">
-                            <Label class="text-xs text-muted-foreground" for="filter-responsible"
-                                >Responsible</Label
-                            >
-                            <TaskFormSelect
-                                id="filter-responsible"
-                                name="responsible_user_id"
-                                class="min-w-[14rem]"
-                                :model-value="responsibleFilter"
-                                :options="responsibleSelectOptions"
-                                placeholder="Anyone"
-                                none-label="Anyone"
-                                exclude-from-submit
-                                @update:model-value="onResponsible"
-                            />
-                        </div>
+        <ListToolbar :model-value="filters.search" placeholder="Search title or description…"
+            @update:model-value="onSearch">
+            <template #filters>
+                <div class="flex flex-wrap items-end gap-3">
+                    <div class="grid gap-1">
+                        <Label class="text-xs text-muted-foreground" for="filter-review-status">Stage</Label>
+                        <TaskFormSelect id="filter-review-status" name="review_status" class="w-[14rem]"
+                            :model-value="reviewStatusFilter" :options="reviewStatusSelectOptions"
+                            placeholder="All stages" none-label="All stages" exclude-from-submit
+                            @update:model-value="onReviewStatus" />
                     </div>
-                </template>
-            </ListToolbar>
+                    <div class="grid gap-1">
+                        <Label class="text-xs text-muted-foreground" for="filter-responsible">Responsible</Label>
+                        <TaskFormSelect id="filter-responsible" name="responsible_user_id" class="min-w-[14rem]"
+                            :model-value="responsibleFilter" :options="responsibleSelectOptions" placeholder="Anyone"
+                            none-label="Anyone" exclude-from-submit @update:model-value="onResponsible" />
+                    </div>
+                </div>
+            </template>
+        </ListToolbar>
 
         <DataTable>
             <thead>
                 <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Title
-                    </th>
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Responsible
-                    </th>
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Reviewer
-                    </th>
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Review
-                    </th>
-                    <th class="px-5 py-3.5 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Actions
-                    </th>
+                    <DataTableTh>Title</DataTableTh>
+                    <DataTableTh>Responsible</DataTableTh>
+                    <DataTableTh>Reviewer</DataTableTh>
+                    <DataTableTh>Review</DataTableTh>
+                    <DataTableTh class="text-right">Actions</DataTableTh>
                 </tr>
             </thead>
             <tbody>
-                <tr
-                    v-for="row in requirements.data"
-                    :key="row.id"
-                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
-                >
-                    <td class="px-5 py-3.5 align-top">
-                            <div class="font-medium">{{ row.title }}</div>
-                            <p
-                                v-if="row.description_preview"
-                                class="mt-1 line-clamp-2 text-xs text-muted-foreground"
-                            >
-                                {{ row.description_preview }}
-                            </p>
-                        </td>
-                    <td class="px-5 py-3.5 text-muted-foreground">
+                <tr v-for="row in requirements.data" :key="row.id"
+                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                    <DataTableTd label="Title" class="align-top">
+                        <div class="font-medium">{{ row.title }}</div>
+                        <p v-if="row.description_preview" class="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                            {{ row.description_preview }}
+                        </p>
+                    </DataTableTd>
+                    <DataTableTd label="Responsible" class="text-muted-foreground">
                         {{ row.responsible_user?.name ?? '—' }}
-                    </td>
-                    <td class="px-5 py-3.5 text-muted-foreground">
+                    </DataTableTd>
+                    <DataTableTd label="Reviewer" class="text-muted-foreground">
                         {{ row.reviewer?.name ?? '—' }}
-                    </td>
-                    <td class="px-5 py-3.5 text-muted-foreground">
-                            <div class="flex flex-col gap-1">
-                                <span v-if="row.understanding_confirmed_at" class="inline-flex w-fit items-center rounded-md border border-transparent bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
-                                    Confirmed
-                                </span>
-                                <span
-                                    v-else-if="row.reviewed_at"
-                                    class="inline-flex w-fit items-center rounded-md border border-input bg-background px-2 py-0.5 text-xs font-medium"
-                                >
-                                    Awaiting confirmation
-                                </span>
-                                <span v-else class="text-xs">—</span>
-                                <span v-if="row.reviewed_at" class="text-xs">
-                                    {{ new Date(row.reviewed_at).toLocaleString() }}
-                                </span>
-                            </div>
-                    </td>
-                    <td class="px-5 py-3.5 text-right">
-                            <div class="flex justify-end gap-2">
-                                <Button variant="ghost" size="sm" as-child>
-                                    <Link
-                                        :href="
-                                            requirementsShow.url({
-                                                project: project.id,
-                                                requirement: row.id,
-                                            })
-                                        "
-                                    >
-                                        View
-                                    </Link>
-                                </Button>
-                                <Button v-if="row.can_update" variant="ghost" size="sm" as-child>
-                                    <Link
-                                        :href="
-                                            requirementsEdit.url({
-                                                project: project.id,
-                                                requirement: row.id,
-                                            })
-                                        "
-                                    >
-                                        Edit
-                                    </Link>
-                                </Button>
-                                <Button
-                                    v-if="row.can_delete"
-                                    variant="ghost"
-                                    size="sm"
-                                    class="text-destructive"
-                                    type="button"
-                                    @click="openDeleteDialog(row)"
-                                >
-                                    Delete
-                                </Button>
-                            </div>
-                        </td>
-                    </tr>
+                    </DataTableTd>
+                    <DataTableTd label="Review" class="text-muted-foreground">
+                        <div class="flex flex-col gap-1">
+                            <span v-if="row.understanding_confirmed_at"
+                                class="inline-flex w-fit items-center rounded-md border border-transparent bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+                                Confirmed
+                            </span>
+                            <span v-else-if="row.reviewed_at"
+                                class="inline-flex w-fit items-center rounded-md border border-input bg-background px-2 py-0.5 text-xs font-medium">
+                                Awaiting confirmation
+                            </span>
+                            <span v-else class="text-xs">—</span>
+                            <span v-if="row.reviewed_at" class="text-xs">
+                                {{ new Date(row.reviewed_at).toLocaleString() }}
+                            </span>
+                        </div>
+                    </DataTableTd>
+                    <DataTableTd label="Actions" class="text-right">
+                        <div class="flex justify-end gap-2">
+                            <Button variant="ghost" size="sm" as-child>
+                                <Link :href="requirementsShow.url({
+                                    project: project.id,
+                                    requirement: row.id,
+                                })
+                                    ">
+                                    View
+                                </Link>
+                            </Button>
+                            <Button v-if="row.can_update" variant="ghost" size="sm" as-child>
+                                <Link :href="requirementsEdit.url({
+                                    project: project.id,
+                                    requirement: row.id,
+                                })
+                                    ">
+                                    Edit
+                                </Link>
+                            </Button>
+                            <Button v-if="row.can_delete" variant="ghost" size="sm" class="text-destructive"
+                                type="button" @click="openDeleteDialog(row)">
+                                Delete
+                            </Button>
+                        </div>
+                    </DataTableTd>
+                </tr>
                 <tr v-if="requirements.data.length === 0">
-                    <td colspan="5" class="px-5 py-8 text-center text-muted-foreground">
+                    <DataTableTd label="" :colspan="5" class="py-8 text-center text-muted-foreground">
                         No requirements yet.
-                    </td>
+                    </DataTableTd>
                 </tr>
             </tbody>
         </DataTable>

@@ -11,4 +11,6 @@ export type NavItem = {
     href: NonNullable<InertiaLinkProps['href']>;
     icon?: LucideIcon;
     isActive?: boolean;
+    /** `prefix` highlights nested routes; `exact` matches pathname only (default). */
+    activeMatch?: 'exact' | 'prefix';
 };

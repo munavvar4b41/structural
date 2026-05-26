@@ -5,6 +5,8 @@ import TeamController from '@/actions/App/Http/Controllers/Admin/TeamController'
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
 import DataTablePagination from '@/components/dashboard/DataTablePagination.vue';
+import DataTableTd from '@/components/dashboard/DataTableTd.vue';
+import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
@@ -96,20 +98,14 @@ const deleteTeamDescription = computed(() => {
 </script>
 
 <template>
+
     <Head title="Teams" />
 
-    <ConfirmDestructiveDialog
-        v-model:open="deleteDialogOpen"
-        title="Delete team?"
-        :description="deleteTeamDescription"
-        @confirm="executeDelete"
-    />
+    <ConfirmDestructiveDialog v-model:open="deleteDialogOpen" title="Delete team?" :description="deleteTeamDescription"
+        @confirm="executeDelete" />
 
     <div class="flex flex-col gap-6">
-        <PageHeader
-            title="Teams"
-            description="Manage teams and cross-team assignments"
-        >
+        <PageHeader title="Teams" description="Manage teams and cross-team assignments">
             <template #actions>
                 <Button as-child>
                     <Link :href="teamsCreate()">Add team</Link>
@@ -117,60 +113,41 @@ const deleteTeamDescription = computed(() => {
             </template>
         </PageHeader>
 
-        <ListToolbar
-            :model-value="filters.search"
-            placeholder="Search team name, code, member…"
-            @update:model-value="reloadSearch"
-        />
+        <ListToolbar :model-value="filters.search" placeholder="Search team name, code, member…"
+            @update:model-value="reloadSearch" />
 
         <InputError :message="errors.team" />
 
         <DataTable>
             <thead>
                 <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Name
-                    </th>
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Code
-                    </th>
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Members
-                    </th>
-                    <th class="px-5 py-3.5 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Actions
-                    </th>
+                    <DataTableTh>Name</DataTableTh>
+                    <DataTableTh>Code</DataTableTh>
+                    <DataTableTh>Members</DataTableTh>
+                    <DataTableTh class="text-right">Actions</DataTableTh>
                 </tr>
             </thead>
             <tbody>
-                <tr
-                    v-for="team in teams.data"
-                    :key="team.id"
-                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
-                >
-                    <td class="px-5 py-3.5 font-medium">{{ team.name }}</td>
-                    <td class="px-5 py-3.5 text-muted-foreground">
+                <tr v-for="team in teams.data" :key="team.id"
+                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                    <DataTableTd label="Name" class="font-medium">{{ team.name }}</DataTableTd>
+                    <DataTableTd label="Code" class="text-muted-foreground">
                         {{ team.code ?? '-' }}
-                    </td>
-                    <td class="px-5 py-3.5 text-muted-foreground">
+                    </DataTableTd>
+                    <DataTableTd label="Members" class="text-muted-foreground">
                         {{ team.users_count }}
-                    </td>
-                    <td class="px-5 py-3.5 text-right">
+                    </DataTableTd>
+                    <DataTableTd label="Actions" class="text-right">
                         <div class="flex justify-end gap-2">
                             <Button variant="outline" size="sm" as-child>
                                 <Link :href="teamsEdit(team.id)">Edit</Link>
                             </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                class="text-destructive hover:bg-destructive/10"
-                                type="button"
-                                @click="openDeleteDialog(team)"
-                            >
+                            <Button variant="outline" size="sm" class="text-destructive hover:bg-destructive/10"
+                                type="button" @click="openDeleteDialog(team)">
                                 Delete
                             </Button>
                         </div>
-                    </td>
+                    </DataTableTd>
                 </tr>
             </tbody>
         </DataTable>

@@ -53,11 +53,13 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Users',
             href: adminUsersIndex(),
             icon: Users,
+            activeMatch: 'prefix',
         });
         items.push({
             title: 'Teams',
             href: adminTeamsIndex(),
             icon: Users,
+            activeMatch: 'prefix',
         });
     }
 
@@ -66,16 +68,19 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Projects',
             href: adminProjectsIndex(),
             icon: FolderKanban,
+            activeMatch: 'prefix',
         });
         items.push({
             title: 'My work',
             href: adminMyWorkIndex(),
             icon: ClipboardList,
+            activeMatch: 'exact',
         });
         items.push({
             title: 'Time report',
             href: adminTimeReportIndex(),
             icon: Timer,
+            activeMatch: 'exact',
         });
     }
 
@@ -100,6 +105,7 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Leave requests',
             href: leaveRequestsIndex(),
             icon: CalendarDays,
+            activeMatch: 'exact',
         });
     }
 
@@ -108,6 +114,7 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Leave approvals',
             href: leaveRequestsManage(),
             icon: CalendarDays,
+            activeMatch: 'exact',
         });
     }
 
@@ -116,11 +123,13 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Company settings',
             href: adminCompanyEdit(),
             icon: Building2,
+            activeMatch: 'prefix',
         });
         items.push({
             title: 'Leave emails',
             href: adminLeaveSettingsEdit(),
             icon: CalendarDays,
+            activeMatch: 'prefix',
         });
     }
 
