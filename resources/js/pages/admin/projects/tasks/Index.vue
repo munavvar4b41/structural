@@ -505,8 +505,7 @@ onMounted(() => {
                     </div>
                     <div class="grid gap-2">
                         <Label for="edit-description">Description</Label>
-                        <textarea id="edit-description" name="description" rows="3"
-                            v-model="editingTask.description"
+                        <textarea id="edit-description" name="description" rows="3" v-model="editingTask.description"
                             class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30" />
                         <InputError :message="errors.description" />
                     </div>
@@ -538,8 +537,8 @@ onMounted(() => {
                         <Label for="edit-estimate">Estimate (minutes)</Label>
                         <Input id="edit-estimate" name="estimated_minutes" type="number" min="1" step="1"
                             :required="project.estimation_required" :default-value="editingTask.estimated_minutes !== null
-                                    ? String(editingTask.estimated_minutes)
-                                    : ''
+                                ? String(editingTask.estimated_minutes)
+                                : ''
                                 " />
                         <InputError :message="errors.estimated_minutes" />
                     </div>
@@ -560,8 +559,10 @@ onMounted(() => {
                     Subtasks are shown under their parent; estimates are shown as hours and minutes.
                 </p>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[720px] table-fixed text-left text-sm">
+            <div class="md:overflow-x-auto">
+                <table data-responsive-table
+                    class="data-table-responsive w-full table-fixed text-left text-sm md:min-w-[720px]"
+                    style="--data-table-min-width: 720px">
                     <thead class="border-b bg-muted/40">
                         <tr>
                             <th class="w-[38%] px-4 py-3 font-medium">Title</th>
@@ -574,7 +575,7 @@ onMounted(() => {
                     </thead>
                     <tbody>
                         <tr v-for="task in tasks" :key="task.id" class="border-b border-border/60 last:border-0">
-                            <td class="max-w-0 px-4 py-3 align-middle" :style="{
+                            <td data-label="Title" class="max-w-0 px-4 py-3 align-middle" :style="{
                                 paddingLeft: `calc(0.75rem + ${task.tree_depth} * 1.25rem)`,
                             }">
                                 <div class="flex min-w-0 items-center gap-1.5">
@@ -601,12 +602,12 @@ onMounted(() => {
                                     </div>
                                 </div>
                             </td>
-          
-                            <td class="px-4 py-3 text-muted-foreground">{{ task.status_label }}</td>
-                            <td class="px-4 py-3 text-muted-foreground">
+
+                            <td data-label="Status" class="px-4 py-3 text-muted-foreground">{{ task.status_label }}</td>
+                            <td data-label="Assignee" class="px-4 py-3 text-muted-foreground">
                                 {{ task.assignee?.name ?? '—' }}
                             </td>
-                            <td class="px-4 py-3">
+                            <td data-label="Requirement" class="px-4 py-3">
                                 <template v-if="task.project_requirement_id">
                                     <Button variant="link" class="h-auto p-0" as-child>
                                         <Link :href="requirementsShow.url({
@@ -620,10 +621,10 @@ onMounted(() => {
                                 </template>
                                 <template v-else>—</template>
                             </td>
-                            <td class="px-4 py-3 text-muted-foreground">
+                            <td data-label="Estimate" class="px-4 py-3 text-muted-foreground">
                                 {{ formatTaskMinutes(task.estimated_minutes) }}
                             </td>
-                            <td class="px-4 py-3 text-right">
+                            <td data-label="Actions" class="px-4 py-3 text-right">
                                 <div class="flex flex-wrap justify-end gap-2">
                                     <Button v-if="task.can_submit_task_completion" variant="secondary" size="sm"
                                         type="button" @click="submitForCompletionFromList(task)">
@@ -642,7 +643,7 @@ onMounted(() => {
                             </td>
                         </tr>
                         <tr v-if="tasks.length === 0">
-                            <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">
+                            <td data-label="" colspan="6" class="px-4 py-8 text-center text-muted-foreground">
                                 No tasks match this filter.
                             </td>
                         </tr>

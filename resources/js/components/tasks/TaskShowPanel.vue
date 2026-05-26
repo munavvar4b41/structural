@@ -684,13 +684,8 @@ const checklistDeleteDescription = computed(() => {
                 <Button v-if="task.can_confirm_task_completion" type="button" @click="confirmCompletionOpen = true">
                     Confirm completion
                 </Button>
-                <TaskTimerButton
-                    v-if="time_tracking.can_track"
-                    :project-id="project.id"
-                    :task-id="task.id"
-                    size="default"
-                    :reload-props-on-mutation="['time_tracking']"
-                />
+                <TaskTimerButton v-if="time_tracking.can_track" :project-id="project.id" :task-id="task.id"
+                    size="default" :reload-props-on-mutation="['time_tracking']" />
                 <Button v-if="!embedded" variant="outline" as-child>
                     <Link :href="projectTasksIndex.url(project.id)">Back to task list</Link>
                 </Button>
@@ -753,10 +748,7 @@ const checklistDeleteDescription = computed(() => {
                     <span class="text-xs font-medium text-muted-foreground">Estimate</span>
                     <span>{{ formatTaskMinutes(task.estimated_minutes) }}</span>
                 </div>
-                <div
-                    v-if="time_tracking.totals.remaining_seconds !== null"
-                    class="grid gap-1"
-                >
+                <div v-if="time_tracking.totals.remaining_seconds !== null" class="grid gap-1">
                     <span class="text-xs font-medium text-muted-foreground">Remaining</span>
                     <span class="tabular-nums">
                         {{
@@ -911,8 +903,9 @@ const checklistDeleteDescription = computed(() => {
                     </div>
                 </div>
 
-                <div class="overflow-x-auto">
-                    <table class="w-full min-w-[640px] text-left text-sm">
+                <div class="md:overflow-x-auto">
+                    <table data-responsive-table class="data-table-responsive w-full text-left text-sm md:min-w-[640px]"
+                        style="--data-table-min-width: 640px">
                         <thead class="border-b bg-muted/40">
                             <tr>
                                 <th class="px-3 py-2 font-medium">User</th>
@@ -926,32 +919,31 @@ const checklistDeleteDescription = computed(() => {
                         <tbody>
                             <tr v-for="entry in time_tracking.entries" :key="entry.id"
                                 class="border-b border-border/60 last:border-0">
-                                <td class="px-3 py-2 align-top text-muted-foreground">
+                                <td data-label="User" class="px-3 py-2 align-top text-muted-foreground">
                                     {{ entry.user_name ?? '—' }}
                                 </td>
-                                <td class="px-3 py-2 align-top text-muted-foreground">
-                                    {{ formatEntryRange(entry.started_at, entry.ended_at, entry.is_running, entry.is_paused) }}
+                                <td data-label="When" class="px-3 py-2 align-top text-muted-foreground">
+                                    {{ formatEntryRange(entry.started_at, entry.ended_at, entry.is_running,
+                                    entry.is_paused) }}
                                 </td>
-                                <td class="px-3 py-2 align-top tabular-nums">
-                                    <span
-                                        v-if="entry.is_running"
-                                        :class="entry.is_paused
-                                            ? 'text-amber-600 dark:text-amber-400'
-                                            : 'text-emerald-600 dark:text-emerald-400'"
-                                    >
+                                <td data-label="Duration" class="px-3 py-2 align-top tabular-nums">
+                                    <span v-if="entry.is_running" :class="entry.is_paused
+                                        ? 'text-amber-600 dark:text-amber-400'
+                                        : 'text-emerald-600 dark:text-emerald-400'">
                                         {{ formatSeconds(entryDurationSeconds(entry), { withSeconds: true }) }}
                                     </span>
                                     <span v-else>
                                         {{ formatSeconds(entry.duration_seconds) }}
                                     </span>
                                 </td>
-                                <td class="px-3 py-2 align-top text-muted-foreground">
+                                <td data-label="Source" class="px-3 py-2 align-top text-muted-foreground">
                                     {{ entry.source_label }}
                                 </td>
-                                <td class="px-3 py-2 align-top text-muted-foreground line-clamp-2 break-words">
+                                <td data-label="Notes"
+                                    class="px-3 py-2 align-top text-muted-foreground line-clamp-2 break-words">
                                     {{ entry.notes ?? '—' }}
                                 </td>
-                                <td class="px-3 py-2 align-top text-right">
+                                <td data-label="Actions" class="px-3 py-2 align-top text-right">
                                     <div class="flex justify-end gap-2">
                                         <Button v-if="entry.can_update && !entry.is_running" variant="outline" size="sm"
                                             type="button" @click="openEditEntry(entry)">
@@ -966,7 +958,7 @@ const checklistDeleteDescription = computed(() => {
                                 </td>
                             </tr>
                             <tr v-if="time_tracking.entries.length === 0">
-                                <td colspan="6" class="px-3 py-8 text-center text-muted-foreground">
+                                <td data-label="" colspan="6" class="px-3 py-8 text-center text-muted-foreground">
                                     No time entries yet.
                                 </td>
                             </tr>
@@ -983,8 +975,10 @@ const checklistDeleteDescription = computed(() => {
                     Direct children of this task. Same layout as the project task list.
                 </p>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[720px] table-fixed text-left text-sm">
+            <div class="md:overflow-x-auto">
+                <table data-responsive-table
+                    class="data-table-responsive w-full table-fixed text-left text-sm md:min-w-[720px]"
+                    style="--data-table-min-width: 720px">
                     <thead class="border-b bg-muted/40">
                         <tr>
                             <th class="w-[38%] px-4 py-3 font-medium">Title</th>
@@ -997,7 +991,7 @@ const checklistDeleteDescription = computed(() => {
                     </thead>
                     <tbody>
                         <tr v-for="sub in task.subtasks" :key="sub.id" class="border-b border-border/60 last:border-0">
-                            <td class="max-w-0 px-4 py-3 align-top" :style="{
+                            <td data-label="Title" class="max-w-0 px-4 py-3 align-top" :style="{
                                 paddingLeft: `calc(0.75rem + ${sub.tree_depth} * 1.25rem)`,
                             }">
                                 <div class="flex min-w-0 items-start gap-1.5">
@@ -1029,11 +1023,11 @@ const checklistDeleteDescription = computed(() => {
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-4 py-3 text-muted-foreground">{{ sub.status_label }}</td>
-                            <td class="px-4 py-3 text-muted-foreground">
+                            <td data-label="Status" class="px-4 py-3 text-muted-foreground">{{ sub.status_label }}</td>
+                            <td data-label="Assignee" class="px-4 py-3 text-muted-foreground">
                                 {{ sub.assignee?.name ?? '—' }}
                             </td>
-                            <td class="px-4 py-3">
+                            <td data-label="Requirement" class="px-4 py-3">
                                 <template v-if="sub.project_requirement_id">
                                     <Button variant="link" class="h-auto p-0" as-child>
                                         <Link :href="requirementsShow.url({
@@ -1047,10 +1041,10 @@ const checklistDeleteDescription = computed(() => {
                                 </template>
                                 <template v-else>—</template>
                             </td>
-                            <td class="px-4 py-3 text-muted-foreground">
+                            <td data-label="Estimate" class="px-4 py-3 text-muted-foreground">
                                 {{ formatTaskMinutes(sub.estimated_minutes) }}
                             </td>
-                            <td class="px-4 py-3 text-right">
+                            <td data-label="Actions" class="px-4 py-3 text-right">
                                 <div class="flex flex-wrap justify-end gap-2">
                                     <Button v-if="sub.can_submit_task_completion" variant="secondary" size="sm"
                                         type="button" @click="submitForCompletionSubtask(sub)">
@@ -1073,7 +1067,7 @@ const checklistDeleteDescription = computed(() => {
                             </td>
                         </tr>
                         <tr v-if="task.subtasks.length === 0">
-                            <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">
+                            <td data-label="" colspan="6" class="px-4 py-8 text-center text-muted-foreground">
                                 No subtasks yet.
                             </td>
                         </tr>

@@ -3,6 +3,8 @@ import { Form, Head, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import LeaveRequestController from '@/actions/App/Http/Controllers/Admin/LeaveRequestController';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableTd from '@/components/dashboard/DataTableTd.vue';
+import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
@@ -68,27 +70,6 @@ const leaveRequestOpen = ref(false);
 function pad2(n: number): string {
     return String(n).padStart(2, '0');
 }
-
-function toDatetimeLocalValue(d: Date): string {
-    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
-
-watch(breakStartsAt, (v) => {
-    if (!v) {
-        breakEndsAt.value = '';
-
-        return;
-    }
-
-    const d = new Date(v);
-
-    if (Number.isNaN(d.getTime())) {
-        return;
-    }
-
-    d.setHours(d.getHours() + 1);
-    breakEndsAt.value = toDatetimeLocalValue(d);
-});
 
 watch(leaveType, (t) => {
     if (t !== 'half_day' || halfDayPeriod.value !== '') {
@@ -201,7 +182,7 @@ const filteredLeaveRequests = computed(() => {
                         <InputError :message="errors.date" />
                     </div>
 
-                    <div class="grid gap-2">
+                    <div class="grid gap-2" v-if="leaveType === 'half_day'">
                         <Label for="half-day-period">Half day period</Label>
                         <TaskFormSelect id="half-day-period" v-model="halfDayPeriod" name="half_day_period"
                             :required="leaveType === 'half_day'" :disabled="leaveType !== 'half_day'"
@@ -209,15 +190,19 @@ const filteredLeaveRequests = computed(() => {
                         <InputError :message="errors.half_day_period" />
                     </div>
 
-                    <div class="grid gap-2">
+                    <div class="grid gap-2" v-if="leaveType === 'break'">
                         <Label for="break-start">Break starts</Label>
                         <Input id="break-start" v-model="breakStartsAt" name="break_starts_at" type="datetime-local"
                             :disabled="leaveType !== 'break'" :required="leaveType === 'break'" />
                         <InputError :message="errors.break_starts_at" />
-                        <input v-model="breakEndsAt" type="hidden" name="break_ends_at"
-                            :disabled="leaveType !== 'break'" />
+                    </div>
+
+                    <div class="grid gap-2" v-if="leaveType === 'break'">
+                        <Label for="break-end">Break ends</Label>
+                        <Input id="break-end" v-model="breakEndsAt" name="break_ends_at" type="datetime-local"
+                            :disabled="leaveType !== 'break'" :required="leaveType === 'break'" />
                         <p class="text-muted-foreground text-sm">
-                            End time is set automatically to one hour after the start.
+                            Start and end must be on the selected date.
                         </p>
                         <InputError :message="errors.break_ends_at" />
                     </div>
@@ -270,22 +255,14 @@ const filteredLeaveRequests = computed(() => {
                         </template>
                     </ListToolbar>
                 </div>
-                <DataTable min-width="640px">
+                <DataTable>
                     <thead>
                         <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Date
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Type
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Detail
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Status
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground" />
+                            <DataTableTh>Date</DataTableTh>
+                            <DataTableTh>Type</DataTableTh>
+                            <DataTableTh>Detail</DataTableTh>
+                            <DataTableTh>Status</DataTableTh>
+                            <DataTableTh />
                         </tr>
                     </thead>
                     <tbody>
@@ -294,9 +271,9 @@ const filteredLeaveRequests = computed(() => {
                             :key="row.id"
                             class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
                         >
-                            <td class="px-5 py-3.5">{{ row.date }}</td>
-                            <td class="px-5 py-3.5">{{ row.type_label }}</td>
-                            <td class="px-5 py-3.5">
+                            <DataTableTd label="Date">{{ row.date }}</DataTableTd>
+                            <DataTableTd label="Type">{{ row.type_label }}</DataTableTd>
+                            <DataTableTd label="Detail">
                                 <span v-if="row.type === 'half_day'">{{
                                     row.half_day_period_label
                                     }}</span>
@@ -316,23 +293,23 @@ const filteredLeaveRequests = computed(() => {
                                     }}
                                 </span>
                                 <span v-else class="text-muted-foreground">—</span>
-                            </td>
-                            <td class="px-5 py-3.5">{{ row.status_label }}</td>
-                            <td class="px-5 py-3.5 text-right">
+                            </DataTableTd>
+                            <DataTableTd label="Status">{{ row.status_label }}</DataTableTd>
+                            <DataTableTd label="Actions" class="text-right">
                                 <Button v-if="row.status === 'pending'" type="button" variant="outline" size="sm"
                                     @click="cancelRequest(row)">
                                     Cancel
                                 </Button>
-                            </td>
+                            </DataTableTd>
                         </tr>
                         <tr v-if="filteredLeaveRequests.length === 0">
-                            <td colspan="5" class="px-5 py-8 text-center text-muted-foreground">
+                            <DataTableTd label="" :colspan="5" class="py-8 text-center text-muted-foreground">
                                 {{
                                     leave_requests.length === 0
                                         ? 'No requests yet.'
                                         : 'No requests match your filters.'
                                 }}
-                            </td>
+                            </DataTableTd>
                         </tr>
                     </tbody>
                 </DataTable>

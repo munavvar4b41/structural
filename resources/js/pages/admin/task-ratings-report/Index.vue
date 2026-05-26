@@ -3,6 +3,8 @@ import { Head, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import ChartCard from '@/components/dashboard/ChartCard.vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableTd from '@/components/dashboard/DataTableTd.vue';
+import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
@@ -168,18 +170,14 @@ const ratingsChartOptions = computed(() => ({
 </script>
 
 <template>
+
     <Head title="Task ratings report" />
 
     <div class="flex flex-col gap-6">
-        <PageHeader
-            title="Task ratings report"
-            description="Averages from completed task reviews. Filter by date, project, or staff involved."
-        />
+        <PageHeader title="Task ratings report"
+            description="Averages from completed task reviews. Filter by date, project, or staff involved." />
 
-        <ListToolbar
-            v-model="localSearch"
-            placeholder="Narrow by staff name, task, or project (table results)…"
-        />
+        <ListToolbar v-model="localSearch" placeholder="Narrow by staff name, task, or project (table results)…" />
 
         <Card>
             <CardHeader>
@@ -197,39 +195,21 @@ const ratingsChartOptions = computed(() => ({
                 </div>
                 <div class="grid min-w-[200px] flex-1 gap-2">
                     <Label for="tr-project">Project</Label>
-                    <TaskFormSelect
-                        id="tr-project"
-                        v-model="projectValue"
-                        name="project_id"
-                        none-label="All projects"
-                        placeholder="All projects"
-                        :options="projectSelectOptions"
-                    />
+                    <TaskFormSelect id="tr-project" v-model="projectValue" name="project_id" none-label="All projects"
+                        placeholder="All projects" :options="projectSelectOptions" />
                 </div>
                 <div class="grid min-w-[200px] flex-1 gap-2">
                     <Label for="tr-user">Staff involved</Label>
-                    <TaskFormSelect
-                        id="tr-user"
-                        v-model="userValue"
-                        name="user_id"
-                        none-label="Everyone"
-                        placeholder="Everyone"
-                        :options="userSelectOptions"
-                    />
+                    <TaskFormSelect id="tr-user" v-model="userValue" name="user_id" none-label="Everyone"
+                        placeholder="Everyone" :options="userSelectOptions" />
                 </div>
                 <Button type="button" class="w-full sm:w-auto" @click="applyFilters">Apply</Button>
             </CardContent>
         </Card>
 
-        <ChartCard
-            v-if="filteredRows.length > 0"
-            title="Rating averages"
-            description="Compare assignee vs creator scores by staff member"
-            type="bar"
-            :series="ratingsChartSeries"
-            :options="ratingsChartOptions"
-            :height="320"
-        />
+        <ChartCard v-if="filteredRows.length > 0" title="Rating averages"
+            description="Compare assignee vs creator scores by staff member" type="bar" :series="ratingsChartSeries"
+            :options="ratingsChartOptions" :height="320" />
 
         <Card>
             <CardHeader>
@@ -239,45 +219,32 @@ const ratingsChartOptions = computed(() => ({
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <DataTable v-if="filteredRows.length > 0" min-width="640px">
+                <DataTable v-if="filteredRows.length > 0">
                     <thead>
                         <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Name
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Avg as assignee
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Reviews (assignee)
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Avg as creator
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Reviews (creator)
-                            </th>
+                            <DataTableTh>Name</DataTableTh>
+                            <DataTableTh>Avg as assignee</DataTableTh>
+                            <DataTableTh>Reviews (assignee)</DataTableTh>
+                            <DataTableTh>Avg as creator</DataTableTh>
+                            <DataTableTh>Reviews (creator)</DataTableTh>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr
-                            v-for="row in filteredRows"
-                            :key="row.user_id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
-                        >
-                            <td class="px-5 py-3.5 font-medium">{{ row.name }}</td>
-                            <td class="px-5 py-3.5 tabular-nums text-muted-foreground">
+                        <tr v-for="row in filteredRows" :key="row.user_id"
+                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                            <DataTableTd label="Name" class="font-medium">{{ row.name }}</DataTableTd>
+                            <DataTableTd label="Avg as assignee" class="tabular-nums text-muted-foreground">
                                 {{ avgLabel(row.assignee_avg) }}
-                            </td>
-                            <td class="px-5 py-3.5 tabular-nums text-muted-foreground">
+                            </DataTableTd>
+                            <DataTableTd label="Reviews (assignee)" class="tabular-nums text-muted-foreground">
                                 {{ row.assignee_count }}
-                            </td>
-                            <td class="px-5 py-3.5 tabular-nums text-muted-foreground">
+                            </DataTableTd>
+                            <DataTableTd label="Avg as creator" class="tabular-nums text-muted-foreground">
                                 {{ avgLabel(row.creator_avg) }}
-                            </td>
-                            <td class="px-5 py-3.5 tabular-nums text-muted-foreground">
+                            </DataTableTd>
+                            <DataTableTd label="Reviews (creator)" class="tabular-nums text-muted-foreground">
                                 {{ row.creator_count }}
-                            </td>
+                            </DataTableTd>
                         </tr>
                     </tbody>
                 </DataTable>
@@ -293,50 +260,35 @@ const ratingsChartOptions = computed(() => ({
                 <CardDescription>Latest confirmed tasks (up to 100 in this filter).</CardDescription>
             </CardHeader>
             <CardContent>
-                <DataTable v-if="filteredRecentReviews.length > 0" min-width="720px">
+                <DataTable v-if="filteredRecentReviews.length > 0">
                     <thead>
                         <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Date
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Task
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Project
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Task rating
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Assignee rating
-                            </th>
-                            <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Creator rating
-                            </th>
+                            <DataTableTh>Date</DataTableTh>
+                            <DataTableTh>Task</DataTableTh>
+                            <DataTableTh>Project</DataTableTh>
+                            <DataTableTh>Task rating</DataTableTh>
+                            <DataTableTh>Assignee rating</DataTableTh>
+                            <DataTableTh>Creator rating</DataTableTh>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr
-                            v-for="r in filteredRecentReviews"
-                            :key="r.id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
-                        >
-                            <td class="px-5 py-3.5 text-muted-foreground">
+                        <tr v-for="r in filteredRecentReviews" :key="r.id"
+                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                            <DataTableTd label="Date" class="text-muted-foreground">
                                 {{ new Date(r.created_at).toLocaleString() }}
-                            </td>
-                            <td class="px-5 py-3.5">{{ r.task_title ?? '—' }}</td>
-                            <td class="px-5 py-3.5 text-muted-foreground">
+                            </DataTableTd>
+                            <DataTableTd label="Task">{{ r.task_title ?? '—' }}</DataTableTd>
+                            <DataTableTd label="Project" class="text-muted-foreground">
                                 {{ r.project_name ?? '—' }}
                                 <span v-if="r.project_code">({{ r.project_code }})</span>
-                            </td>
-                            <td class="px-5 py-3.5 tabular-nums">{{ r.task_rating }}</td>
-                            <td class="px-5 py-3.5 tabular-nums text-muted-foreground">
+                            </DataTableTd>
+                            <DataTableTd label="Task rating" class="tabular-nums">{{ r.task_rating }}</DataTableTd>
+                            <DataTableTd label="Assignee rating" class="tabular-nums text-muted-foreground">
                                 {{ r.assignee_rating ?? '—' }}
-                            </td>
-                            <td class="px-5 py-3.5 tabular-nums text-muted-foreground">
+                            </DataTableTd>
+                            <DataTableTd label="Creator rating" class="tabular-nums text-muted-foreground">
                                 {{ r.creator_rating ?? '—' }}
-                            </td>
+                            </DataTableTd>
                         </tr>
                     </tbody>
                 </DataTable>

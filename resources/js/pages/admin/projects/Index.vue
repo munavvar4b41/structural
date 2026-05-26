@@ -5,6 +5,8 @@ import ProjectController from '@/actions/App/Http/Controllers/Admin/ProjectContr
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
 import DataTablePagination from '@/components/dashboard/DataTablePagination.vue';
+import DataTableTd from '@/components/dashboard/DataTableTd.vue';
+import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
@@ -153,20 +155,14 @@ const deleteProjectDescription = computed(() => {
 </script>
 
 <template>
+
     <Head title="Projects" />
 
-    <ConfirmDestructiveDialog
-        v-model:open="deleteDialogOpen"
-        title="Delete project?"
-        :description="deleteProjectDescription"
-        @confirm="executeDelete"
-    />
+    <ConfirmDestructiveDialog v-model:open="deleteDialogOpen" title="Delete project?"
+        :description="deleteProjectDescription" @confirm="executeDelete" />
 
     <div class="flex flex-col gap-6">
-        <PageHeader
-            title="Projects"
-            description="Projects you can access based on your role and assignments"
-        >
+        <PageHeader title="Projects" description="Projects you can access based on your role and assignments">
             <template #actions>
                 <Button v-if="canManageProjects" as-child>
                     <Link :href="projectsCreate()">Add project</Link>
@@ -174,124 +170,76 @@ const deleteProjectDescription = computed(() => {
             </template>
         </PageHeader>
 
-        <ListToolbar
-                :model-value="filters.search"
-                placeholder="Search name, code, description…"
-                @update:model-value="onSearch"
-            >
-                <template #filters>
-                    <div class="flex flex-wrap items-end gap-3">
-                        <div class="grid gap-1">
-                            <Label class="text-xs text-muted-foreground" for="filter-team"
-                                >Team</Label
-                            >
-                            <TaskFormSelect
-                                id="filter-team"
-                                name="team_id"
-                                class="w-[12rem]"
-                                :model-value="teamFilter"
-                                :options="teamSelectOptions"
-                                placeholder="All teams"
-                                none-label="All teams"
-                                exclude-from-submit
-                                @update:model-value="onTeam"
-                            />
-                        </div>
-                        <div v-if="show_lead_filter" class="grid gap-1">
-                            <Label class="text-xs text-muted-foreground" for="filter-lead"
-                                >Lead</Label
-                            >
-                            <TaskFormSelect
-                                id="filter-lead"
-                                name="lead_user_id"
-                                class="min-w-[14rem]"
-                                :model-value="leadFilter"
-                                :options="leadSelectOptions"
-                                placeholder="All leads"
-                                none-label="All leads"
-                                exclude-from-submit
-                                @update:model-value="onLead"
-                            />
-                        </div>
+        <ListToolbar :model-value="filters.search" placeholder="Search name, code, description…"
+            @update:model-value="onSearch">
+            <template #filters>
+                <div class="flex flex-wrap items-end gap-3">
+                    <div class="grid gap-1">
+                        <Label class="text-xs text-muted-foreground" for="filter-team">Team</Label>
+                        <TaskFormSelect id="filter-team" name="team_id" class="w-[12rem]" :model-value="teamFilter"
+                            :options="teamSelectOptions" placeholder="All teams" none-label="All teams"
+                            exclude-from-submit @update:model-value="onTeam" />
                     </div>
-                </template>
-            </ListToolbar>
+                    <div v-if="show_lead_filter" class="grid gap-1">
+                        <Label class="text-xs text-muted-foreground" for="filter-lead">Lead</Label>
+                        <TaskFormSelect id="filter-lead" name="lead_user_id" class="min-w-[14rem]"
+                            :model-value="leadFilter" :options="leadSelectOptions" placeholder="All leads"
+                            none-label="All leads" exclude-from-submit @update:model-value="onLead" />
+                    </div>
+                </div>
+            </template>
+        </ListToolbar>
 
         <DataTable>
             <thead>
                 <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Name
-                    </th>
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Code
-                    </th>
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Client
-                    </th>
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Teams
-                    </th>
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Requirements
-                    </th>
-                    <th class="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Tasks
-                    </th>
-                    <th
-                        v-if="canManageProjects"
-                        class="px-5 py-3.5 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                    >
-                        Actions
-                    </th>
+                    <DataTableTh>Name</DataTableTh>
+                    <DataTableTh>Code</DataTableTh>
+                    <DataTableTh>Client</DataTableTh>
+                    <DataTableTh>Teams</DataTableTh>
+                    <DataTableTh>Requirements</DataTableTh>
+                    <DataTableTh>Tasks</DataTableTh>
+                    <DataTableTh v-if="canManageProjects" class="text-right">Actions</DataTableTh>
                 </tr>
             </thead>
             <tbody>
-                <tr
-                    v-for="project in projects.data"
-                    :key="project.id"
-                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
-                >
-                    <td class="px-5 py-3.5 font-medium">{{ project.name }}</td>
-                    <td class="px-5 py-3.5 text-muted-foreground">
-                            {{ project.code ?? '-' }}
-                        </td>
-                    <td class="px-5 py-3.5 text-muted-foreground">
+                <tr v-for="project in projects.data" :key="project.id"
+                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                    <DataTableTd label="Name" class="font-medium">{{ project.name }}</DataTableTd>
+                    <DataTableTd label="Code" class="text-muted-foreground">
+                        {{ project.code ?? '-' }}
+                    </DataTableTd>
+                    <DataTableTd label="Client" class="text-muted-foreground">
                         <template v-if="project.client_user">
                             {{ project.client_user.name }}
                             <span class="text-xs">({{ project.client_user.email }})</span>
                         </template>
                         <template v-else>—</template>
-                    </td>
-                    <td class="px-5 py-3.5 text-muted-foreground">
+                    </DataTableTd>
+                    <DataTableTd label="Teams" class="text-muted-foreground">
                         {{ project.teams_count }}
-                    </td>
-                    <td class="px-5 py-3.5">
+                    </DataTableTd>
+                    <DataTableTd label="Requirements">
                         <Button variant="link" class="h-auto p-0" as-child>
                             <Link :href="projectRequirementsIndex.url(project.id)">View</Link>
                         </Button>
-                    </td>
-                    <td class="px-5 py-3.5">
+                    </DataTableTd>
+                    <DataTableTd label="Tasks">
                         <Button variant="link" class="h-auto p-0" as-child>
                             <Link :href="projectTasksIndex.url(project.id)">View</Link>
                         </Button>
-                    </td>
-                    <td v-if="canManageProjects" class="px-5 py-3.5 text-right">
-                            <div class="flex justify-end gap-2">
-                                <Button variant="outline" size="sm" as-child>
-                                    <Link :href="projectsEdit(project.id)">Edit</Link>
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    class="text-destructive hover:bg-destructive/10"
-                                    type="button"
-                                    @click="openDeleteDialog(project)"
-                                >
-                                    Delete
-                                </Button>
-                            </div>
-                        </td>
+                    </DataTableTd>
+                    <DataTableTd v-if="canManageProjects" label="Actions" class="text-right">
+                        <div class="flex justify-end gap-2">
+                            <Button variant="outline" size="sm" as-child>
+                                <Link :href="projectsEdit(project.id)">Edit</Link>
+                            </Button>
+                            <Button variant="outline" size="sm" class="text-destructive hover:bg-destructive/10"
+                                type="button" @click="openDeleteDialog(project)">
+                                Delete
+                            </Button>
+                        </div>
+                    </DataTableTd>
                 </tr>
             </tbody>
         </DataTable>

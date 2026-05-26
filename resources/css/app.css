@@ -219,3 +219,76 @@
 .fade-leave-to {
     opacity: 0;
 }
+
+@layer components {
+    @media (min-width: 768px) {
+        table.data-table-responsive {
+            min-width: var(--data-table-min-width, auto);
+        }
+    }
+
+    @media (max-width: 767px) {
+        table[data-responsive-table] thead {
+            display: none;
+        }
+
+        table[data-responsive-table] tbody tr {
+            display: block;
+            margin-bottom: 0.75rem;
+            overflow: hidden;
+            border: 1px solid hsl(var(--border) / 0.6);
+            border-radius: 1rem;
+            background: hsl(var(--muted) / 0.08);
+        }
+
+        table[data-responsive-table] tbody tr:last-child {
+            margin-bottom: 0;
+        }
+
+        table[data-responsive-table] tbody tr.border-b {
+            border-bottom: 1px solid hsl(var(--border) / 0.6);
+        }
+
+        table[data-responsive-table] tbody td {
+            display: grid;
+            grid-template-columns: minmax(6rem, 38%) 1fr;
+            gap: 0.5rem 1rem;
+            align-items: start;
+            min-width: 0;
+            border-bottom: 1px solid hsl(var(--border) / 0.35);
+            padding: 0.75rem 1rem;
+            word-break: break-word;
+        }
+
+        table[data-responsive-table] tbody td:last-child {
+            border-bottom: none;
+        }
+
+        table[data-responsive-table] tbody td::before {
+            content: attr(data-label);
+            font-size: 0.6875rem;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: hsl(var(--muted-foreground));
+        }
+
+        table[data-responsive-table] tbody td[data-label='']::before,
+        table[data-responsive-table] tbody td:not([data-label])::before {
+            display: none;
+        }
+
+        table[data-responsive-table] tbody td[colspan] {
+            display: block;
+            text-align: center;
+        }
+
+        table[data-responsive-table] tbody td[colspan]::before {
+            display: none;
+        }
+
+        table[data-responsive-table] tbody td.text-right {
+            text-align: left;
+        }
+    }
+}

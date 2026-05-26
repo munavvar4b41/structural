@@ -130,7 +130,7 @@ class LeaveRequestTest extends TestCase
         $this->assertSame(LeaveRequestStatus::Cancelled, $leave->status);
     }
 
-    public function test_break_must_be_exactly_one_hour(): void
+    public function test_break_end_must_be_after_start(): void
     {
         $staff = User::factory()->withPrimaryTeam()->create();
         $date = now()->addDay()->toDateString();
@@ -141,9 +141,31 @@ class LeaveRequestTest extends TestCase
                 'type' => LeaveType::Break->value,
                 'date' => $date,
                 'break_starts_at' => $start->toIso8601String(),
-                'break_ends_at' => $start->copy()->addMinutes(30)->toIso8601String(),
+                'break_ends_at' => $start->copy()->subMinutes(30)->toIso8601String(),
             ])
             ->assertSessionHasErrors('break_ends_at');
+    }
+
+    public function test_break_can_span_multiple_hours_on_same_date(): void
+    {
+        $staff = User::factory()->withPrimaryTeam()->create();
+        $date = now()->addDay()->toDateString();
+        $start = now()->parse($date.' 10:00:00', config('app.timezone'));
+        $end = $start->copy()->addHours(2);
+
+        $this->actingAs($staff)
+            ->post(route('admin.leave-requests.store'), [
+                'type' => LeaveType::Break->value,
+                'date' => $date,
+                'break_starts_at' => $start->toIso8601String(),
+                'break_ends_at' => $end->toIso8601String(),
+            ])
+            ->assertRedirect(route('admin.leave-requests.index'));
+
+        $leave = LeaveRequest::query()->where('user_id', $staff->id)->latest('id')->first();
+        $this->assertNotNull($leave);
+        $this->assertTrue($leave->break_starts_at->equalTo($start));
+        $this->assertTrue($leave->break_ends_at->equalTo($end));
     }
 
     public function test_super_admin_can_update_leave_notification_settings(): void

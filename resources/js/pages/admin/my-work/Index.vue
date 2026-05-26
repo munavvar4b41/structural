@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { CheckCircle, Eye, List } from 'lucide-vue-next';
+import { CheckCircle, Columns3, Eye, GripVertical, List } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
 import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin/TaskCompletionReviewController';
+import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableTd from '@/components/dashboard/DataTableTd.vue';
+import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import MyWorkSectionHeader from '@/components/my-work/MyWorkSectionHeader.vue';
+import MyWorkTaskCard from '@/components/my-work/MyWorkTaskCard.vue';
+import type { MyWorkTaskCardData } from '@/components/my-work/MyWorkTaskCard.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import TaskShowPanel from '@/components/tasks/TaskShowPanel.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
@@ -23,26 +29,13 @@ import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
 import TooltipContent from '@/components/ui/tooltip/TooltipContent.vue';
 import TooltipTrigger from '@/components/ui/tooltip/TooltipTrigger.vue';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
+import { cn } from '@/lib/utils';
 import { index as myWorkIndex } from '@/routes/admin/my-work/index';
 import { index as projectsIndex } from '@/routes/admin/projects/index';
 import { show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
 import type { TaskShowPayload } from '@/types/projectTaskShow';
 
-type TaskCard = {
-    id: number;
-    project_id: number;
-    title: string;
-    status: string;
-    estimated_minutes: number | null;
-    project: { id: number; name: string; code: string | null };
-    requirement: { id: number; title: string } | null;
-    project_tasks_url: string;
-    task_show_url: string;
-    is_assignee_only_limited: boolean;
-    can_submit_task_completion: boolean;
-    timer_today_seconds: number;
-    timer_state: 'running' | 'paused' | 'idle';
-};
+type TaskCard = MyWorkTaskCardData;
 
 type StatusOption = { value: string; label: string };
 type ProjectOption = { value: number; label: string };
@@ -61,6 +54,11 @@ type Column = {
     meta: ColumnMeta;
 };
 
+type ViewMode = 'list' | 'board';
+
+const MY_WORK_VIEW_KEY = 'my-work-view';
+const MY_WORK_COLLAPSED_KEY = 'my-work-collapsed-sections';
+
 const props = defineProps<{
     columns: Column[];
     status_options: StatusOption[];
@@ -77,6 +75,85 @@ const projectValue = ref(
 
 const taskPreviewOpen = ref(false);
 const taskPreviewLoading = ref(false);
+
+const viewMode = ref<ViewMode>('board');
+const dragTask = ref<TaskCard | null>(null);
+const dropTargetStatus = ref<string | null>(null);
+const collapsedStatuses = ref<Set<string>>(new Set());
+
+function loadCollapsedSections(): void {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    try {
+        const raw = window.localStorage.getItem(MY_WORK_COLLAPSED_KEY);
+
+        if (raw === null) {
+            return;
+        }
+
+        const parsed = JSON.parse(raw) as unknown;
+
+        if (Array.isArray(parsed)) {
+            collapsedStatuses.value = new Set(
+                parsed.filter((s): s is string => typeof s === 'string'),
+            );
+        }
+    } catch {
+        collapsedStatuses.value = new Set();
+    }
+}
+
+function persistCollapsedSections(): void {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    window.localStorage.setItem(
+        MY_WORK_COLLAPSED_KEY,
+        JSON.stringify([...collapsedStatuses.value]),
+    );
+}
+
+function isSectionCollapsed(status: string): boolean {
+    return collapsedStatuses.value.has(status);
+}
+
+function toggleSectionCollapse(status: string): void {
+    const next = new Set(collapsedStatuses.value);
+
+    if (next.has(status)) {
+        next.delete(status);
+    } else {
+        next.add(status);
+    }
+
+    collapsedStatuses.value = next;
+    persistCollapsedSections();
+}
+
+function sectionContentId(status: string): string {
+    return `my-work-section-${status}`;
+}
+
+function readStoredViewMode(): ViewMode {
+    if (typeof window === 'undefined') {
+        return 'list';
+    }
+
+    const stored = window.localStorage.getItem(MY_WORK_VIEW_KEY);
+
+    return stored === 'list' ? 'list' : 'board';
+}
+
+function setViewMode(mode: ViewMode): void {
+    viewMode.value = mode;
+
+    if (typeof window !== 'undefined') {
+        window.localStorage.setItem(MY_WORK_VIEW_KEY, mode);
+    }
+}
 
 watch(
     () => props.filters.project_id,
@@ -189,13 +266,6 @@ function onTaskPreviewOpenChange(open: boolean): void {
     }
 }
 
-function onCardKeydown(event: KeyboardEvent, task: TaskCard): void {
-    if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        openTaskPreview(task);
-    }
-}
-
 function applyProjectFilter(value: string): void {
     projectValue.value = value;
 
@@ -285,7 +355,82 @@ function patchTaskStatus(task: TaskCard, status: string): void {
     );
 }
 
+function canDropTaskOnColumn(task: TaskCard, targetStatus: string): boolean {
+    if (task.status === targetStatus) {
+        return false;
+    }
+
+    if (task.is_assignee_only_limited && targetStatus === doneStatusValue) {
+        return false;
+    }
+
+    return true;
+}
+
+function onDragStart(event: DragEvent, task: TaskCard): void {
+    dragTask.value = task;
+
+    if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', String(task.id));
+    }
+}
+
+function onDragEnd(): void {
+    dragTask.value = null;
+    dropTargetStatus.value = null;
+}
+
+function onColumnDragOver(event: DragEvent, col: Column): void {
+    if (dragTask.value === null) {
+        return;
+    }
+
+    if (!canDropTaskOnColumn(dragTask.value, col.status)) {
+        return;
+    }
+
+    event.preventDefault();
+
+    if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'move';
+    }
+
+    dropTargetStatus.value = col.status;
+}
+
+function onColumnDragLeave(col: Column): void {
+    if (dropTargetStatus.value === col.status) {
+        dropTargetStatus.value = null;
+    }
+}
+
+function onColumnDrop(event: DragEvent, col: Column): void {
+    event.preventDefault();
+
+    const task = dragTask.value;
+
+    dragTask.value = null;
+    dropTargetStatus.value = null;
+
+    if (task === null || !canDropTaskOnColumn(task, col.status)) {
+        return;
+    }
+
+    patchTaskStatus(task, col.status);
+}
+
 onMounted(() => {
+    loadCollapsedSections();
+    viewMode.value = readStoredViewMode();
+
+    const url = new URL(page.url, window.location.origin);
+    const viewParam = url.searchParams.get('view');
+
+    if (viewParam === 'board' || viewParam === 'list') {
+        setViewMode(viewParam);
+    }
+
     const taskId = parseTaskIdFromUrl();
 
     if (taskId !== null) {
@@ -334,9 +479,9 @@ onMounted(() => {
 
     <div class="flex flex-col gap-8">
         <PageHeader title="My work"
-            description="Tasks assigned to you, grouped by status. Click a card to view details, or use the status control to change status." />
+            description="Tasks assigned to you, grouped by status. Drag tasks between sections or use the status control to update status." />
 
-        <div class="flex flex-wrap items-end gap-4">
+        <div class="flex flex-wrap items-end justify-between gap-4">
             <div class="grid gap-1">
                 <Label class="text-xs text-muted-foreground" for="my-work-project-filter">
                     Project
@@ -345,84 +490,170 @@ onMounted(() => {
                     :model-value="projectValue" :options="projectSelectOptions" placeholder="All projects"
                     none-label="All projects" exclude-from-submit @update:model-value="applyProjectFilter" />
             </div>
+
+            <div class="inline-flex rounded-lg border border-border/80 bg-muted/30 p-0.5" role="group"
+                aria-label="View mode">
+                <Button type="button" size="sm" :variant="viewMode === 'board' ? 'default' : 'ghost'" class="gap-1.5"
+                    @click="setViewMode('board')">
+                    <Columns3 class="size-4" />
+                    Board
+                </Button>
+                <Button type="button" size="sm" :variant="viewMode === 'list' ? 'default' : 'ghost'" class="gap-1.5"
+                    @click="setViewMode('list')">
+                    <List class="size-4" />
+                    List
+                </Button>
+            </div>
         </div>
 
-        <div class="flex gap-4 overflow-x-auto pb-2">
-            <GlassCard v-for="col in columns" :key="col.status" class="flex w-86 shrink-0 flex-col gap-3 p-4">
-                <div class="flex items-center justify-between gap-2">
-                    <h2 class="text-sm font-semibold">{{ col.label }}</h2>
-                    <span class="text-xs text-muted-foreground">
-                        {{ col.tasks.length }} / {{ col.meta.total }}
-                    </span>
+        <!-- List view -->
+        <div v-if="viewMode === 'list'" class="flex flex-col gap-8">
+            <section v-for="col in columns" :key="col.status" :class="cn(
+                'flex flex-col gap-3 rounded-2xl p-1 transition-colors',
+                dropTargetStatus === col.status && 'ring-2 ring-primary/50',
+            )
+                " @dragover="onColumnDragOver($event, col)" @dragleave="onColumnDragLeave(col)"
+                @drop="onColumnDrop($event, col)">
+                <MyWorkSectionHeader class="px-1" :label="col.label" :shown="col.tasks.length" :total="col.meta.total"
+                    :collapsed="isSectionCollapsed(col.status)" :section-id="sectionContentId(col.status)"
+                    @toggle="toggleSectionCollapse(col.status)" collapsible />
+
+                <div v-show="!isSectionCollapsed(col.status)" :id="sectionContentId(col.status)"
+                    class="flex flex-col gap-3">
+                    <DataTable v-if="col.tasks.length > 0">
+                        <thead>
+                            <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
+                                <DataTableTh class="w-10" />
+                                <DataTableTh>Task</DataTableTh>
+                                <DataTableTh>Project</DataTableTh>
+                                <DataTableTh>Requirement</DataTableTh>
+                                <DataTableTh>Estimate</DataTableTh>
+                                <DataTableTh>Status</DataTableTh>
+                                <DataTableTh class="text-right">Actions</DataTableTh>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="task in col.tasks" :key="task.id" :class="cn(
+                                'border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30',
+                                dragTask?.id === task.id && 'opacity-50',
+                            )
+                                ">
+                                <DataTableTd label="" class="w-10 align-top px-2">
+                                    <button type="button"
+                                        class="cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing"
+                                        draggable="true" aria-label="Drag to change status"
+                                        @dragstart="onDragStart($event, task)" @dragend="onDragEnd">
+                                        <GripVertical class="size-4" />
+                                    </button>
+                                </DataTableTd>
+                                <DataTableTd label="Task" class="align-top font-medium">
+                                    <button type="button" class="text-left hover:underline"
+                                        @click="openTaskPreview(task)">
+                                        {{ task.title }}
+                                    </button>
+                                </DataTableTd>
+                                <DataTableTd label="Project" class="align-top text-muted-foreground">
+                                    {{ task.project.name }}
+                                    <span v-if="task.project.code" class="text-xs">
+                                        ({{ task.project.code }})
+                                    </span>
+                                </DataTableTd>
+                                <DataTableTd label="Requirement" class="align-top text-muted-foreground">
+                                    <span v-if="task.requirement" :title="task.requirement.title">
+                                        {{ task.requirement.title }}
+                                    </span>
+                                    <span v-else>—</span>
+                                </DataTableTd>
+                                <DataTableTd label="Estimate" class="align-top text-muted-foreground">
+                                    {{ formatTaskMinutes(task.estimated_minutes) }}
+                                </DataTableTd>
+                                <DataTableTd label="Status" class="align-top">
+                                    <TaskFormSelect :id="`list-st-${task.id}`" :name="`list-status-${task.id}`"
+                                        class="min-w-[9rem] text-xs" :model-value="task.status" required
+                                        placeholder="Status" :options="statusSelectOptionsForTask(task)"
+                                        exclude-from-submit @update:model-value="patchTaskStatus(task, $event)" />
+                                </DataTableTd>
+                                <DataTableTd label="Actions" class="text-right align-top">
+                                    <div class="flex flex-wrap justify-end gap-2">
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <Button v-if="task.can_submit_task_completion" variant="secondary"
+                                                    size="sm" class="h-8 text-xs" type="button"
+                                                    @click="submitForCompletion(task)">
+                                                    <CheckCircle class="size-3.5" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Submit for completion</TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <TaskTimerButton :project-id="task.project_id" :task-id="task.id"
+                                                    size="sm" :timer-today-seconds="task.timer_today_seconds"
+                                                    :timer-state="task.timer_state" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>Timer</TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <Button variant="outline" size="sm" class="h-8 text-xs" type="button"
+                                                    @click="openTaskPreview(task)">
+                                                    <Eye class="size-3.5" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>View task</TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <Button variant="outline" size="sm" class="h-8 text-xs" as-child>
+                                                    <Link :href="task.project_tasks_url">
+                                                        <List class="size-3.5" />
+                                                    </Link>
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Task list</TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                </DataTableTd>
+                            </tr>
+                        </tbody>
+                    </DataTable>
+
+                    <p v-else
+                        class="min-h-[4rem] rounded-xl border border-dashed border-border/80 px-2 py-6 text-center text-xs text-muted-foreground">
+                        No tasks — drop here to move
+                    </p>
+
+                    <Button v-if="col.tasks.length > 0 && col.meta.current_page < col.meta.last_page" variant="outline"
+                        size="sm" class="w-full max-w-xs text-xs" type="button" @click="loadMoreColumn(col)">
+                        Load more ({{ col.meta.total - col.tasks.length }} remaining)
+                    </Button>
                 </div>
-                <div class="flex flex-col gap-2">
-                    <GlassCard v-for="task in col.tasks" :key="task.id" class="overflow-hidden p-0" hover>
-                        <button type="button"
-                            class="block min-w-0 w-full cursor-pointer p-3 pb-0 text-left hover:bg-muted/40"
-                            @click="openTaskPreview(task)" @keydown="onCardKeydown($event, task)">
-                            <p class="line-clamp-2 break-words text-sm font-medium leading-snug text-foreground"
-                                :title="task.title">
-                                {{ task.title }}
-                            </p>
-                            <p class="mt-1 line-clamp-2 break-words text-xs text-muted-foreground">
-                                {{ task.project.name }}
-                                <span v-if="task.project.code">({{ task.project.code }})</span>
-                            </p>
-                            <p v-if="task.requirement"
-                                class="mt-1 line-clamp-2 break-words text-xs text-muted-foreground"
-                                :title="task.requirement.title">
-                                {{ task.requirement.title }}
-                            </p>
-                            <p class="mt-2 text-xs text-muted-foreground">
-                                Est.: {{ formatTaskMinutes(task.estimated_minutes) }}
-                            </p>
-                        </button>
-                        <div class="flex flex-col gap-2 p-3 pt-2" @click.stop>
-                            <TaskFormSelect :id="`st-${task.id}`" :name="`status-${task.id}`" class="text-xs"
-                                :model-value="task.status" required placeholder="Status"
-                                :options="statusSelectOptionsForTask(task)"
-                                @update:model-value="patchTaskStatus(task, $event)" />
-                            <div class="flex max-w-full flex-wrap justify-between gap-2">
-                                <Tooltip>
-                                    <TooltipTrigger as-child class="w-full flex-1">
-                                        <Button v-if="task.can_submit_task_completion" variant="secondary" size="sm"
-                                            class="h-8 w-full text-xs" type="button" @click="submitForCompletion(task)">
-                                            <CheckCircle class="size-3.5" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent> Submit for completion </TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger as-child class="w-full flex-1">
-                                        <TaskTimerButton :project-id="task.project_id" :task-id="task.id"
-                                            :show-label="false"
-                                            :timer-today-seconds="task.timer_today_seconds"
-                                            :timer-state="task.timer_state" />
-                                    </TooltipTrigger>
-                                    <TooltipContent> Timer </TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger as-child class="w-full flex-1">
-                                        <Button variant="outline" size="sm" class="h-8 w-full text-xs" type="button"
-                                            @click="openTaskPreview(task)">
-                                            <Eye class="size-3.5" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent> View task </TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger as-child class="w-full flex-1">
-                                        <Button variant="outline" size="sm" class="h-8 w-full text-xs" as-child>
-                                            <Link :href="task.project_tasks_url">
-                                                <List class="size-3.5" />
-                                            </Link>
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent> Task list </TooltipContent>
-                                </Tooltip>
-                            </div>
-                        </div>
-                    </GlassCard>
+
+                <p v-if="isSectionCollapsed(col.status) && dragTask !== null && dropTargetStatus === col.status"
+                    class="px-1 text-xs text-primary">
+                    Release to move here
+                </p>
+            </section>
+        </div>
+
+        <!-- Board view (default) -->
+        <div v-if="viewMode === 'board'" class="flex gap-4 overflow-x-auto pb-2">
+            <GlassCard v-for="col in columns" :key="col.status" :class="cn(
+                'flex w-86 shrink-0 flex-col gap-3 p-4 transition-colors',
+                dropTargetStatus === col.status && 'ring-2 ring-primary/50',
+            )
+                " @dragover="onColumnDragOver($event, col)" @dragleave="onColumnDragLeave(col)"
+                @drop="onColumnDrop($event, col)">
+                <MyWorkSectionHeader :label="col.label" :shown="col.tasks.length" :total="col.meta.total"
+                    :collapsed="isSectionCollapsed(col.status)" :section-id="sectionContentId(col.status)"
+                    @toggle="toggleSectionCollapse(col.status)" />
+                <div v-show="!isSectionCollapsed(col.status)" :id="sectionContentId(col.status)"
+                    class="flex flex-col gap-2">
+                    <MyWorkTaskCard v-for="task in col.tasks" :key="task.id" :task="task"
+                        :status-options="statusSelectOptionsForTask(task)" :show-status-select="false" draggable
+                        :class="dragTask?.id === task.id && 'opacity-50'" @preview="openTaskPreview"
+                        @status-change="patchTaskStatus" @submit-completion="submitForCompletion"
+                        @drag-start="onDragStart" @drag-end="onDragEnd" />
                     <p v-if="col.tasks.length === 0"
                         class="rounded-xl border border-dashed border-border/80 px-2 py-6 text-center text-xs text-muted-foreground">
                         No tasks
@@ -432,6 +663,11 @@ onMounted(() => {
                         Load more ({{ col.meta.total - col.tasks.length }} remaining)
                     </Button>
                 </div>
+
+                <p v-if="isSectionCollapsed(col.status) && dragTask !== null && dropTargetStatus === col.status"
+                    class="text-xs text-primary">
+                    Release to move here
+                </p>
             </GlassCard>
         </div>
     </div>
