@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -187,7 +188,18 @@ class ProjectTaskController extends Controller
     {
         $this->ensureTaskBelongsToProject($project, $task);
 
-        $task->update($request->validated());
+        $payload = $request->validated();
+
+        if (array_key_exists('notify_at', $payload)) {
+            $existingNotifyAt = $task->notify_at;
+            $incomingNotifyAt = $payload['notify_at'] === null ? null : Carbon::parse($payload['notify_at']);
+
+            if (($existingNotifyAt?->toIso8601String()) !== ($incomingNotifyAt?->toIso8601String())) {
+                $payload['notified_at'] = null;
+            }
+        }
+
+        $task->update($payload);
 
         return back()->with('toast', __('Task updated.'));
     }
@@ -272,6 +284,8 @@ class ProjectTaskController extends Controller
             'requirement_title' => $task->requirement?->title,
             'parent_project_task_id' => $task->parent_project_task_id,
             'estimated_minutes' => $task->estimated_minutes,
+            'display_after_at' => $task->display_after_at?->toIso8601String(),
+            'notify_at' => $task->notify_at?->toIso8601String(),
             'children_count' => $task->children_count,
             'tree_depth' => $treeDepth,
             'can_update' => $actor->can('update', $task),

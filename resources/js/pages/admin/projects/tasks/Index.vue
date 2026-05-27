@@ -52,6 +52,8 @@ type TaskRow = {
     requirement_title: string | null | undefined;
     parent_project_task_id: number | null;
     estimated_minutes: number | null;
+    display_after_at: string | null;
+    notify_at: string | null;
     children_count: number;
     tree_depth: number;
     can_update: boolean;
@@ -160,11 +162,31 @@ const createStatus = ref('to_do');
 const createAssignee = ref('');
 const createRequirement = ref('');
 const createParent = ref('');
+const createDisplayAfterAt = ref('');
+const createNotifyAt = ref('');
 
 const editStatus = ref('to_do');
 const editAssignee = ref('');
 const editRequirement = ref('');
 const editParent = ref('');
+const editDisplayAfterAt = ref('');
+const editNotifyAt = ref('');
+
+function toDatetimeLocalValue(value: string | null): string {
+    if (value === null) {
+        return '';
+    }
+
+    const asDate = new Date(value);
+   
+    if (Number.isNaN(asDate.getTime())) {
+        return '';
+    }
+
+    const local = new Date(asDate.getTime() - asDate.getTimezoneOffset() * 60000);
+
+    return local.toISOString().slice(0, 16);
+}
 
 watch(createOpen, (open) => {
     if (open) {
@@ -172,6 +194,8 @@ watch(createOpen, (open) => {
         createAssignee.value = '';
         createRequirement.value = '';
         createParent.value = '';
+        createDisplayAfterAt.value = '';
+        createNotifyAt.value = '';
     }
 });
 
@@ -184,6 +208,8 @@ watch([editOpen, editingTask], () => {
             t.project_requirement_id !== null ? String(t.project_requirement_id) : '';
         editParent.value =
             t.parent_project_task_id !== null ? String(t.parent_project_task_id) : '';
+        editDisplayAfterAt.value = toDatetimeLocalValue(t.display_after_at);
+        editNotifyAt.value = toDatetimeLocalValue(t.notify_at);
     }
 });
 
@@ -477,6 +503,17 @@ onMounted(() => {
                             :required="project.estimation_required" />
                         <InputError :message="errors.estimated_minutes" />
                     </div>
+                    <div class="grid gap-2">
+                        <Label for="create-display-after-at">Display after</Label>
+                        <Input id="create-display-after-at" name="display_after_at" type="datetime-local"
+                            v-model="createDisplayAfterAt" />
+                        <InputError :message="errors.display_after_at" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="create-notify-at">Notify task at</Label>
+                        <Input id="create-notify-at" name="notify_at" type="datetime-local" v-model="createNotifyAt" />
+                        <InputError :message="errors.notify_at" />
+                    </div>
                     <DialogFooter class="gap-3">
                         <Button type="button" variant="outline" @click="createOpen = false">
                             Cancel
@@ -541,6 +578,17 @@ onMounted(() => {
                                 : ''
                                 " />
                         <InputError :message="errors.estimated_minutes" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="edit-display-after-at">Display after</Label>
+                        <Input id="edit-display-after-at" name="display_after_at" type="datetime-local"
+                            v-model="editDisplayAfterAt" />
+                        <InputError :message="errors.display_after_at" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="edit-notify-at">Notify task at</Label>
+                        <Input id="edit-notify-at" name="notify_at" type="datetime-local" v-model="editNotifyAt" />
+                        <InputError :message="errors.notify_at" />
                     </div>
                     <DialogFooter class="gap-3">
                         <Button type="button" variant="outline" @click="closeEdit()">

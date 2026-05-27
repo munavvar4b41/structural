@@ -229,6 +229,43 @@ class DesktopApiTest extends TestCase
             ]);
     }
 
+    public function test_my_work_hides_tasks_scheduled_for_future_display(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-27 12:00:00'));
+
+        ['staff' => $staff, 'project' => $project] = $this->setupProjectWithTask();
+
+        ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'assignee_user_id' => $staff->id,
+                'status' => ProjectTaskStatus::ToDo,
+                'title' => 'Future task',
+                'display_after_at' => now()->addHour(),
+            ]);
+
+        ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'assignee_user_id' => $staff->id,
+                'status' => ProjectTaskStatus::ToDo,
+                'title' => 'Ready task',
+                'display_after_at' => now()->subMinute(),
+            ]);
+
+        Sanctum::actingAs($staff);
+
+        $response = $this->getJson(route('api.desktop.my-work'))->assertOk();
+        $toDoIndex = array_search(ProjectTaskStatus::ToDo, ProjectTaskStatus::boardOrder(), true);
+        $this->assertNotFalse($toDoIndex);
+
+        $titles = collect($response->json("columns.{$toDoIndex}.tasks"))->pluck('title')->all();
+        $this->assertContains('Ready task', $titles);
+        $this->assertNotContains('Future task', $titles);
+
+        Carbon::setTestNow();
+    }
+
     public function test_logout_revokes_token(): void
     {
         ['staff' => $staff] = $this->setupProjectWithTask();
