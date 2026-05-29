@@ -32,6 +32,7 @@ import { index as adminMyWorkIndex } from '@/routes/admin/my-work/index';
 import { index as adminProjectsIndex } from '@/routes/admin/projects/index';
 import { index as adminTaskRatingsReportIndex } from '@/routes/admin/task-ratings-report/index';
 import { index as adminTaskReviewsIndex } from '@/routes/admin/task-reviews/index';
+import { index as adminTasksIndex } from '@/routes/admin/tasks/index';
 import { index as adminTeamsIndex } from '@/routes/admin/teams/index';
 import { index as adminTimeReportIndex } from '@/routes/admin/time-report/index';
 import { index as adminUsersIndex } from '@/routes/admin/users/index';
@@ -68,6 +69,12 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Projects',
             href: adminProjectsIndex(),
             icon: FolderKanban,
+            activeMatch: 'prefix',
+        });
+        items.push({
+            title: 'Tasks',
+            href: adminTasksIndex(),
+            icon: ClipboardList,
             activeMatch: 'prefix',
         });
         items.push({
