@@ -20,6 +20,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'assignee_user_id',
     'created_by_user_id',
     'estimated_minutes',
+    'display_after_at',
+    'notify_at',
+    'notified_at',
     'completion_submitted_at',
     'completion_submitted_by_user_id',
 ])]
@@ -35,6 +38,9 @@ class ProjectTask extends Model
     {
         return [
             'status' => ProjectTaskStatus::class,
+            'display_after_at' => 'datetime',
+            'notify_at' => 'datetime',
+            'notified_at' => 'datetime',
             'completion_submitted_at' => 'datetime',
         ];
     }

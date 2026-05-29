@@ -16,7 +16,7 @@ class UpdateProjectTaskRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
-        foreach (['assignee_user_id', 'project_requirement_id', 'parent_project_task_id', 'estimated_minutes'] as $key) {
+        foreach (['assignee_user_id', 'project_requirement_id', 'parent_project_task_id', 'estimated_minutes', 'display_after_at', 'notify_at'] as $key) {
             if ($this->has($key) && $this->input($key) === '') {
                 $this->merge([$key => null]);
             }
@@ -71,6 +71,8 @@ class UpdateProjectTaskRequest extends FormRequest
                 'assignee_user_id' => ['prohibited'],
                 'status' => ['sometimes', Rule::enum(ProjectTaskStatus::class)],
                 'estimated_minutes' => $estimationRules,
+                'display_after_at' => ['prohibited'],
+                'notify_at' => ['prohibited'],
             ];
         }
 
@@ -94,6 +96,8 @@ class UpdateProjectTaskRequest extends FormRequest
                 Rule::exists('project_tasks', 'id')->where('project_id', $project->id),
             ],
             'estimated_minutes' => $estimationRules,
+            'display_after_at' => ['nullable', 'date'],
+            'notify_at' => ['nullable', 'date'],
         ];
     }
 
@@ -166,6 +170,24 @@ class UpdateProjectTaskRequest extends FormRequest
                     $validator->errors()->add(
                         'project_requirement_id',
                         __('Subtasks must use the same requirement link as their parent task.'),
+                    );
+                }
+
+                if ($this->input('notify_at', $task->notify_at) === null) {
+                    return;
+                }
+
+                $assigneeId = $this->has('assignee_user_id')
+                    ? $this->input('assignee_user_id')
+                    : $task->assignee_user_id;
+
+                $hasAssignee = $assigneeId !== null && $assigneeId !== '';
+                $hasProjectLead = $task->project->lead_user_id !== null;
+
+                if (! $hasAssignee && ! $hasProjectLead) {
+                    $validator->errors()->add(
+                        'notify_at',
+                        __('A reminder needs at least one recipient. Assign a task owner or set a project lead.'),
                     );
                 }
             },

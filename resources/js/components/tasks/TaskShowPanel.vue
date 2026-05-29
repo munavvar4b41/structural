@@ -813,7 +813,7 @@ const checklistDeleteDescription = computed(() => {
             </div>
             <ul v-if="checklist.items.length > 0" class="space-y-2">
                 <li v-for="item in checklist.items" :key="item.id"
-                    class="flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2">
+                    class="flex gap-3 rounded-lg border border-border/60 px-3 py-2 items-center">
                     <Checkbox :id="`checklist-${item.id}`" :model-value="item.is_completed"
                         :disabled="!checklist.can_manage" class="mt-0.5"
                         @update:model-value="(v) => toggleChecklistItem(item, v)" />
@@ -853,11 +853,11 @@ const checklistDeleteDescription = computed(() => {
             <p v-else class="text-sm text-muted-foreground">
                 No checklist items yet.
             </p>
-            <Form v-if="checklist.can_manage" v-bind="ProjectTaskChecklistItemController.store.form({
+            <Form v-if="checklist.can_manage" :action="ProjectTaskChecklistItemController.store.url({
                 project: project.id,
                 task: task.id,
             })
-                " class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end"
+                " method="post" class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end"
                 @success="() => { newChecklistTitle = ''; reloadAfterMutation(); }" v-slot="{ errors, processing }">
                 <div class="grid flex-1 gap-2">
                     <Label for="new-checklist-title" class="sr-only">New item</Label>
@@ -924,7 +924,7 @@ const checklistDeleteDescription = computed(() => {
                                 </td>
                                 <td data-label="When" class="px-3 py-2 align-top text-muted-foreground">
                                     {{ formatEntryRange(entry.started_at, entry.ended_at, entry.is_running,
-                                    entry.is_paused) }}
+                                        entry.is_paused) }}
                                 </td>
                                 <td data-label="Duration" class="px-3 py-2 align-top tabular-nums">
                                     <span v-if="entry.is_running" :class="entry.is_paused

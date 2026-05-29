@@ -8,6 +8,7 @@ use App\Models\ProjectTask;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -96,6 +97,46 @@ class MyWorkTest extends TestCase
                 ->has('project_options')
                 ->has('columns.'.$toDoIndex.'.tasks', 1)
                 ->where('columns.'.$toDoIndex.'.tasks.0.title', 'Alpha task'));
+    }
+
+    public function test_my_work_hides_tasks_until_display_after_is_reached(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-27 12:00:00'));
+
+        $team = Team::factory()->create();
+        $head = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        ProjectTask::factory()->forProject($project)->create([
+            'created_by_user_id' => $head->id,
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+            'title' => 'Show now',
+            'display_after_at' => now()->subMinute(),
+        ]);
+
+        ProjectTask::factory()->forProject($project)->create([
+            'created_by_user_id' => $head->id,
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+            'title' => 'Show later',
+            'display_after_at' => now()->addHour(),
+        ]);
+
+        $toDoIndex = array_search(ProjectTaskStatus::ToDo, ProjectTaskStatus::boardOrder(), true);
+        $this->assertNotFalse($toDoIndex);
+
+        $this->actingAs($staff)
+            ->get(route('admin.my-work.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('columns.'.$toDoIndex.'.tasks', 1)
+                ->where('columns.'.$toDoIndex.'.tasks.0.title', 'Show now'));
+
+        Carbon::setTestNow();
     }
 
     public function test_assignee_only_staff_cannot_patch_status_to_done(): void

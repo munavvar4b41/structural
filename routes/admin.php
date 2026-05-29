@@ -4,12 +4,14 @@ use App\Http\Controllers\Admin\CompanySettingsController;
 use App\Http\Controllers\Admin\LeaveRequestController;
 use App\Http\Controllers\Admin\LeaveSettingsController;
 use App\Http\Controllers\Admin\MyWorkController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\ProjectRequirementController;
 use App\Http\Controllers\Admin\ProjectRequirementMessageController;
 use App\Http\Controllers\Admin\ProjectTaskChecklistItemController;
 use App\Http\Controllers\Admin\ProjectTaskController;
 use App\Http\Controllers\Admin\TaskCompletionReviewController;
+use App\Http\Controllers\Admin\TaskController;
 use App\Http\Controllers\Admin\TaskRatingReportController;
 use App\Http\Controllers\Admin\TaskTimeEntryController;
 use App\Http\Controllers\Admin\TaskTimerController;
@@ -44,6 +46,9 @@ Route::patch('leave-requests/{leaveRequest}/reject', [LeaveRequestController::cl
 Route::resource('leave-requests', LeaveRequestController::class)->only(['index', 'store', 'destroy']);
 
 Route::get('my-work', [MyWorkController::class, 'index'])->name('my-work.index');
+Route::patch('notifications/{notification}', [NotificationController::class, 'markAsRead'])
+    ->name('notifications.read');
+Route::get('tasks', [TaskController::class, 'index'])->name('tasks.index');
 Route::get('task-reviews', [TaskCompletionReviewController::class, 'index'])->name('task-reviews.index');
 Route::get('task-ratings-report', [TaskRatingReportController::class, 'index'])->name('task-ratings-report.index');
 Route::resource('projects', ProjectController::class)->except(['show']);

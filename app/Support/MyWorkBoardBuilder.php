@@ -32,6 +32,10 @@ class MyWorkBoardBuilder
 
         $baseQuery = ProjectTask::query()
             ->where('assignee_user_id', $actor->id)
+            ->where(static function ($query): void {
+                $query->whereNull('display_after_at')
+                    ->orWhere('display_after_at', '<=', now());
+            })
             ->whereIn('project_id', (clone $visibleProjectsQuery)->select('projects.id'));
 
         if ($projectId !== null) {
