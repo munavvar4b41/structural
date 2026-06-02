@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\Desktop;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Desktop\DesktopTimerPauseRequest;
+use App\Http\Requests\Api\Desktop\DesktopTimerResumeRequest;
 use App\Http\Requests\Api\Desktop\DesktopTimerStartRequest;
 use App\Models\Project;
 use App\Models\ProjectTask;
@@ -53,26 +55,34 @@ class DesktopTimerController extends Controller
         return $this->trayResponse($actor);
     }
 
-    public function pause(Request $request): JsonResponse
+    public function pause(DesktopTimerPauseRequest $request): JsonResponse
     {
         $actor = $request->user();
         abort_if(! $actor instanceof User, 403);
 
         $this->authorize('stop', TaskTimeEntry::class);
 
-        $this->tracker->pause($actor);
+        $this->tracker->pause(
+            $actor,
+            $request->pauseReason(),
+            $request->clientEventAt(),
+        );
 
         return $this->trayResponse($actor);
     }
 
-    public function resume(Request $request): JsonResponse
+    public function resume(DesktopTimerResumeRequest $request): JsonResponse
     {
         $actor = $request->user();
         abort_if(! $actor instanceof User, 403);
 
         $this->authorize('stop', TaskTimeEntry::class);
 
-        $this->tracker->resume($actor);
+        $this->tracker->resume(
+            $actor,
+            $request->resumedBy(),
+            $request->clientEventAt(),
+        );
 
         return $this->trayResponse($actor);
     }

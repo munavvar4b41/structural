@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\ProjectTaskStatus;
 use App\Enums\TimeEntrySource;
+use App\Enums\TimerPauseReason;
+use App\Enums\TimerResumedBy;
 use Carbon\CarbonImmutable;
 use Database\Factories\TaskTimeEntryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -19,6 +21,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'started_at',
     'ended_at',
     'paused_at',
+    'pause_reason',
+    'resumed_by',
+    'last_client_event_at',
     'accumulated_pause_seconds',
     'duration_seconds',
     'source',
@@ -39,6 +44,9 @@ class TaskTimeEntry extends Model
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
             'paused_at' => 'datetime',
+            'pause_reason' => TimerPauseReason::class,
+            'resumed_by' => TimerResumedBy::class,
+            'last_client_event_at' => 'datetime',
             'accumulated_pause_seconds' => 'integer',
             'duration_seconds' => 'integer',
             'source' => TimeEntrySource::class,
@@ -130,14 +138,12 @@ class TaskTimeEntry extends Model
 
     public static function activeSessionForUser(int $userId): ?self
     {
-        return once(function () use ($userId): ?self {
-            return self::query()
-                ->where('user_id', $userId)
-                ->open()
-                ->orderByRaw('CASE WHEN paused_at IS NULL THEN 0 ELSE 1 END')
-                ->orderByDesc('started_at')
-                ->first();
-        });
+        return self::query()
+            ->where('user_id', $userId)
+            ->open()
+            ->orderByRaw('CASE WHEN paused_at IS NULL THEN 0 ELSE 1 END')
+            ->orderByDesc('started_at')
+            ->first();
     }
 
     public static function todayElapsedSecondsForUserOnTask(
