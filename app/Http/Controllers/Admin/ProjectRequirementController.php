@@ -14,6 +14,7 @@ use App\Models\ProjectRequirement;
 use App\Models\ProjectRequirementMessage;
 use App\Models\ProjectTask;
 use App\Models\User;
+use App\Support\AssignmentNotificationDispatcher;
 use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\ProjectTaskDisplayOrder;
 use App\Support\TipTapDocument;
@@ -29,6 +30,8 @@ use Inertia\Response;
 class ProjectRequirementController extends Controller
 {
     use AuthorizesRequests;
+
+    public function __construct(private readonly AssignmentNotificationDispatcher $assignmentNotificationDispatcher) {}
 
     public function index(Request $request, Project $project): Response
     {
@@ -141,6 +144,9 @@ class ProjectRequirementController extends Controller
     ): RedirectResponse {
         $this->ensureRequirementBelongsToProject($project, $requirement);
 
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
         $validated = $request->validated();
 
         $requirement->update([
@@ -149,6 +155,8 @@ class ProjectRequirementController extends Controller
             'understanding_confirmed_at' => null,
             'understanding_confirmed_by_user_id' => null,
         ]);
+
+        $this->assignmentNotificationDispatcher->sendRequirementReviewUnderstandingSubmitted($requirement, $actor);
 
         return to_route('admin.projects.requirements.show', [$project, $requirement]);
     }
@@ -193,6 +201,9 @@ class ProjectRequirementController extends Controller
 
     public function store(StoreProjectRequirementRequest $request, Project $project): RedirectResponse
     {
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
         $project->loadMissing('teams');
 
         $responsibleId = $request->validated('responsible_user_id');
@@ -200,13 +211,15 @@ class ProjectRequirementController extends Controller
             $responsibleId = $project->defaultResponsibleUser()?->id;
         }
 
-        ProjectRequirement::query()->create([
+        $requirement = ProjectRequirement::query()->create([
             'project_id' => $project->id,
-            'created_by_user_id' => $request->user()->id,
+            'created_by_user_id' => $actor->id,
             'responsible_user_id' => $responsibleId,
             'title' => $request->validated('title'),
             'description' => $request->validated('description'),
         ]);
+
+        $this->assignmentNotificationDispatcher->sendRequirementAssigned($requirement, $actor);
 
         return to_route('admin.projects.requirements.index', $project)->with('toast', 'Requirement created.');
     }
@@ -244,6 +257,11 @@ class ProjectRequirementController extends Controller
     {
         $this->ensureRequirementBelongsToProject($project, $requirement);
 
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
+        $originalResponsibleId = $requirement->responsible_user_id;
+        $originalReviewerId = $requirement->reviewer_user_id;
         $validated = $request->validated();
 
         $requirement->update([
@@ -252,6 +270,22 @@ class ProjectRequirementController extends Controller
             'reviewer_user_id' => $validated['reviewer_user_id'] ?? null,
             'responsible_user_id' => $validated['responsible_user_id'] ?? null,
         ]);
+
+        $responsibleChanged = $requirement->wasChanged('responsible_user_id')
+            && $originalResponsibleId !== $requirement->responsible_user_id;
+        $reviewerChanged = $requirement->wasChanged('reviewer_user_id')
+            && $originalReviewerId !== $requirement->reviewer_user_id;
+
+        if ($responsibleChanged || $reviewerChanged) {
+            $changedRecipientIds = array_values(array_filter([
+                $responsibleChanged ? $requirement->responsible_user_id : null,
+                $reviewerChanged ? $requirement->reviewer_user_id : null,
+            ], static fn (?int $id): bool => $id !== null));
+
+            $this->assignmentNotificationDispatcher->sendRequirementAssigned($requirement, $actor, $changedRecipientIds);
+        } elseif ($requirement->wasChanged()) {
+            $this->assignmentNotificationDispatcher->sendRequirementUpdated($requirement, $actor);
+        }
 
         return to_route('admin.projects.requirements.index', $project)->with('toast', 'Requirement updated.');
     }

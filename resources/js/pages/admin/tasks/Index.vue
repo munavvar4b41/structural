@@ -342,11 +342,11 @@ function onCreateSuccess(): void {
                     style="--data-table-min-width: 920px">
                     <thead class="border-b bg-muted/40">
                         <tr>
-                            <th class="w-[34%] px-4 py-3 font-medium">Title</th>
+                            <th class="w-[30%] px-4 py-3 font-medium">Title</th>
                             <th class="px-4 py-3 font-medium">Project</th>
                             <th class="px-4 py-3 font-medium">Status</th>
                             <th class="px-4 py-3 font-medium">Assignee</th>
-                            <th class="px-4 py-3 font-medium">Requirement</th>
+                            <th class="min-w-[25%] px-4 py-3 font-medium">Requirement</th>
                             <th class="px-4 py-3 font-medium">Estimate</th>
                         </tr>
                     </thead>

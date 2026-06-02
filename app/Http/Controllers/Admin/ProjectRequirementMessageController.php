@@ -8,10 +8,13 @@ use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectRequirementMessage;
 use App\Models\User;
+use App\Support\AssignmentNotificationDispatcher;
 use Illuminate\Http\RedirectResponse;
 
 class ProjectRequirementMessageController extends Controller
 {
+    public function __construct(private readonly AssignmentNotificationDispatcher $assignmentNotificationDispatcher) {}
+
     public function store(
         StoreProjectRequirementMessageRequest $request,
         Project $project,
@@ -27,6 +30,8 @@ class ProjectRequirementMessageController extends Controller
             'user_id' => $actor->id,
             'body' => $request->validated('body'),
         ]);
+
+        $this->assignmentNotificationDispatcher->sendRequirementClarificationDiscussion($requirement, $actor);
 
         return to_route('admin.projects.requirements.show', [$project, $requirement])
             ->with('toast', 'Message posted.');

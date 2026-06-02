@@ -9,6 +9,8 @@ use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
 use App\Models\Team;
 use App\Models\User;
+use App\Notifications\TaskAssignedNotification;
+use App\Notifications\TaskUpdatedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -238,6 +240,30 @@ class ProjectTaskTest extends TestCase
         ]);
     }
 
+    public function test_store_sends_assignment_notification_to_assignee(): void
+    {
+        extract($this->projectWithTeamHead());
+        $assignee = User::factory()->withPrimaryTeam($team)->create();
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->post(route('admin.projects.tasks.store', $project), [
+                'title' => 'Assigned task',
+                'status' => ProjectTaskStatus::ToDo->value,
+                'assignee_user_id' => $assignee->id,
+                'project_requirement_id' => null,
+                'parent_project_task_id' => null,
+                'estimated_minutes' => null,
+            ])
+            ->assertRedirect(route('admin.projects.tasks.index', $project));
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => TaskAssignedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $assignee->id,
+        ]);
+    }
+
     public function test_estimation_required_project_rejects_missing_estimate_on_store(): void
     {
         extract($this->projectWithTeamHead());
@@ -421,6 +447,78 @@ class ProjectTaskTest extends TestCase
             ->assertRedirect(route('admin.projects.tasks.index', $project));
 
         $this->assertSame('Renamed by creator', $task->fresh()->title);
+    }
+
+    public function test_update_with_same_assignee_sends_task_updated_notification(): void
+    {
+        extract($this->projectWithTeamHead());
+        $assignee = User::factory()->withPrimaryTeam($team)->create();
+
+        $task = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $assignee->id,
+                'status' => ProjectTaskStatus::ToDo,
+                'title' => 'Original title',
+            ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->patch(route('admin.projects.tasks.update', [$project, $task]), [
+                'title' => 'Retitled task',
+                'status' => ProjectTaskStatus::ToDo->value,
+                'assignee_user_id' => $assignee->id,
+            ])
+            ->assertRedirect(route('admin.projects.tasks.index', $project));
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => TaskUpdatedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $assignee->id,
+        ]);
+    }
+
+    public function test_update_with_changed_assignee_sends_assignment_notification_only_to_new_assignee(): void
+    {
+        extract($this->projectWithTeamHead());
+        $oldAssignee = User::factory()->withPrimaryTeam($team)->create();
+        $newAssignee = User::factory()->withPrimaryTeam($team)->create();
+
+        $task = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $oldAssignee->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->patch(route('admin.projects.tasks.update', [$project, $task]), [
+                'title' => $task->title,
+                'status' => ProjectTaskStatus::InProgress->value,
+                'assignee_user_id' => $newAssignee->id,
+            ])
+            ->assertRedirect(route('admin.projects.tasks.index', $project));
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => TaskAssignedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $newAssignee->id,
+        ]);
+
+        $this->assertDatabaseMissing('notifications', [
+            'type' => TaskAssignedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $oldAssignee->id,
+        ]);
+
+        $this->assertDatabaseMissing('notifications', [
+            'type' => TaskUpdatedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $newAssignee->id,
+        ]);
     }
 
     public function test_staff_creator_can_delete_own_task(): void
