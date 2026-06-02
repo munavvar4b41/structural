@@ -2,13 +2,15 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Http\Requests\Admin\Concerns\ValidatesTaskTimeEntryInput;
 use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
-use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreTaskTimeEntryRequest extends FormRequest
 {
+    use ValidatesTaskTimeEntryInput;
+
     public function authorize(): bool
     {
         $task = $this->route('task');
@@ -20,15 +22,8 @@ class StoreTaskTimeEntryRequest extends FormRequest
         return $this->user()?->can('create', [TaskTimeEntry::class, $task]) ?? false;
     }
 
-    /**
-     * @return array<string, array<int, ValidationRule|string>>
-     */
     public function rules(): array
     {
-        return [
-            'started_at' => ['required', 'date'],
-            'ended_at' => ['required', 'date', 'after:started_at'],
-            'notes' => ['nullable', 'string', 'max:500'],
-        ];
+        return $this->taskTimeEntryRules();
     }
 }

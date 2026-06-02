@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
 use App\Models\User;
+use App\Settings\CompanySettings;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 class ProjectTaskShowPayloadBuilder
@@ -83,8 +84,14 @@ class ProjectTaskShowPayloadBuilder
             ? max(0, $task->estimated_minutes * 60 - $myAllTimeTotal)
             : null;
 
+        $companySettings = app(CompanySettings::class);
+
         return [
             'can_track' => $actor->can('start', [TaskTimeEntry::class, $task]),
+            'working_hours' => [
+                'start' => $companySettings->work_day_start_time,
+                'end' => $companySettings->work_day_end_time,
+            ],
             'totals' => [
                 'my_today_seconds' => $myTodayTotal,
                 'my_all_time_seconds' => $myAllTimeTotal,

@@ -68,7 +68,26 @@ class ProjectRequirementTest extends TestCase
                 ->component('admin/projects/requirements/Show')
                 ->where('requirement.id', $requirement->id)
                 ->has('requirement_chat_messages.data')
-                ->has('can_post_requirement_chat'));
+                ->has('can_post_requirement_chat')
+                ->where('can_create_tasks', true));
+    }
+
+    public function test_client_on_requirement_show_cannot_create_tasks(): void
+    {
+        $team = Team::factory()->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+        ]);
+
+        $this->actingAs($client)
+            ->get(route('admin.projects.requirements.show', [$project, $requirement]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('can_create_tasks', false));
     }
 
     public function test_show_returns_404_when_requirement_belongs_to_other_project(): void

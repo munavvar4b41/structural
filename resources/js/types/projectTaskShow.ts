@@ -78,6 +78,10 @@ export type TimeEntryRow = {
 
 export type TimeTracking = {
     can_track: boolean;
+    working_hours: {
+        start: string;
+        end: string;
+    };
     totals: {
         my_today_seconds: number;
         my_all_time_seconds: number;

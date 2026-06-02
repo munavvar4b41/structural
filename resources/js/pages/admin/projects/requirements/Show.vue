@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head, Link, router } from '@inertiajs/vue3';
+import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
 import { CornerDownRight } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementController';
@@ -118,8 +118,25 @@ const props = defineProps<{
     can_create_tasks: boolean;
 }>();
 
+const page = usePage();
+
 const createTaskOpen = ref(false);
 const reviewDialogOpen = ref(false);
+
+function openCreateTaskDialog(): void {
+    if (!props.can_create_tasks) {
+        return;
+    }
+
+    createTaskOpen.value = true;
+}
+
+function onEmptyTasksKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openCreateTaskDialog();
+    }
+}
 
 const taskDeleteOpen = ref(false);
 const taskPendingDelete = ref<RequirementTaskRow | null>(null);
@@ -225,6 +242,14 @@ onMounted(() => {
     chatPollTimer = window.setInterval(() => {
         reloadChatMessages();
     }, 30_000);
+
+    const rawUrl = page.url;
+    const queryPart = rawUrl.includes('?') ? rawUrl.slice(rawUrl.indexOf('?') + 1) : '';
+    const params = new URLSearchParams(queryPart);
+
+    if (params.get('add_task') === '1' && props.can_create_tasks) {
+        openCreateTaskDialog();
+    }
 });
 
 onUnmounted(() => {
@@ -427,12 +452,17 @@ defineOptions({
                 </GlassCard>
 
                 <GlassCard class="lg:col-span-12">
-                    <div class="mb-6 space-y-1">
-                        <h2 class="text-lg font-semibold">Tasks</h2>
-                        <p class="text-sm text-muted-foreground">
-                            Work linked to this requirement. Estimates:
-                            {{ project.estimation_required ? 'required on this project.' : 'optional.' }}
-                        </p>
+                    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="space-y-1">
+                            <h2 class="text-lg font-semibold">Tasks</h2>
+                            <p class="text-sm text-muted-foreground">
+                                Work linked to this requirement. Estimates:
+                                {{ project.estimation_required ? 'required on this project.' : 'optional.' }}
+                            </p>
+                        </div>
+                        <Button v-if="can_create_tasks" type="button" class="shrink-0" @click="openCreateTaskDialog">
+                            Add task
+                        </Button>
                     </div>
                     <div class="md:overflow-x-auto">
                         <Dialog v-model:open="createTaskOpen">
@@ -564,8 +594,18 @@ defineOptions({
                                     </td>
                                 </tr>
                                 <tr v-if="requirement_tasks.length === 0">
-                                    <td data-label="" colspan="5" class="px-4 py-8 text-center text-muted-foreground">
-                                        No tasks yet for this requirement.
+                                    <td data-label="" colspan="5" class="px-4 py-8 text-center text-muted-foreground"
+                                        :class="can_create_tasks ? 'cursor-pointer hover:bg-muted/30' : ''"
+                                        :role="can_create_tasks ? 'button' : undefined"
+                                        :tabindex="can_create_tasks ? 0 : undefined"
+                                        @click="openCreateTaskDialog"
+                                        @keydown="onEmptyTasksKeydown">
+                                        <template v-if="can_create_tasks">
+                                            No tasks yet. Click here or use Add task to create one.
+                                        </template>
+                                        <template v-else>
+                                            No tasks yet for this requirement.
+                                        </template>
                                     </td>
                                 </tr>
                             </tbody>
