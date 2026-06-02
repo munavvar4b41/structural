@@ -144,6 +144,9 @@ class ProjectRequirementController extends Controller
     ): RedirectResponse {
         $this->ensureRequirementBelongsToProject($project, $requirement);
 
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
         $validated = $request->validated();
 
         $requirement->update([
@@ -152,6 +155,8 @@ class ProjectRequirementController extends Controller
             'understanding_confirmed_at' => null,
             'understanding_confirmed_by_user_id' => null,
         ]);
+
+        $this->assignmentNotificationDispatcher->sendRequirementReviewUnderstandingSubmitted($requirement, $actor);
 
         return to_route('admin.projects.requirements.show', [$project, $requirement]);
     }

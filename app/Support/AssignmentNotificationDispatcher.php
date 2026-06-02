@@ -6,6 +6,8 @@ use App\Models\ProjectRequirement;
 use App\Models\ProjectTask;
 use App\Models\User;
 use App\Notifications\RequirementAssignedNotification;
+use App\Notifications\RequirementClarificationDiscussionNotification;
+use App\Notifications\RequirementReviewUnderstandingSubmittedNotification;
 use App\Notifications\RequirementUpdatedNotification;
 use App\Notifications\TaskAssignedNotification;
 use App\Notifications\TaskUpdatedNotification;
@@ -67,13 +69,46 @@ class AssignmentNotificationDispatcher
     {
         $requirement->loadMissing([
             'project:id,name,code',
+            'creator:id,name,email',
             'responsibleUser:id,name,email',
             'reviewer:id,name,email',
         ]);
 
         $this->notifyUsers(
-            collect([$requirement->responsibleUser, $requirement->reviewer]),
+            collect([$requirement->creator, $requirement->responsibleUser, $requirement->reviewer]),
             new RequirementUpdatedNotification($requirement),
+            $actor,
+        );
+    }
+
+    public function sendRequirementClarificationDiscussion(ProjectRequirement $requirement, User $actor): void
+    {
+        $requirement->loadMissing([
+            'project:id,name,code',
+            'creator:id,name,email',
+            'responsibleUser:id,name,email',
+            'reviewer:id,name,email',
+        ]);
+
+        $this->notifyUsers(
+            collect([$requirement->creator, $requirement->responsibleUser, $requirement->reviewer]),
+            new RequirementClarificationDiscussionNotification($requirement),
+            $actor,
+        );
+    }
+
+    public function sendRequirementReviewUnderstandingSubmitted(ProjectRequirement $requirement, User $actor): void
+    {
+        $requirement->loadMissing([
+            'project:id,name,code',
+            'creator:id,name,email',
+            'responsibleUser:id,name,email',
+            'reviewer:id,name,email',
+        ]);
+
+        $this->notifyUsers(
+            collect([$requirement->creator, $requirement->responsibleUser, $requirement->reviewer]),
+            new RequirementReviewUnderstandingSubmittedNotification($requirement),
             $actor,
         );
     }

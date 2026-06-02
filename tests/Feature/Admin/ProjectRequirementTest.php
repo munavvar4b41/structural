@@ -7,6 +7,7 @@ use App\Models\ProjectRequirement;
 use App\Models\Team;
 use App\Models\User;
 use App\Notifications\RequirementAssignedNotification;
+use App\Notifications\RequirementReviewUnderstandingSubmittedNotification;
 use App\Notifications\RequirementUpdatedNotification;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -352,6 +353,48 @@ class ProjectRequirementTest extends TestCase
         $this->assertSame($understanding, $fresh->review_understanding);
 
         Carbon::setTestNow(null);
+    }
+
+    public function test_mark_reviewed_sends_review_understanding_submission_notification_to_other_stakeholders(): void
+    {
+        $team = Team::factory()->create();
+        $reviewer = User::factory()->withPrimaryTeam($team)->create();
+        $responsible = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'responsible_user_id' => $responsible->id,
+            'reviewer_user_id' => $reviewer->id,
+            'reviewed_at' => null,
+        ]);
+
+        $this->actingAs($reviewer)
+            ->patch(route('admin.projects.requirements.review', [$project, $requirement]), [
+                'review_understanding' => $this->tipTapJson('Submitted understanding for review.'),
+            ])
+            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => RequirementReviewUnderstandingSubmittedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $client->id,
+        ]);
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => RequirementReviewUnderstandingSubmittedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $responsible->id,
+        ]);
+
+        $this->assertDatabaseMissing('notifications', [
+            'type' => RequirementReviewUnderstandingSubmittedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $reviewer->id,
+        ]);
     }
 
     public function test_staff_cannot_access_requirement_edit(): void

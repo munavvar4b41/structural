@@ -499,7 +499,7 @@ defineOptions({
                             style="--data-table-min-width: 640px">
                             <thead class="border-b bg-muted/40">
                                 <tr>
-                                    <th class="w-[38%] px-4 py-3 font-medium">Title</th>
+                                    <th class="w-[30%] px-4 py-3 font-medium">Title</th>
                                     <th class="px-4 py-3 font-medium">Status</th>
                                     <th class="px-4 py-3 font-medium">Assignee</th>
                                     <th class="px-4 py-3 font-medium">Estimate</th>
