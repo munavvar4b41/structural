@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectTask;
 use App\Models\User;
+use App\Support\AssignmentNotificationDispatcher;
 use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\ProjectTaskAssigneeCapabilities;
 use App\Support\ProjectTaskDisplayOrder;
@@ -26,10 +27,10 @@ class ProjectTaskController extends Controller
 {
     use AuthorizesRequests;
 
-    public function __construct(private readonly ProjectTaskShowPayloadBuilder $showPayloadBuilder)
-    {
-        //
-    }
+    public function __construct(
+        private readonly ProjectTaskShowPayloadBuilder $showPayloadBuilder,
+        private readonly AssignmentNotificationDispatcher $assignmentNotificationDispatcher,
+    ) {}
 
     public function index(Request $request, Project $project): Response
     {
@@ -175,11 +176,18 @@ class ProjectTaskController extends Controller
 
     public function store(StoreProjectTaskRequest $request, Project $project): RedirectResponse
     {
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
         $data = $request->validated();
         $data['project_id'] = $project->id;
-        $data['created_by_user_id'] = $request->user()->id;
+        $data['created_by_user_id'] = $actor->id;
 
-        ProjectTask::query()->create($data);
+        $task = ProjectTask::query()->create($data);
+
+        if ($task->assignee_user_id !== null) {
+            $this->assignmentNotificationDispatcher->sendTaskAssigned($task, $actor);
+        }
 
         return back()->with('toast', __('Task created.'));
     }
@@ -188,6 +196,10 @@ class ProjectTaskController extends Controller
     {
         $this->ensureTaskBelongsToProject($project, $task);
 
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
+        $originalAssigneeId = $task->assignee_user_id;
         $payload = $request->validated();
 
         if (array_key_exists('notify_at', $payload)) {
@@ -200,6 +212,13 @@ class ProjectTaskController extends Controller
         }
 
         $task->update($payload);
+        $assigneeChanged = $task->wasChanged('assignee_user_id') && $originalAssigneeId !== $task->assignee_user_id;
+
+        if ($assigneeChanged && $task->assignee_user_id !== null) {
+            $this->assignmentNotificationDispatcher->sendTaskAssigned($task, $actor);
+        } elseif ($task->wasChanged()) {
+            $this->assignmentNotificationDispatcher->sendTaskUpdated($task, $actor);
+        }
 
         return back()->with('toast', __('Task updated.'));
     }

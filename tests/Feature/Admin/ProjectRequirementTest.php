@@ -6,6 +6,8 @@ use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\Team;
 use App\Models\User;
+use App\Notifications\RequirementAssignedNotification;
+use App\Notifications\RequirementUpdatedNotification;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -162,6 +164,36 @@ class ProjectRequirementTest extends TestCase
             ->assertRedirect(route('admin.projects.requirements.index', $project));
 
         $this->assertSame($staff->id, ProjectRequirement::query()->value('responsible_user_id'));
+    }
+
+    public function test_create_sends_assignment_notification_to_responsible_user(): void
+    {
+        $team = Team::factory()->create();
+        $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $this->actingAs($client)
+            ->post(route('admin.projects.requirements.store', $project), [
+                'title' => 'Notify responsible',
+                'description' => $this->tipTapJson('Body'),
+                'responsible_user_id' => $staff->id,
+            ])
+            ->assertRedirect(route('admin.projects.requirements.index', $project));
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => RequirementAssignedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $staff->id,
+        ]);
+
+        $this->assertDatabaseMissing('notifications', [
+            'type' => RequirementAssignedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $teamHead->id,
+        ]);
     }
 
     public function test_client_cannot_create_requirement_on_another_clients_project(): void
@@ -462,6 +494,91 @@ class ProjectRequirementTest extends TestCase
             ->assertRedirect(route('admin.projects.requirements.index', $project));
 
         $this->assertNull($requirement->fresh()->reviewed_at);
+    }
+
+    public function test_update_without_assignment_change_sends_requirement_updated_notification(): void
+    {
+        $team = Team::factory()->create();
+        $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $staffReviewer = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'responsible_user_id' => $teamHead->id,
+            'reviewer_user_id' => $staffReviewer->id,
+            'title' => 'Before',
+        ]);
+
+        $this->actingAs($teamHead)
+            ->put(route('admin.projects.requirements.update', [$project, $requirement]), [
+                'title' => 'After',
+                'description' => $requirement->description,
+                'reviewer_user_id' => $staffReviewer->id,
+                'responsible_user_id' => $teamHead->id,
+            ])
+            ->assertRedirect(route('admin.projects.requirements.index', $project));
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => RequirementUpdatedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $staffReviewer->id,
+        ]);
+
+        $this->assertDatabaseMissing('notifications', [
+            'type' => RequirementUpdatedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $teamHead->id,
+        ]);
+    }
+
+    public function test_update_with_reviewer_change_sends_assignment_notification_to_changed_reviewer_only(): void
+    {
+        $team = Team::factory()->create();
+        $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $oldReviewer = User::factory()->withPrimaryTeam($team)->create();
+        $newReviewer = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'responsible_user_id' => $teamHead->id,
+            'reviewer_user_id' => $oldReviewer->id,
+            'title' => 'Needs reviewer change',
+        ]);
+
+        $this->actingAs($teamHead)
+            ->put(route('admin.projects.requirements.update', [$project, $requirement]), [
+                'title' => $requirement->title,
+                'description' => $requirement->description,
+                'reviewer_user_id' => $newReviewer->id,
+                'responsible_user_id' => $teamHead->id,
+            ])
+            ->assertRedirect(route('admin.projects.requirements.index', $project));
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => RequirementAssignedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $newReviewer->id,
+        ]);
+
+        $this->assertDatabaseMissing('notifications', [
+            'type' => RequirementAssignedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $oldReviewer->id,
+        ]);
+
+        $this->assertDatabaseMissing('notifications', [
+            'type' => RequirementAssignedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $teamHead->id,
+        ]);
     }
 
     public function test_admin_cannot_patch_review_when_staff_is_assigned_reviewer(): void
