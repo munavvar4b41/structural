@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectRequirementEstimation;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 
 final class RequirementEstimationShowPayload
 {
@@ -41,7 +42,7 @@ final class RequirementEstimationShowPayload
                 'understanding_confirmed' => $understandingConfirmed,
                 'estimation' => null,
                 'estimation_lines' => [],
-                'analytics' => RequirementEstimationAnalytics::fromItems(collect()),
+                'analytics' => RequirementEstimationAnalytics::fromItems(new Collection),
                 'total_minutes' => 0,
                 'approver_options' => $approverOptions,
                 'can_manage_estimation' => $canManage,

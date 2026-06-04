@@ -5,6 +5,7 @@ import { computed, ref, watch } from 'vue';
 import RequirementEstimationAnalyticsCards, {
     type EstimationAnalytics,
 } from '@/components/requirements/RequirementEstimationAnalyticsCards.vue';
+import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
@@ -393,12 +394,10 @@ function requestRevisionEstimation(): void {
     router.post(requestRevision.url(estimationRoute.value));
 }
 
-function transferEstimation(): void {
-    if (estimationRoute.value === null) {
-        return;
-    }
+const transferDialogOpen = ref(false);
 
-    if (!window.confirm('Transfer all estimation lines to project tasks?')) {
+function confirmTransferEstimation(): void {
+    if (estimationRoute.value === null) {
         return;
     }
 
@@ -502,7 +501,7 @@ const statusBadgeClass = computed(() => {
                             @click="requestRevisionEstimation">
                             Request revision
                         </Button>
-                        <Button v-if="can_transfer" type="button" @click="transferEstimation">
+                        <Button v-if="can_transfer" type="button" @click="transferDialogOpen = true">
                             Transfer to tasks
                         </Button>
                     </div>
@@ -525,8 +524,8 @@ const statusBadgeClass = computed(() => {
                         </thead>
                         <tbody>
                             <tr v-for="row in displayLines" :key="isEditable
-                                    ? (row as EditableLine).client_key
-                                    : (row as EstimationLine).id
+                                ? (row as EditableLine).client_key
+                                : (row as EstimationLine).id
                                 " class="border-b border-border/60 last:border-0">
                                 <td data-label="Title" class="px-3 py-2 align-top" :style="{
                                     paddingLeft: `calc(0.75rem + ${row.tree_depth} * 1rem)`,
@@ -538,7 +537,7 @@ const statusBadgeClass = computed(() => {
                                             placeholder="Task title" class="min-w-0" />
                                         <span v-else class="font-medium">{{
                                             (row as EstimationLine).title
-                                            }}</span>
+                                        }}</span>
                                     </div>
                                 </td>
                                 <td data-label="Description" class="px-3 py-2 align-top">
@@ -547,19 +546,16 @@ const statusBadgeClass = computed(() => {
                                         placeholder="Optional" />
                                     <span v-else class="text-muted-foreground">{{
                                         (row as EstimationLine).description || '—'
-                                        }}</span>
+                                    }}</span>
                                 </td>
                                 <td data-label="Minutes" class="px-3 py-2 align-top">
-                                    <div
-                                        v-if="
-                                            isEditable
-                                            && lineHasChildren(
-                                                row as EditableLine,
-                                                editableLines,
-                                            )
-                                        "
-                                        class="flex flex-col gap-0.5"
-                                    >
+                                    <div v-if="
+                                        isEditable
+                                        && lineHasChildren(
+                                            row as EditableLine,
+                                            editableLines,
+                                        )
+                                    " class="flex flex-col gap-0.5">
                                         <span class="tabular-nums text-muted-foreground">
                                             {{
                                                 formatTaskMinutes(
@@ -574,23 +570,14 @@ const statusBadgeClass = computed(() => {
                                             Sum of subtasks
                                         </span>
                                     </div>
-                                    <Input
-                                        v-else-if="isEditable"
-                                        v-model="(row as EditableLine).estimated_minutes"
-                                        type="number"
-                                        min="1"
-                                        step="1"
-                                        placeholder="min"
-                                    />
-                                    <div
-                                        v-else-if="
-                                            lineHasChildrenById(
-                                                row as EstimationLine,
-                                                props.estimation_lines,
-                                            )
-                                        "
-                                        class="flex flex-col gap-0.5"
-                                    >
+                                    <Input v-else-if="isEditable" v-model="(row as EditableLine).estimated_minutes"
+                                        type="number" min="1" step="1" placeholder="min" />
+                                    <div v-else-if="
+                                        lineHasChildrenById(
+                                            row as EstimationLine,
+                                            props.estimation_lines,
+                                        )
+                                    " class="flex flex-col gap-0.5">
                                         <span class="tabular-nums">
                                             {{
                                                 formatTaskMinutes(
@@ -660,6 +647,10 @@ const statusBadgeClass = computed(() => {
             </div>
         </template>
     </div>
+
+    <ConfirmDestructiveDialog v-model:open="transferDialogOpen" title="Transfer to project tasks?"
+        description="This will create project tasks from every estimation line. You can continue working in the task list after transfer."
+        confirm-label="Transfer" confirm-variant="default" @confirm="confirmTransferEstimation" />
 
     <Dialog v-model:open="submitDialogOpen">
         <DialogContent class="sm:max-w-md">
