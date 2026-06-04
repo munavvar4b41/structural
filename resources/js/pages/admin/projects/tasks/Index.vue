@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
-import { index as projectsIndex } from '@/routes/admin/projects/index';
+import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import {
     index as requirementsIndex,
     show as requirementsShow,
@@ -144,7 +144,7 @@ defineOptions({
             { title: 'Projects', href: projectsIndex.url() },
             {
                 title: pageProps.project.name,
-                href: requirementsIndex.url(pageProps.project.id),
+                href: projectsShow.url(pageProps.project.id),
             },
             {
                 title: 'Tasks',

@@ -6,10 +6,13 @@ use App\Http\Controllers\Admin\LeaveSettingsController;
 use App\Http\Controllers\Admin\MyWorkController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ProjectController;
+use App\Http\Controllers\Admin\ProjectMetadataController;
 use App\Http\Controllers\Admin\ProjectRequirementController;
 use App\Http\Controllers\Admin\ProjectRequirementMessageController;
+use App\Http\Controllers\Admin\ProjectTagController;
 use App\Http\Controllers\Admin\ProjectTaskChecklistItemController;
 use App\Http\Controllers\Admin\ProjectTaskController;
+use App\Http\Controllers\Admin\SuggestionController;
 use App\Http\Controllers\Admin\TaskCompletionReviewController;
 use App\Http\Controllers\Admin\TaskController;
 use App\Http\Controllers\Admin\TaskRatingReportController;
@@ -51,7 +54,13 @@ Route::patch('notifications/{notification}', [NotificationController::class, 'ma
 Route::get('tasks', [TaskController::class, 'index'])->name('tasks.index');
 Route::get('task-reviews', [TaskCompletionReviewController::class, 'index'])->name('task-reviews.index');
 Route::get('task-ratings-report', [TaskRatingReportController::class, 'index'])->name('task-ratings-report.index');
-Route::resource('projects', ProjectController::class)->except(['show']);
+Route::get('suggestions', [SuggestionController::class, 'index'])->name('suggestions.index');
+Route::resource('projects', ProjectController::class);
+Route::post('projects/{project}/tags', [ProjectTagController::class, 'store'])->name('projects.tags.store');
+Route::delete('projects/{project}/tags/{tag}', [ProjectTagController::class, 'destroy'])->name('projects.tags.destroy');
+Route::post('projects/{project}/metadata', [ProjectMetadataController::class, 'store'])->name('projects.metadata.store');
+Route::patch('projects/{project}/metadata/{metadata}', [ProjectMetadataController::class, 'update'])->name('projects.metadata.update');
+Route::delete('projects/{project}/metadata/{metadata}', [ProjectMetadataController::class, 'destroy'])->name('projects.metadata.destroy');
 Route::resource('projects.tasks', ProjectTaskController::class)
     ->only(['index', 'show', 'store', 'update', 'destroy'])
     ->scoped();

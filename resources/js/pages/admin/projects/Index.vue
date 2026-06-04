@@ -17,6 +17,7 @@ import {
     create as projectsCreate,
     edit as projectsEdit,
     index as projectsIndex,
+    show as projectsShow,
 } from '@/routes/admin/projects/index';
 import { index as projectRequirementsIndex } from '@/routes/admin/projects/requirements/index';
 import { index as projectTasksIndex } from '@/routes/admin/projects/tasks/index';
@@ -205,7 +206,11 @@ const deleteProjectDescription = computed(() => {
             <tbody>
                 <tr v-for="project in projects.data" :key="project.id"
                     class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
-                    <DataTableTd label="Name" class="font-medium">{{ project.name }}</DataTableTd>
+                    <DataTableTd label="Name" class="font-medium">
+                        <Button variant="link" class="h-auto p-0 font-medium" as-child>
+                            <Link :href="projectsShow.url(project.id)">{{ project.name }}</Link>
+                        </Button>
+                    </DataTableTd>
                     <DataTableTd label="Code" class="text-muted-foreground">
                         {{ project.code ?? '-' }}
                     </DataTableTd>

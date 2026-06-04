@@ -27,7 +27,7 @@ import { Label } from '@/components/ui/label';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
 import { cn, isCurrentUser } from '@/lib/utils';
-import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
+import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import {
     edit as requirementsEdit,
     index as requirementsIndex,
@@ -300,9 +300,7 @@ defineOptions({
             { title: 'Projects', href: projectsIndex.url() },
             {
                 title: pageProps.project.name,
-                href: pageProps.can_manage_project
-                    ? projectsEdit.url(pageProps.project.id)
-                    : requirementsIndex.url(pageProps.project.id),
+                href: projectsShow.url(pageProps.project.id),
             },
             { title: 'Requirements', href: requirementsIndex.url(pageProps.project.id) },
             {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import TaskShowPanel from '@/components/tasks/TaskShowPanel.vue';
-import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
+import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import { index as requirementsIndex } from '@/routes/admin/projects/requirements/index';
 import {
     index as projectTasksIndex,
@@ -29,9 +29,7 @@ defineOptions({
             { title: 'Projects', href: projectsIndex.url() },
             {
                 title: pageProps.project.name,
-                href: pageProps.can_manage_project
-                    ? projectsEdit.url(pageProps.project.id)
-                    : requirementsIndex.url(pageProps.project.id),
+                href: projectsShow.url(pageProps.project.id),
             },
             {
                 title: 'Tasks',
