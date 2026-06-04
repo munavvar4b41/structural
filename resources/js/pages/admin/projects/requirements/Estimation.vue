@@ -29,7 +29,10 @@ import {
     type EstimationLineEditable,
     type EstimationLineReadonly,
 } from '@/composables/useEstimationLinesIndex';
-import { insertIndexAfterSubtree } from '@/lib/estimationLinesOrder';
+import {
+    depthFirstEstimationLines,
+    insertIndexAfterSubtree,
+} from '@/lib/estimationLinesOrder';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { generateUuid } from '@/lib/generateUuid';
 import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
@@ -285,27 +288,34 @@ function saveLines(): void {
     saveProcessing.value = true;
     saveErrors.value = {};
 
+    const linesPayload = depthFirstEstimationLines([...editableLines.value]).map(
+        (line, index) => ({
+            id: line.id,
+            client_key: line.id === null ? line.client_key : undefined,
+            parent_id: line.parent_id,
+            parent_client_key:
+                line.parent_id === null ? line.parent_client_key : undefined,
+            title: line.title,
+            description: line.description || null,
+            estimated_minutes: hasChildrenByKey.value.has(line.client_key)
+                ? null
+                : line.estimated_minutes === ''
+                    ? null
+                    : Number(line.estimated_minutes),
+            sort_order: index,
+        }),
+    );
+
     router.put(
         lines.url(estimationRoute.value),
-        {
-            lines: editableLines.value.map((line, index) => ({
-                id: line.id,
-                client_key: line.id === null ? line.client_key : undefined,
-                parent_id: line.parent_id,
-                parent_client_key:
-                    line.parent_id === null ? line.parent_client_key : undefined,
-                title: line.title,
-                description: line.description || null,
-                estimated_minutes: hasChildrenByKey.value.has(line.client_key)
-                    ? null
-                    : line.estimated_minutes === ''
-                        ? null
-                        : Number(line.estimated_minutes),
-                sort_order: index,
-            })),
-        },
+        { lines: linesPayload },
         {
             preserveScroll: true,
+            onSuccess: () => {
+                router.reload({
+                    only: ['estimation_lines', 'analytics', 'total_minutes'],
+                });
+            },
             onFinish: () => {
                 saveProcessing.value = false;
             },

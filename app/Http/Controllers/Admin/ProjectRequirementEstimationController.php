@@ -94,7 +94,7 @@ class ProjectRequirementEstimationController extends Controller
 
         $this->syncLines->sync($estimation, $request->validated('lines'));
 
-        return $this->estimationRedirect($project, $requirement)
+        return back()
             ->with('toast', __('Estimation lines saved.'));
     }
 

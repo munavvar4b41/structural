@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useWindowVirtualizer } from '@tanstack/vue-virtual';
 import { useResizeObserver } from '@vueuse/core';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import EstimationLineRow from '@/components/requirements/EstimationLineRow.vue';
 import { Button } from '@/components/ui/button';
 import type { EstimationDisplayLine } from '@/composables/useEstimationDisplayLines';
@@ -34,25 +34,38 @@ const emit = defineEmits<{
     collapseAll: [];
 }>();
 
+const isMounted = ref(false);
 const listRef = ref<HTMLElement | null>(null);
 const scrollMargin = ref(0);
+
+onMounted(() => {
+    isMounted.value = true;
+});
 
 useResizeObserver(listRef, () => {
     scrollMargin.value = listRef.value?.offsetTop ?? 0;
 });
 
+const placeholderHeight = computed(
+    () => props.visibleLines.length * ROW_HEIGHT_PX,
+);
+
 const rowVirtualizer = useWindowVirtualizer(
     computed(() => ({
-        count: props.visibleLines.length,
+        count: isMounted.value ? props.visibleLines.length : 0,
         estimateSize: () => ROW_HEIGHT_PX,
         overscan: 10,
         scrollMargin: scrollMargin.value,
     })),
 );
 
-const virtualRows = computed(() => rowVirtualizer.value.getVirtualItems());
+const virtualRows = computed(() =>
+    isMounted.value ? rowVirtualizer.value.getVirtualItems() : [],
+);
 
-const totalHeight = computed(() => rowVirtualizer.value.getTotalSize());
+const totalHeight = computed(() =>
+    isMounted.value ? rowVirtualizer.value.getTotalSize() : placeholderHeight.value,
+);
 
 const showingSummary = computed(() => {
     const visible = props.visibleLines.length;
@@ -146,6 +159,12 @@ function onRemove(index: number): void {
 async function scrollToEnd(): Promise<void> {
     await nextTick();
 
+    if (!isMounted.value) {
+        listRef.value?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+
+        return;
+    }
+
     const lastIndex = props.visibleLines.length - 1;
 
     if (lastIndex < 0) {
@@ -193,27 +212,29 @@ defineExpose({
                     height: `${totalHeight}px`,
                     width: '100%',
                     position: 'relative',
-                }" role="rowgroup">
-                    <div v-for="virtualRow in virtualRows" :key="lineAt(virtualRow.index)?.lineKey ?? virtualRow.index"
-                        :style="{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: `${virtualRow.size}px`,
-                            transform: `translateY(${virtualRow.start - scrollMargin}px)`,
-                        }">
-                        <EstimationLineRow v-if="lineAt(virtualRow.index) !== undefined" :is-editable="isEditable"
-                            :tree-depth="lineAt(virtualRow.index)?.tree_depth ?? 0"
-                            :has-children="hasChildrenAt(virtualRow.index)"
-                            :is-collapsed="isCollapsed(lineAt(virtualRow.index)!.lineKey)"
-                            :child-count="childCountAt(virtualRow.index)"
-                            :effective-minutes="effectiveMinutesAt(virtualRow.index)" :can-remove="canRemoveLine"
-                            :editable-line="editableLineAt(virtualRow.index)"
-                            :readonly-line="readonlyLineAt(virtualRow.index)" @toggle-collapse="
-                                emit('toggleCollapse', lineAt(virtualRow.index)!.lineKey)
-                                " @add-subtask="onAddSubtask(virtualRow.index)" @remove="onRemove(virtualRow.index)" />
-                    </div>
+                }" role="rowgroup" :aria-busy="!isMounted">
+                    <template v-if="isMounted">
+                        <div v-for="virtualRow in virtualRows"
+                            :key="lineAt(virtualRow.index)?.lineKey ?? virtualRow.index" :style="{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: `${virtualRow.size}px`,
+                                transform: `translateY(${virtualRow.start - scrollMargin}px)`,
+                            }">
+                            <EstimationLineRow v-if="lineAt(virtualRow.index) !== undefined" :is-editable="isEditable"
+                                :tree-depth="lineAt(virtualRow.index)?.tree_depth ?? 0"
+                                :has-children="hasChildrenAt(virtualRow.index)"
+                                :is-collapsed="isCollapsed(lineAt(virtualRow.index)!.lineKey)"
+                                :child-count="childCountAt(virtualRow.index)"
+                                :effective-minutes="effectiveMinutesAt(virtualRow.index)" :can-remove="canRemoveLine"
+                                :editable-line="editableLineAt(virtualRow.index)"
+                                :readonly-line="readonlyLineAt(virtualRow.index)" @toggle-collapse="
+                                    emit('toggleCollapse', lineAt(virtualRow.index)!.lineKey)
+                                    " @add-subtask="onAddSubtask(virtualRow.index)" @remove="onRemove(virtualRow.index)" />
+                        </div>
+                    </template>
                 </div>
             </div>
         </div>

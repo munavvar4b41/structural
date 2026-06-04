@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronRight, CornerDownRight, FileText, PlusIcon, TrashIcon } from 'lucide-vue-next';
+import { ChevronDown, ChevronRight, CornerDownRight, FileText } from 'lucide-vue-next';
 import { ref } from 'vue';
 import type {
     EstimationLineEditable,
@@ -115,11 +115,11 @@ const notesDialogOpen = ref(false);
         <div role="cell" class="px-3 text-right">
             <div v-if="isEditable && editableLine !== undefined" class="flex flex-wrap justify-end gap-1">
                 <Button type="button" variant="outline" size="sm" @click="emit('addSubtask')">
-                    <PlusIcon class="size-4" aria-hidden="true" />
+                    Subtask
                 </Button>
                 <Button type="button" variant="outline" size="sm" class="text-destructive" :disabled="!canRemove"
                     @click="emit('remove')">
-                    <TrashIcon class="size-4" aria-hidden="true" />
+                    Remove
                 </Button>
             </div>
         </div>

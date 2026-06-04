@@ -11,6 +11,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Notifications\RequirementEstimationSubmittedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -78,6 +79,7 @@ class ProjectRequirementEstimationTest extends TestCase
         $root = $estimation->items()->firstOrFail();
 
         $this->actingAs($staff)
+            ->from(route('admin.projects.requirements.estimation.show', [$project, $requirement]))
             ->put(route('admin.projects.requirements.estimation.lines', [$project, $requirement, $estimation]), [
                 'lines' => [
                     [
@@ -292,6 +294,52 @@ class ProjectRequirementEstimationTest extends TestCase
                 ->where('can_open_estimation', true)
                 ->missing('estimation_lines')
                 ->missing('analytics'));
+    }
+
+    public function test_syncs_two_hundred_lines_in_one_request_with_batched_queries(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
+
+        $estimation = ProjectRequirementEstimation::factory()->create([
+            'project_requirement_id' => $requirement->id,
+            'created_by_user_id' => $staff->id,
+            'status' => RequirementEstimationStatus::Draft,
+        ]);
+
+        for ($index = 0; $index < 200; $index++) {
+            $estimation->items()->create([
+                'title' => 'Line '.$index,
+                'estimated_minutes' => 30,
+                'sort_order' => $index,
+            ]);
+        }
+
+        $lines = $estimation->items()
+            ->orderBy('sort_order')
+            ->get()
+            ->map(static fn ($item): array => [
+                'id' => $item->id,
+                'title' => 'Updated '.$item->id,
+                'estimated_minutes' => 45,
+                'sort_order' => $item->sort_order,
+            ])
+            ->all();
+
+        $queryCount = 0;
+        DB::listen(static function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        $this->actingAs($staff)
+            ->from(route('admin.projects.requirements.estimation.show', [$project, $requirement]))
+            ->put(route('admin.projects.requirements.estimation.lines', [$project, $requirement, $estimation]), [
+                'lines' => $lines,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(200, $estimation->items()->count());
+        $this->assertSame('Updated '.$estimation->items()->orderBy('id')->value('id'), $estimation->items()->orderBy('id')->value('title'));
+        $this->assertLessThan(40, $queryCount);
     }
 
     public function test_estimation_show_returns_many_lines(): void

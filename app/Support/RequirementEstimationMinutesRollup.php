@@ -64,6 +64,17 @@ final class RequirementEstimationMinutesRollup
      */
     public function persistRollups(): void
     {
+        $this->persistRollupsBatched();
+    }
+
+    /**
+     * Batch-update parent rows whose rolled-up minutes changed.
+     */
+    public function persistRollupsBatched(): void
+    {
+        $now = now();
+        $upsertRows = [];
+
         foreach ($this->items as $item) {
             if (! $this->itemHasChildren($item)) {
                 continue;
@@ -72,9 +83,33 @@ final class RequirementEstimationMinutesRollup
             $minutes = $this->effectiveMinutes($item);
             $normalized = $minutes > 0 ? $minutes : null;
 
-            if ($item->estimated_minutes !== $normalized) {
-                $item->forceFill(['estimated_minutes' => $normalized])->save();
+            if ($item->estimated_minutes === $normalized) {
+                continue;
             }
+
+            $upsertRows[] = [
+                'id' => $item->id,
+                'project_requirement_estimation_id' => $item->project_requirement_estimation_id,
+                'parent_estimation_item_id' => $item->parent_estimation_item_id,
+                'title' => $item->title,
+                'description' => $item->description,
+                'estimated_minutes' => $normalized,
+                'sort_order' => $item->sort_order,
+                'created_at' => $item->created_at,
+                'updated_at' => $now,
+            ];
+        }
+
+        foreach (array_chunk($upsertRows, 100) as $chunk) {
+            if ($chunk === []) {
+                continue;
+            }
+
+            ProjectRequirementEstimationItem::query()->upsert(
+                $chunk,
+                ['id'],
+                ['estimated_minutes', 'updated_at'],
+            );
         }
     }
 
