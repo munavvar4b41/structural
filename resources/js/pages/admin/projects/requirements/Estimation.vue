@@ -33,6 +33,7 @@ import {
     lineHasChildrenById,
 } from '@/lib/estimationMinutesRollup';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
+import { generateUuid } from '@/lib/generateUuid';
 import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import {
     index as requirementsIndex,
@@ -163,7 +164,7 @@ const isEditable = computed(
 );
 
 function newClientKey(): string {
-    return `new-${crypto.randomUUID()}`;
+    return `new-${generateUuid()}`;
 }
 
 function linesToEditable(source: EstimationLine[]): EditableLine[] {
