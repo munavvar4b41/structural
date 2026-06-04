@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CompanySettingsController;
+use App\Http\Controllers\Admin\EstimationReviewController;
 use App\Http\Controllers\Admin\LeaveRequestController;
 use App\Http\Controllers\Admin\LeaveSettingsController;
 use App\Http\Controllers\Admin\MyWorkController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\ProjectMetadataController;
 use App\Http\Controllers\Admin\ProjectRequirementController;
+use App\Http\Controllers\Admin\ProjectRequirementEstimationController;
 use App\Http\Controllers\Admin\ProjectRequirementMessageController;
 use App\Http\Controllers\Admin\ProjectTagController;
 use App\Http\Controllers\Admin\ProjectTaskChecklistItemController;
@@ -53,6 +55,7 @@ Route::patch('notifications/{notification}', [NotificationController::class, 'ma
     ->name('notifications.read');
 Route::get('tasks', [TaskController::class, 'index'])->name('tasks.index');
 Route::get('task-reviews', [TaskCompletionReviewController::class, 'index'])->name('task-reviews.index');
+Route::get('estimation-reviews', [EstimationReviewController::class, 'index'])->name('estimation-reviews.index');
 Route::get('task-ratings-report', [TaskRatingReportController::class, 'index'])->name('task-ratings-report.index');
 Route::get('suggestions', [SuggestionController::class, 'index'])->name('suggestions.index');
 Route::resource('projects', ProjectController::class);
@@ -70,6 +73,26 @@ Route::patch('projects/{project}/requirements/{requirement}/confirm-understandin
     ->name('projects.requirements.confirm-understanding');
 Route::post('projects/{project}/requirements/{requirement}/messages', [ProjectRequirementMessageController::class, 'store'])
     ->name('projects.requirements.messages.store');
+Route::scopeBindings()->group(function (): void {
+    Route::get('projects/{project}/requirements/{requirement}/estimation', [ProjectRequirementEstimationController::class, 'show'])
+        ->name('projects.requirements.estimation.show');
+    Route::post('projects/{project}/requirements/{requirement}/estimation', [ProjectRequirementEstimationController::class, 'store'])
+        ->name('projects.requirements.estimation.store');
+    Route::put('projects/{project}/requirements/{requirement}/estimation/{estimation}/lines', [ProjectRequirementEstimationController::class, 'syncLines'])
+        ->name('projects.requirements.estimation.lines');
+    Route::patch('projects/{project}/requirements/{requirement}/estimation/{estimation}/submit', [ProjectRequirementEstimationController::class, 'submit'])
+        ->name('projects.requirements.estimation.submit');
+    Route::patch('projects/{project}/requirements/{requirement}/estimation/{estimation}/approve', [ProjectRequirementEstimationController::class, 'approve'])
+        ->name('projects.requirements.estimation.approve');
+    Route::patch('projects/{project}/requirements/{requirement}/estimation/{estimation}/reject', [ProjectRequirementEstimationController::class, 'reject'])
+        ->name('projects.requirements.estimation.reject');
+    Route::patch('projects/{project}/requirements/{requirement}/estimation/{estimation}/request-changes', [ProjectRequirementEstimationController::class, 'requestChanges'])
+        ->name('projects.requirements.estimation.request-changes');
+    Route::post('projects/{project}/requirements/{requirement}/estimation/{estimation}/request-revision', [ProjectRequirementEstimationController::class, 'requestRevision'])
+        ->name('projects.requirements.estimation.request-revision');
+    Route::post('projects/{project}/requirements/{requirement}/estimation/{estimation}/transfer', [ProjectRequirementEstimationController::class, 'transfer'])
+        ->name('projects.requirements.estimation.transfer');
+});
 Route::resource('projects.requirements', ProjectRequirementController::class);
 
 Route::post('projects/{project}/tasks/{task}/submit-completion', [TaskCompletionReviewController::class, 'submit'])

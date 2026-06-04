@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\ProjectTaskStatus;
+use App\Enums\RequirementEstimationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreProjectTaskRequest;
 use App\Http\Requests\Admin\UpdateProjectTaskRequest;
@@ -15,6 +16,7 @@ use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\ProjectTaskAssigneeCapabilities;
 use App\Support\ProjectTaskDisplayOrder;
 use App\Support\ProjectTaskShowPayloadBuilder;
+use App\Support\RequirementEstimationTaskSource;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -42,6 +44,12 @@ class ProjectTaskController extends Controller
         $filter = (string) $request->query('task_filter', 'all');
         if (! in_array($filter, ['all', 'linked', 'unlinked'], true)) {
             $filter = 'all';
+        }
+
+        $estimationSource = (string) $request->query('estimation_source', '');
+        $canFilterEstimationSource = RequirementEstimationTaskSource::canFilterBySource($actor);
+        if (! $canFilterEstimationSource || ! in_array($estimationSource, ['transferred', 'ad_hoc'], true)) {
+            $estimationSource = '';
         }
 
         $search = trim((string) $request->query('search', ''));
@@ -102,7 +110,15 @@ class ProjectTaskController extends Controller
                 });
             })
             ->when($statuses !== [], static fn ($query) => $query->whereIn('status', $statuses))
-            ->when($assigneeId !== null, static fn ($query) => $query->where('assignee_user_id', $assigneeId));
+            ->when($assigneeId !== null, static fn ($query) => $query->where('assignee_user_id', $assigneeId))
+            ->when($estimationSource === 'transferred', static fn ($query) => $query->whereNotNull('project_requirement_estimation_item_id'))
+            ->when($estimationSource === 'ad_hoc', static function ($query): void {
+                $query->whereNotNull('project_requirement_id')
+                    ->whereNull('project_requirement_estimation_item_id')
+                    ->whereHas('requirement.estimations', static function ($estimationQuery): void {
+                        $estimationQuery->where('status', RequirementEstimationStatus::Transferred);
+                    });
+            });
 
         $matchingIds = $matchQuery->pluck('id')->all();
 
@@ -118,8 +134,30 @@ class ProjectTaskController extends Controller
                 ->get();
         }
 
+        $transferredRequirementIds = $tasksCollection
+            ->pluck('project_requirement_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $requirementsWithTransfer = $transferredRequirementIds === []
+            ? []
+            : ProjectRequirement::query()
+                ->whereIn('id', $transferredRequirementIds)
+                ->whereHas('estimations', static function ($query): void {
+                    $query->where('status', RequirementEstimationStatus::Transferred);
+                })
+                ->pluck('id')
+                ->all();
+
         $tasks = collect(ProjectTaskDisplayOrder::depthFirstWithDepth($tasksCollection))
-            ->map(fn (array $row): array => $this->taskRow($row['task'], $actor, $row['depth']))
+            ->map(fn (array $row): array => $this->taskRow(
+                $row['task'],
+                $actor,
+                $row['depth'],
+                $requirementsWithTransfer,
+            ))
             ->all();
 
         return Inertia::render('admin/projects/tasks/Index', [
@@ -130,7 +168,15 @@ class ProjectTaskController extends Controller
                 'search' => $search,
                 'assignee_id' => $assigneeId !== null ? (string) $assigneeId : '',
                 'status' => $statuses,
+                'estimation_source' => $estimationSource,
             ],
+            'can_filter_estimation_source' => $canFilterEstimationSource,
+            'estimation_source_options' => $canFilterEstimationSource
+                ? [
+                    ['value' => 'transferred', 'label' => 'From estimation'],
+                    ['value' => 'ad_hoc', 'label' => 'New task (post-transfer)'],
+                ]
+                : [],
             'status_options' => $this->statusOptions(),
             'assignable_users' => $this->assignableUserOptions($project),
             'requirements' => $project->requirements()->orderBy('title')->get(['id', 'title'])->map(static fn (ProjectRequirement $r): array => [
@@ -289,8 +335,20 @@ class ProjectTaskController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function taskRow(ProjectTask $task, User $actor, int $treeDepth = 0): array
+    /**
+     * @param  list<int>  $requirementsWithTransferredEstimation
+     */
+    private function taskRow(ProjectTask $task, User $actor, int $treeDepth = 0, array $requirementsWithTransferredEstimation = []): array
     {
+        $estimationSource = null;
+        if ($task->project_requirement_id !== null) {
+            if ($task->project_requirement_estimation_item_id !== null) {
+                $estimationSource = 'transferred';
+            } elseif (in_array($task->project_requirement_id, $requirementsWithTransferredEstimation, true)) {
+                $estimationSource = 'ad_hoc';
+            }
+        }
+
         return [
             'id' => $task->id,
             'title' => $task->title,
@@ -312,6 +370,7 @@ class ProjectTaskController extends Controller
             'is_assignee_only_limited' => ProjectTaskAssigneeCapabilities::isAssigneeOnlyLimited($actor, $task),
             'can_submit_task_completion' => $this->canSubmitTaskCompletion($actor, $task),
             'can_confirm_task_completion' => $actor->can('confirmCompletion', $task),
+            'estimation_source' => $estimationSource,
         ];
     }
 

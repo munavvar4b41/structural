@@ -33,6 +33,7 @@ import {
     index as requirementsIndex,
     show as requirementsShow,
 } from '@/routes/admin/projects/requirements/index';
+import { show as estimationShow } from '@/routes/admin/projects/requirements/estimation/index';
 import {
     index as projectTasksIndex,
     show as projectTasksShow,
@@ -67,6 +68,15 @@ type RequirementTaskRow = {
     tree_depth: number;
     can_update: boolean;
     can_delete: boolean;
+    estimation_source: 'transferred' | 'ad_hoc' | null;
+};
+
+type EstimationSummary = {
+    id: number;
+    version: number;
+    status: string;
+    status_label: string;
+    total_minutes: number;
 };
 
 type TaskStatusOption = { value: string; label: string };
@@ -116,6 +126,10 @@ const props = defineProps<{
     can_confirm_understanding: boolean;
     can_manage_project: boolean;
     can_create_tasks: boolean;
+    understanding_confirmed: boolean;
+    can_open_estimation: boolean;
+    can_create_estimation: boolean;
+    estimation_summary: EstimationSummary | null;
 }>();
 
 const page = usePage();
@@ -449,6 +463,37 @@ defineOptions({
                     </div>
                 </GlassCard>
 
+                <GlassCard v-if="understanding_confirmed" class="lg:col-span-12">
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="space-y-1">
+                            <h2 class="text-lg font-semibold">Estimation</h2>
+                            <p v-if="estimation_summary" class="text-sm text-muted-foreground">
+                                {{ estimation_summary.status_label }} · v{{ estimation_summary.version }}
+                                · {{ formatTaskMinutes(estimation_summary.total_minutes) }}
+                            </p>
+                            <p v-else class="text-sm text-muted-foreground">
+                                Plan work for this requirement before creating tasks.
+                            </p>
+                        </div>
+                        <Button v-if="can_open_estimation" as-child>
+                            <Link
+                                :href="
+                                    estimationShow.url({
+                                        project: project.id,
+                                        requirement: requirement.id,
+                                    })
+                                "
+                            >
+                                {{
+                                    can_create_estimation
+                                        ? 'Start estimation'
+                                        : 'Manage estimation'
+                                }}
+                            </Link>
+                        </Button>
+                    </div>
+                </GlassCard>
+
                 <GlassCard class="lg:col-span-12">
                     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div class="space-y-1">
@@ -545,6 +590,18 @@ defineOptions({
                                                 class="mt-0.5 size-4 shrink-0 text-muted-foreground"
                                                 aria-hidden="true" />
                                             <div class="min-w-0 flex-1">
+                                                <span
+                                                    v-if="task.estimation_source === 'transferred'"
+                                                    class="mb-0.5 inline-block rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200"
+                                                >
+                                                    From estimation
+                                                </span>
+                                                <span
+                                                    v-else-if="task.estimation_source === 'ad_hoc'"
+                                                    class="mb-0.5 inline-block rounded bg-sky-500/15 px-1.5 py-0.5 text-xs font-medium text-sky-800 dark:text-sky-200"
+                                                >
+                                                    New task
+                                                </span>
                                                 <Button variant="link"
                                                     class="h-auto w-full min-w-0 justify-start p-0 font-medium text-foreground"
                                                     as-child>

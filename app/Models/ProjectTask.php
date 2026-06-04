@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'project_id',
     'project_requirement_id',
+    'project_requirement_estimation_item_id',
     'parent_project_task_id',
     'title',
     'description',
@@ -53,6 +54,11 @@ class ProjectTask extends Model
     public function requirement(): BelongsTo
     {
         return $this->belongsTo(ProjectRequirement::class, 'project_requirement_id');
+    }
+
+    public function estimationItem(): BelongsTo
+    {
+        return $this->belongsTo(ProjectRequirementEstimationItem::class, 'project_requirement_estimation_item_id');
     }
 
     public function parent(): BelongsTo
