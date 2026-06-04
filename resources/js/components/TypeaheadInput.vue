@@ -27,7 +27,7 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), {
     modelValue: '',
-    debounceMs: 300,
+    debounceMs: 3000,
     metadataKey: undefined,
     id: undefined,
     name: undefined,
@@ -246,68 +246,35 @@ onBeforeUnmount(() => {
 
 <template>
     <div ref="containerRef" class="relative overflow-visible">
-        <Input
-            :id="id"
-            :name="name"
-            :model-value="modelValue"
-            :placeholder="placeholder"
-            :required="required"
-            :disabled="disabled"
-            autocomplete="off"
-            role="combobox"
-            :aria-expanded="isOpen"
-            :aria-controls="listboxId"
-            :class="cn(props.class)"
-            @update:model-value="
+        <Input :id="id" :name="name" :model-value="modelValue" :placeholder="placeholder" :required="required"
+            :disabled="disabled" autocomplete="off" role="combobox" :aria-expanded="isOpen" :aria-controls="listboxId"
+            :class="cn(props.class)" @update:model-value="
                 (value) => {
-                    emit('update:modelValue', value);
+                    emit('update:modelValue', String(value));
                     scheduleFetch(String(value));
                 }
-            "
-            @focus="onFocus"
-            @blur="onBlur"
-            @keydown="onKeydown"
-        />
+            " @focus="onFocus" @blur="onBlur" @keydown="onKeydown" />
 
         <Teleport v-if="portalTarget !== null" :to="portalTarget">
-            <ul
-                v-if="isOpen && suggestions.length > 0"
-                :id="listboxId"
-                role="listbox"
+            <ul v-if="isOpen && suggestions.length > 0" :id="listboxId" role="listbox"
                 class="absolute z-[200] max-h-48 overflow-auto rounded-xl border border-border bg-popover py-1 text-popover-foreground shadow-md"
-                :style="dropdownStyle"
-                @mousedown="onDropdownMouseDown"
-            >
-                <li
-                    v-for="(suggestion, index) in suggestions"
-                    :key="`${suggestion}-${index}`"
-                    role="option"
-                    :aria-selected="index === activeIndex"
-                    class="cursor-pointer px-3 py-2 text-sm"
+                :style="dropdownStyle" @mousedown="onDropdownMouseDown">
+                <li v-for="(suggestion, index) in suggestions" :key="`${suggestion}-${index}`" role="option"
+                    :aria-selected="index === activeIndex" class="cursor-pointer px-3 py-2 text-sm"
                     :class="index === activeIndex ? 'bg-accent text-accent-foreground' : ''"
-                    @click="selectSuggestion(suggestion)"
-                >
+                    @click="selectSuggestion(suggestion)">
                     {{ suggestion }}
                 </li>
             </ul>
         </Teleport>
 
-        <ul
-            v-else-if="isOpen && suggestions.length > 0"
-            :id="listboxId"
-            role="listbox"
+        <ul v-else-if="isOpen && suggestions.length > 0" :id="listboxId" role="listbox"
             class="absolute top-full z-[200] mt-1 max-h-48 w-full overflow-auto rounded-xl border border-border bg-popover py-1 text-popover-foreground shadow-md"
-            @mousedown="onDropdownMouseDown"
-        >
-            <li
-                v-for="(suggestion, index) in suggestions"
-                :key="`${suggestion}-${index}`"
-                role="option"
-                :aria-selected="index === activeIndex"
-                class="cursor-pointer px-3 py-2 text-sm"
+            @mousedown="onDropdownMouseDown">
+            <li v-for="(suggestion, index) in suggestions" :key="`${suggestion}-${index}`" role="option"
+                :aria-selected="index === activeIndex" class="cursor-pointer px-3 py-2 text-sm"
                 :class="index === activeIndex ? 'bg-accent text-accent-foreground' : ''"
-                @click="selectSuggestion(suggestion)"
-            >
+                @click="selectSuggestion(suggestion)">
                 {{ suggestion }}
             </li>
         </ul>
