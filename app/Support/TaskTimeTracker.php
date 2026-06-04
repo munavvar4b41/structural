@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Enums\ProjectTaskStatus;
 use App\Enums\TimeEntrySource;
+use App\Enums\TimerPauseReason;
+use App\Enums\TimerResumedBy;
 use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
 use App\Models\User;
@@ -51,7 +53,7 @@ class TaskTimeTracker
 
             if ($todayOpen !== null && $todayOpen->isPaused()) {
                 if ($running !== null && $running->id !== $todayOpen->id) {
-                    $this->pauseEntry($running, $now);
+                    $this->pauseEntry($running, $now, TimerPauseReason::Switch);
                 }
 
                 $this->resumeEntry($todayOpen, $now);
@@ -60,7 +62,7 @@ class TaskTimeTracker
             }
 
             if ($running !== null) {
-                $this->pauseEntry($running, $now);
+                $this->pauseEntry($running, $now, TimerPauseReason::Switch);
             }
 
             return $this->createTimerEntry($user, $task, $notes, $now);
@@ -70,9 +72,12 @@ class TaskTimeTracker
     /**
      * Pause the user's currently running (non-paused) entry, if any.
      */
-    public function pause(User $user): ?TaskTimeEntry
-    {
-        return DB::transaction(function () use ($user): ?TaskTimeEntry {
+    public function pause(
+        User $user,
+        ?TimerPauseReason $pauseReason = null,
+        ?CarbonInterface $clientEventAt = null,
+    ): ?TaskTimeEntry {
+        return DB::transaction(function () use ($user, $pauseReason, $clientEventAt): ?TaskTimeEntry {
             $now = now();
             $this->closeStaleOpenEntriesForUser($user, $now);
 
@@ -86,7 +91,7 @@ class TaskTimeTracker
                 return null;
             }
 
-            $this->pauseEntry($running, $now);
+            $this->pauseEntry($running, $now, $pauseReason, $clientEventAt);
 
             return $running->refresh();
         });
@@ -95,9 +100,12 @@ class TaskTimeTracker
     /**
      * Resume the user's most recently paused open entry, if any.
      */
-    public function resume(User $user): ?TaskTimeEntry
-    {
-        return DB::transaction(function () use ($user): ?TaskTimeEntry {
+    public function resume(
+        User $user,
+        ?TimerResumedBy $resumedBy = null,
+        ?CarbonInterface $clientEventAt = null,
+    ): ?TaskTimeEntry {
+        return DB::transaction(function () use ($user, $resumedBy, $clientEventAt): ?TaskTimeEntry {
             $now = now();
             $this->closeStaleOpenEntriesForUser($user, $now);
 
@@ -108,7 +116,7 @@ class TaskTimeTracker
                 ->first();
 
             if ($running !== null) {
-                $this->pauseEntry($running, $now);
+                $this->pauseEntry($running, $now, TimerPauseReason::Switch);
             }
 
             $paused = TaskTimeEntry::query()
@@ -123,7 +131,12 @@ class TaskTimeTracker
                 return null;
             }
 
-            $this->resumeEntry($paused, $now);
+            if ($resumedBy === TimerResumedBy::Inactivity
+                && $paused->pause_reason !== TimerPauseReason::Inactivity) {
+                return null;
+            }
+
+            $this->resumeEntry($paused, $now, $resumedBy, $clientEventAt);
 
             return $paused->refresh();
         });
@@ -270,19 +283,31 @@ class TaskTimeTracker
         }
     }
 
-    private function pauseEntry(TaskTimeEntry $entry, CarbonInterface $at): void
-    {
+    private function pauseEntry(
+        TaskTimeEntry $entry,
+        CarbonInterface $at,
+        ?TimerPauseReason $pauseReason = null,
+        ?CarbonInterface $clientEventAt = null,
+    ): void {
         if ($entry->paused_at !== null) {
             return;
         }
 
-        $entry->forceFill(['paused_at' => $at])->save();
+        $entry->forceFill([
+            'paused_at' => $at,
+            'pause_reason' => $pauseReason ?? TimerPauseReason::Manual,
+            'last_client_event_at' => $clientEventAt,
+        ])->save();
 
         $this->revertTaskStatusFromEntry($entry);
     }
 
-    private function resumeEntry(TaskTimeEntry $entry, CarbonInterface $at): void
-    {
+    private function resumeEntry(
+        TaskTimeEntry $entry,
+        CarbonInterface $at,
+        ?TimerResumedBy $resumedBy = null,
+        ?CarbonInterface $clientEventAt = null,
+    ): void {
         if ($entry->paused_at === null) {
             return;
         }
@@ -292,6 +317,9 @@ class TaskTimeTracker
         $entry->forceFill([
             'accumulated_pause_seconds' => (int) ($entry->accumulated_pause_seconds ?? 0) + $pauseDuration,
             'paused_at' => null,
+            'pause_reason' => null,
+            'resumed_by' => $resumedBy ?? TimerResumedBy::Manual,
+            'last_client_event_at' => $clientEventAt,
         ])->save();
 
         $this->applyInProgressFromEntry($entry);

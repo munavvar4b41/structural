@@ -3,6 +3,8 @@
 namespace Tests\Feature\Api\Desktop;
 
 use App\Enums\ProjectTaskStatus;
+use App\Enums\TimerPauseReason;
+use App\Enums\TimerResumedBy;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
@@ -189,6 +191,77 @@ class DesktopApiTest extends TestCase
         $this->postJson(route('api.desktop.timer.resume'))
             ->assertOk()
             ->assertJsonPath('active.is_paused', false);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_pause_with_inactivity_reason_persists_metadata(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+
+        Sanctum::actingAs($staff);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 16:00:00'));
+        $this->postJson(route('api.desktop.timer.start'), [
+            'project_id' => $project->id,
+            'task_id' => $task->id,
+        ]);
+
+        $clientAt = '2026-05-07T16:05:00Z';
+        $this->postJson(route('api.desktop.timer.pause'), [
+            'reason' => TimerPauseReason::Inactivity->value,
+            'client_event_at' => $clientAt,
+        ])
+            ->assertOk()
+            ->assertJsonPath('active.is_paused', true);
+
+        $entry = TaskTimeEntry::query()->where('project_task_id', $task->id)->firstOrFail();
+        $this->assertSame(TimerPauseReason::Inactivity, $entry->pause_reason);
+        $this->assertNotNull($entry->last_client_event_at);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_resume_with_inactivity_only_works_after_inactivity_pause(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+
+        Sanctum::actingAs($staff);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 17:00:00'));
+        $this->postJson(route('api.desktop.timer.start'), [
+            'project_id' => $project->id,
+            'task_id' => $task->id,
+        ]);
+
+        $this->postJson(route('api.desktop.timer.pause'), [
+            'reason' => TimerPauseReason::Manual->value,
+        ])->assertOk();
+
+        $this->postJson(route('api.desktop.timer.resume'), [
+            'resumed_by' => TimerResumedBy::Inactivity->value,
+        ])
+            ->assertOk()
+            ->assertJsonPath('active.is_paused', true);
+
+        $this->postJson(route('api.desktop.timer.resume'))->assertOk();
+
+        $this->postJson(route('api.desktop.timer.pause'), [
+            'reason' => TimerPauseReason::Inactivity->value,
+        ])
+            ->assertOk()
+            ->assertJsonPath('active.is_paused', true);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 17:10:00'));
+        $this->postJson(route('api.desktop.timer.resume'), [
+            'resumed_by' => TimerResumedBy::Inactivity->value,
+        ])
+            ->assertOk()
+            ->assertJsonPath('active.is_paused', false);
+
+        $entry = TaskTimeEntry::query()->where('project_task_id', $task->id)->firstOrFail();
+        $this->assertNull($entry->paused_at);
+        $this->assertSame(TimerResumedBy::Inactivity, $entry->resumed_by);
 
         Carbon::setTestNow();
     }

@@ -28,6 +28,10 @@ class CompanySettings extends Settings
 
     public string $email_domain;
 
+    public string $work_day_start_time;
+
+    public string $work_day_end_time;
+
     public static function group(): string
     {
         return 'company';

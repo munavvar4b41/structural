@@ -29,6 +29,8 @@ class CompanySettingsController extends Controller
                 'postal_code' => $settings->postal_code,
                 'country' => $settings->country,
                 'email_domain' => $settings->email_domain,
+                'work_day_start_time' => $settings->work_day_start_time,
+                'work_day_end_time' => $settings->work_day_end_time,
             ],
         ]);
     }

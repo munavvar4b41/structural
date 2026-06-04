@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { formatSeconds } from '@/lib/formatSeconds';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { show as requirementsShow } from '@/routes/admin/projects/requirements/index';
@@ -295,37 +296,82 @@ function entryDurationSeconds(entry: TimeEntryRow): number {
 }
 
 const manualOpen = ref(false);
+const manualTimeOnly = ref(false);
 const manualStart = ref('');
 const manualEnd = ref('');
 const manualNotes = ref('');
-
-function openManualDialog(): void {
-    const nowDate = new Date();
-    const startDate = new Date(nowDate.getTime() - 30 * 60 * 1000);
-    manualStart.value = toLocalInputValue(startDate.toISOString());
-    manualEnd.value = toLocalInputValue(nowDate.toISOString());
-    manualNotes.value = '';
-    manualOpen.value = true;
-}
+const manualDurationMinutes = ref('30');
 
 const editEntryOpen = ref(false);
+const editTimeOnly = ref(false);
 const editingEntry = ref<TimeEntryRow | null>(null);
 const editStart = ref('');
 const editEnd = ref('');
 const editNotes = ref('');
+const editDurationMinutes = ref('');
+
+const workingHoursHint = computed(
+    () =>
+        `Placed within today's working hours (${props.time_tracking.working_hours.start}–${props.time_tracking.working_hours.end}).`,
+);
+
+function resetManualTimeForm(): void {
+    manualTimeOnly.value = false;
+    manualStart.value = '';
+    manualEnd.value = '';
+    manualNotes.value = '';
+    manualDurationMinutes.value = '30';
+}
+
+function openManualDialog(): void {
+    const nowDate = new Date();
+    const startDate = new Date(nowDate.getTime() - 30 * 60 * 1000);
+    manualTimeOnly.value = false;
+    manualStart.value = toLocalInputValue(startDate.toISOString());
+    manualEnd.value = toLocalInputValue(nowDate.toISOString());
+    manualNotes.value = '';
+    manualDurationMinutes.value = '30';
+    manualOpen.value = true;
+}
+
+function entryDurationMinutes(row: TimeEntryRow): number {
+    if (row.duration_seconds !== null && row.duration_seconds > 0) {
+        return Math.max(1, Math.round(row.duration_seconds / 60));
+    }
+
+    if (row.started_at !== null && row.ended_at !== null) {
+        const start = new Date(row.started_at).getTime();
+        const end = new Date(row.ended_at).getTime();
+
+        if (!Number.isNaN(start) && !Number.isNaN(end) && end > start) {
+            return Math.max(1, Math.round((end - start) / 60_000));
+        }
+    }
+
+    return 30;
+}
 
 function openEditEntry(row: TimeEntryRow): void {
     editingEntry.value = row;
+    editTimeOnly.value = false;
     editStart.value = toLocalInputValue(row.started_at);
     editEnd.value = toLocalInputValue(row.ended_at);
     editNotes.value = row.notes ?? '';
+    editDurationMinutes.value = String(entryDurationMinutes(row));
     editEntryOpen.value = true;
 }
 
 function closeEditEntry(): void {
     editEntryOpen.value = false;
     editingEntry.value = null;
+    editTimeOnly.value = false;
 }
+
+watch(manualOpen, (open) => {
+    if (!open) {
+        resetManualTimeForm();
+    }
+});
 
 const entryDeleteOpen = ref(false);
 const entryPendingDelete = ref<TimeEntryRow | null>(null);
@@ -557,21 +603,37 @@ const checklistDeleteDescription = computed(() => {
             })
                 " class="grid gap-4" @success="() => { manualOpen = false; reloadAfterMutation(); }"
                 v-slot="{ errors, processing }">
-                <div class="grid gap-2">
-                    <Label for="manual-start">Start</Label>
-                    <Input id="manual-start" name="started_at" type="datetime-local" required v-model="manualStart" />
-                    <InputError :message="errors.started_at" />
+                <div class="flex items-center justify-between gap-4">
+                    <Label for="manual-time-only" class="cursor-pointer">Time only</Label>
+                    <Switch id="manual-time-only" v-model:checked="manualTimeOnly" />
                 </div>
-                <div class="grid gap-2">
-                    <Label for="manual-end">End</Label>
-                    <Input id="manual-end" name="ended_at" type="datetime-local" required v-model="manualEnd" />
-                    <InputError :message="errors.ended_at" />
-                </div>
-                <div class="grid gap-2">
-                    <Label for="manual-notes">Notes</Label>
-                    <Input id="manual-notes" name="notes" type="text" maxlength="500" v-model="manualNotes" />
-                    <InputError :message="errors.notes" />
-                </div>
+                <template v-if="manualTimeOnly">
+                    <div class="grid gap-2">
+                        <Label for="manual-duration">Duration (minutes)</Label>
+                        <Input id="manual-duration" name="duration_minutes" type="number" min="1" step="1"
+                            required v-model="manualDurationMinutes" />
+                        <p class="text-xs text-muted-foreground">{{ workingHoursHint }}</p>
+                        <InputError :message="errors.duration_minutes" />
+                    </div>
+                </template>
+                <template v-else>
+                    <div class="grid gap-2">
+                        <Label for="manual-start">Start</Label>
+                        <Input id="manual-start" name="started_at" type="datetime-local" required
+                            v-model="manualStart" />
+                        <InputError :message="errors.started_at" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="manual-end">End</Label>
+                        <Input id="manual-end" name="ended_at" type="datetime-local" required v-model="manualEnd" />
+                        <InputError :message="errors.ended_at" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="manual-notes">Notes</Label>
+                        <Input id="manual-notes" name="notes" type="text" maxlength="500" v-model="manualNotes" />
+                        <InputError :message="errors.notes" />
+                    </div>
+                </template>
                 <DialogFooter class="gap-3">
                     <Button type="button" variant="outline" @click="manualOpen = false">
                         Cancel
@@ -595,21 +657,38 @@ const checklistDeleteDescription = computed(() => {
             })
                 " class="grid gap-4" @success="() => { closeEditEntry(); reloadAfterMutation(); }"
                 v-slot="{ errors, processing }">
-                <div class="grid gap-2">
-                    <Label for="edit-entry-start">Start</Label>
-                    <Input id="edit-entry-start" name="started_at" type="datetime-local" required v-model="editStart" />
-                    <InputError :message="errors.started_at" />
+                <div class="flex items-center justify-between gap-4">
+                    <Label for="edit-time-only" class="cursor-pointer">Time only</Label>
+                    <Switch id="edit-time-only" v-model:checked="editTimeOnly" />
                 </div>
-                <div class="grid gap-2">
-                    <Label for="edit-entry-end">End</Label>
-                    <Input id="edit-entry-end" name="ended_at" type="datetime-local" required v-model="editEnd" />
-                    <InputError :message="errors.ended_at" />
-                </div>
-                <div class="grid gap-2">
-                    <Label for="edit-entry-notes">Notes</Label>
-                    <Input id="edit-entry-notes" name="notes" type="text" maxlength="500" v-model="editNotes" />
-                    <InputError :message="errors.notes" />
-                </div>
+                <template v-if="editTimeOnly">
+                    <div class="grid gap-2">
+                        <Label for="edit-duration">Duration (minutes)</Label>
+                        <Input id="edit-duration" name="duration_minutes" type="number" min="1" step="1" required
+                            v-model="editDurationMinutes" />
+                        <p class="text-xs text-muted-foreground">{{ workingHoursHint }}</p>
+                        <InputError :message="errors.duration_minutes" />
+                    </div>
+                </template>
+                <template v-else>
+                    <div class="grid gap-2">
+                        <Label for="edit-entry-start">Start</Label>
+                        <Input id="edit-entry-start" name="started_at" type="datetime-local" required
+                            v-model="editStart" />
+                        <InputError :message="errors.started_at" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="edit-entry-end">End</Label>
+                        <Input id="edit-entry-end" name="ended_at" type="datetime-local" required
+                            v-model="editEnd" />
+                        <InputError :message="errors.ended_at" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="edit-entry-notes">Notes</Label>
+                        <Input id="edit-entry-notes" name="notes" type="text" maxlength="500" v-model="editNotes" />
+                        <InputError :message="errors.notes" />
+                    </div>
+                </template>
                 <DialogFooter class="gap-3">
                     <Button type="button" variant="outline" @click="closeEditEntry()">
                         Cancel
