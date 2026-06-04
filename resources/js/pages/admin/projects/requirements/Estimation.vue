@@ -152,9 +152,9 @@ const estimationRoute = computed(() =>
     props.estimation === null
         ? null
         : {
-              ...routeBase.value,
-              estimation: props.estimation.id,
-          },
+            ...routeBase.value,
+            estimation: props.estimation.id,
+        },
 );
 
 const isEditable = computed(
@@ -311,8 +311,8 @@ function saveLines(): void {
                 estimated_minutes: lineHasChildren(line, editableLines.value)
                     ? null
                     : line.estimated_minutes === ''
-                      ? null
-                      : Number(line.estimated_minutes),
+                        ? null
+                        : Number(line.estimated_minutes),
                 sort_order: index,
             })),
         },
@@ -431,31 +431,23 @@ const statusBadgeClass = computed(() => {
 </script>
 
 <template>
+
     <Head :title="`Estimation · ${requirement.title}`" />
 
     <div class="flex flex-col gap-8">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <PageHeader
-                :title="`Estimation: ${requirement.title}`"
-                :description="`Project ${project.name} · Plan work before creating tasks`"
-            />
+            <PageHeader :title="`Estimation: ${requirement.title}`"
+                :description="`Project ${project.name} · Plan work before creating tasks`" />
             <div class="flex flex-wrap items-center gap-2">
-                <span
-                    v-if="estimation"
-                    class="rounded-md px-2 py-1 text-xs font-medium"
-                    :class="statusBadgeClass"
-                >
+                <span v-if="estimation" class="rounded-md px-2 py-1 text-xs font-medium" :class="statusBadgeClass">
                     {{ estimation.status_label }} · v{{ estimation.version }}
                 </span>
                 <Button variant="outline" as-child>
-                    <Link
-                        :href="
-                            requirementsShow.url({
-                                project: project.id,
-                                requirement: requirement.id,
-                            })
-                        "
-                    >
+                    <Link :href="requirementsShow.url({
+                        project: project.id,
+                        requirement: requirement.id,
+                    })
+                        ">
                         Back to requirement
                     </Link>
                 </Button>
@@ -473,10 +465,8 @@ const statusBadgeClass = computed(() => {
         </div>
 
         <template v-if="estimation !== null">
-            <div
-                v-if="estimation.review_notes"
-                class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm"
-            >
+            <div v-if="estimation.review_notes"
+                class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
                 <p class="font-medium">Review notes</p>
                 <p class="mt-1 whitespace-pre-wrap text-muted-foreground">
                     {{ estimation.review_notes }}
@@ -492,48 +482,24 @@ const statusBadgeClass = computed(() => {
                         </p>
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <Button
-                            v-if="can_submit"
-                            type="button"
-                            @click="openSubmitDialog"
-                        >
+                        <Button v-if="can_submit" type="button" @click="openSubmitDialog">
                             <Send class="size-4" aria-hidden="true" />
                             Submit for approval
                         </Button>
-                        <Button
-                            v-if="can_approve"
-                            type="button"
-                            variant="secondary"
-                            :disabled="reviewForm.processing"
-                            @click="approveEstimation"
-                        >
+                        <Button v-if="can_approve" type="button" variant="secondary" :disabled="reviewForm.processing"
+                            @click="approveEstimation">
                             Approve
                         </Button>
-                        <Button
-                            v-if="can_request_changes"
-                            type="button"
-                            variant="outline"
-                            :disabled="reviewForm.processing"
-                            @click="requestChangesEstimation"
-                        >
+                        <Button v-if="can_request_changes" type="button" variant="outline"
+                            :disabled="reviewForm.processing" @click="requestChangesEstimation">
                             Request changes
                         </Button>
-                        <Button
-                            v-if="can_reject"
-                            type="button"
-                            variant="outline"
-                            class="text-destructive"
-                            :disabled="reviewForm.processing"
-                            @click="rejectEstimation"
-                        >
+                        <Button v-if="can_reject" type="button" variant="outline" class="text-destructive"
+                            :disabled="reviewForm.processing" @click="rejectEstimation">
                             Reject
                         </Button>
-                        <Button
-                            v-if="can_request_revision"
-                            type="button"
-                            variant="outline"
-                            @click="requestRevisionEstimation"
-                        >
+                        <Button v-if="can_request_revision" type="button" variant="outline"
+                            @click="requestRevisionEstimation">
                             Request revision
                         </Button>
                         <Button v-if="can_transfer" type="button" @click="transferEstimation">
@@ -543,11 +509,9 @@ const statusBadgeClass = computed(() => {
                 </div>
 
                 <div class="md:overflow-x-auto">
-                    <table
-                        data-responsive-table
+                    <table data-responsive-table
                         class="data-table-responsive w-full table-fixed text-left text-sm md:min-w-[720px]"
-                        style="--data-table-min-width: 720px"
-                    >
+                        style="--data-table-min-width: 720px">
                         <thead class="border-b bg-muted/40">
                             <tr>
                                 <th class="w-[22%] px-3 py-3 font-medium">Title</th>
@@ -560,54 +524,33 @@ const statusBadgeClass = computed(() => {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr
-                                v-for="row in displayLines"
-                                :key="
-                                    isEditable
-                                        ? (row as EditableLine).client_key
-                                        : (row as EstimationLine).id
-                                "
-                                class="border-b border-border/60 last:border-0"
-                            >
-                                <td
-                                    data-label="Title"
-                                    class="px-3 py-2 align-top"
-                                    :style="{
-                                        paddingLeft: `calc(0.75rem + ${row.tree_depth} * 1rem)`,
-                                    }"
-                                >
+                            <tr v-for="row in displayLines" :key="isEditable
+                                    ? (row as EditableLine).client_key
+                                    : (row as EstimationLine).id
+                                " class="border-b border-border/60 last:border-0">
+                                <td data-label="Title" class="px-3 py-2 align-top" :style="{
+                                    paddingLeft: `calc(0.75rem + ${row.tree_depth} * 1rem)`,
+                                }">
                                     <div class="flex min-w-0 items-start gap-1">
-                                        <CornerDownRight
-                                            v-if="row.tree_depth > 0"
-                                            class="mt-2 size-4 shrink-0 text-muted-foreground"
-                                            aria-hidden="true"
-                                        />
-                                        <Input
-                                            v-if="isEditable"
-                                            v-model="(row as EditableLine).title"
-                                            type="text"
-                                            placeholder="Task title"
-                                            class="min-w-0"
-                                        />
+                                        <CornerDownRight v-if="row.tree_depth > 0"
+                                            class="mt-2 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                                        <Input v-if="isEditable" v-model="(row as EditableLine).title" type="text"
+                                            placeholder="Task title" class="min-w-0" />
                                         <span v-else class="font-medium">{{
                                             (row as EstimationLine).title
-                                        }}</span>
+                                            }}</span>
                                     </div>
                                 </td>
                                 <td data-label="Description" class="px-3 py-2 align-top">
-                                    <textarea
-                                        v-if="isEditable"
-                                        v-model="(row as EditableLine).description"
-                                        rows="2"
+                                    <textarea v-if="isEditable" v-model="(row as EditableLine).description" rows="2"
                                         class="w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-xs"
-                                        placeholder="Optional"
-                                    />
+                                        placeholder="Optional" />
                                     <span v-else class="text-muted-foreground">{{
                                         (row as EstimationLine).description || '—'
-                                    }}</span>
+                                        }}</span>
                                 </td>
                                 <td data-label="Minutes" class="px-3 py-2 align-top">
-                                    <span
+                                    <div
                                         v-if="
                                             isEditable
                                             && lineHasChildren(
@@ -615,18 +558,22 @@ const statusBadgeClass = computed(() => {
                                                 editableLines,
                                             )
                                         "
-                                        class="text-muted-foreground tabular-nums"
-                                        :title="'Sum of subtasks'"
+                                        class="flex flex-col gap-0.5"
                                     >
-                                        {{
-                                            formatTaskMinutes(
-                                                effectiveMinutes(
-                                                    row as EditableLine,
-                                                    editableLines,
-                                                ),
-                                            )
-                                        }}
-                                    </span>
+                                        <span class="tabular-nums text-muted-foreground">
+                                            {{
+                                                formatTaskMinutes(
+                                                    effectiveMinutes(
+                                                        row as EditableLine,
+                                                        editableLines,
+                                                    ),
+                                                )
+                                            }}
+                                        </span>
+                                        <span class="text-xs text-muted-foreground">
+                                            Sum of subtasks
+                                        </span>
+                                    </div>
                                     <Input
                                         v-else-if="isEditable"
                                         v-model="(row as EditableLine).estimated_minutes"
@@ -635,59 +582,53 @@ const statusBadgeClass = computed(() => {
                                         step="1"
                                         placeholder="min"
                                     />
-                                    <span
-                                        v-else
-                                        class="tabular-nums"
-                                    >{{
-                                        formatTaskMinutes(
+                                    <div
+                                        v-else-if="
                                             lineHasChildrenById(
                                                 row as EstimationLine,
                                                 props.estimation_lines,
                                             )
-                                                ? effectiveMinutesById(
-                                                      row as EstimationLine,
-                                                      props.estimation_lines,
-                                                  )
-                                                : (row as EstimationLine).estimated_minutes,
+                                        "
+                                        class="flex flex-col gap-0.5"
+                                    >
+                                        <span class="tabular-nums">
+                                            {{
+                                                formatTaskMinutes(
+                                                    effectiveMinutesById(
+                                                        row as EstimationLine,
+                                                        props.estimation_lines,
+                                                    ),
+                                                )
+                                            }}
+                                        </span>
+                                        <span class="text-xs text-muted-foreground">
+                                            Sum of subtasks
+                                        </span>
+                                    </div>
+                                    <span v-else class="tabular-nums">{{
+                                        formatTaskMinutes(
+                                            (row as EstimationLine).estimated_minutes,
                                         )
                                     }}</span>
                                 </td>
-                                <td
-                                    v-if="isEditable"
-                                    data-label="Parent"
-                                    class="px-3 py-2 align-top"
-                                >
-                                    <TaskFormSelect
-                                        :id="`est-line-parent-${(row as EditableLine).client_key}`"
-                                        :name="`parent_${(row as EditableLine).client_key}`"
-                                        exclude-from-submit
+                                <td v-if="isEditable" data-label="Parent" class="px-3 py-2 align-top">
+                                    <TaskFormSelect :id="`est-line-parent-${(row as EditableLine).client_key}`"
+                                        :name="`parent_${(row as EditableLine).client_key}`" exclude-from-submit
                                         :model-value="(row as EditableLine).parent_client_key ?? ''"
-                                        placeholder="None (root)"
-                                        none-label="None (root)"
-                                        :options="parentOptionsForRow(row as EditableLine)"
-                                        @update:model-value="
+                                        placeholder="None (root)" none-label="None (root)"
+                                        :options="parentOptionsForRow(row as EditableLine)" @update:model-value="
                                             onParentChange(row as EditableLine, $event)
-                                        "
-                                    />
+                                            " />
                                 </td>
                                 <td data-label="Actions" class="px-3 py-2 align-top text-right">
                                     <div v-if="isEditable" class="flex flex-wrap justify-end gap-1">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            @click="addSubRow(row as EditableLine)"
-                                        >
+                                        <Button type="button" variant="outline" size="sm"
+                                            @click="addSubRow(row as EditableLine)">
                                             Subtask
                                         </Button>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            class="text-destructive"
+                                        <Button type="button" variant="outline" size="sm" class="text-destructive"
                                             :disabled="editableLines.length <= 1"
-                                            @click="removeRow(row as EditableLine)"
-                                        >
+                                            @click="removeRow(row as EditableLine)">
                                             Remove
                                         </Button>
                                     </div>
@@ -710,17 +651,11 @@ const statusBadgeClass = computed(() => {
                 </div>
             </GlassCard>
 
-            <div
-                v-if="can_approve || can_reject || can_request_changes"
-                class="rounded-xl border border-border p-4"
-            >
+            <div v-if="can_approve || can_reject || can_request_changes" class="rounded-xl border border-border p-4">
                 <p class="mb-3 text-sm font-medium">Review notes (optional)</p>
-                <textarea
-                    v-model="reviewForm.review_notes"
-                    rows="2"
+                <textarea v-model="reviewForm.review_notes" rows="2"
                     class="mb-3 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
-                    placeholder="Notes for the submitter when approving, rejecting, or requesting changes"
-                />
+                    placeholder="Notes for the submitter when approving, rejecting, or requesting changes" />
                 <InputError :message="reviewForm.errors.review_notes" />
             </div>
         </template>
@@ -738,30 +673,18 @@ const statusBadgeClass = computed(() => {
             <div class="grid gap-4 py-2">
                 <div class="grid gap-2">
                     <Label for="submit-approver">Approver</Label>
-                    <TaskFormSelect
-                        id="submit-approver"
-                        name="submitted_to_user_id"
-                        exclude-from-submit
-                        v-model="submitForm.submitted_to_user_id"
-                        required
-                        placeholder="Select approver"
-                        :options="
-                            approver_options.map((o) => ({
-                                value: String(o.value),
-                                label: o.label,
-                            }))
-                        "
-                    />
+                    <TaskFormSelect id="submit-approver" name="submitted_to_user_id" exclude-from-submit
+                        v-model="submitForm.submitted_to_user_id" required placeholder="Select approver" :options="approver_options.map((o) => ({
+                            value: String(o.value),
+                            label: o.label,
+                        }))
+                            " />
                     <InputError :message="submitForm.errors.submitted_to_user_id" />
                 </div>
                 <div class="grid gap-2">
                     <Label for="submit-notes">Notes (optional)</Label>
-                    <textarea
-                        id="submit-notes"
-                        v-model="submitForm.submission_notes"
-                        rows="3"
-                        class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
-                    />
+                    <textarea id="submit-notes" v-model="submitForm.submission_notes" rows="3"
+                        class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs" />
                     <InputError :message="submitForm.errors.submission_notes" />
                 </div>
                 <InputError :message="submitForm.errors.lines" />
@@ -770,11 +693,7 @@ const statusBadgeClass = computed(() => {
                 <DialogClose as-child>
                     <Button type="button" variant="outline">Cancel</Button>
                 </DialogClose>
-                <Button
-                    type="button"
-                    :disabled="submitForm.processing"
-                    @click="submitEstimation"
-                >
+                <Button type="button" :disabled="submitForm.processing" @click="submitEstimation">
                     Submit
                 </Button>
             </DialogFooter>
