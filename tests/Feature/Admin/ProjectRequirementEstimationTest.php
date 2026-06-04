@@ -294,6 +294,33 @@ class ProjectRequirementEstimationTest extends TestCase
                 ->missing('analytics'));
     }
 
+    public function test_estimation_show_returns_many_lines(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
+
+        $estimation = ProjectRequirementEstimation::factory()->create([
+            'project_requirement_id' => $requirement->id,
+            'created_by_user_id' => $staff->id,
+            'status' => RequirementEstimationStatus::Draft,
+        ]);
+
+        for ($index = 0; $index < 120; $index++) {
+            $estimation->items()->create([
+                'title' => 'Line '.$index,
+                'estimated_minutes' => 30,
+                'sort_order' => $index,
+            ]);
+        }
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.requirements.estimation.show', [$project, $requirement]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/projects/requirements/Estimation')
+                ->has('estimation_lines', 120)
+                ->where('analytics.total_lines', 120));
+    }
+
     public function test_estimation_reviews_index_lists_pending_for_approver(): void
     {
         ['staff' => $staff, 'approver' => $approver, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
