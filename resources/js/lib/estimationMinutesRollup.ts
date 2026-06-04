@@ -83,3 +83,138 @@ export function effectiveMinutesById<T extends EstimationMinutesLineById>(
 
     return parseMinutes(line.estimated_minutes);
 }
+
+export type EstimationMinutesIndex = {
+    hasChildrenByKey: Set<string>;
+    effectiveMinutesByKey: Map<string, number>;
+    totalEffectiveMinutes: number;
+};
+
+export type EstimationMinutesIndexById = {
+    hasChildrenById: Set<number>;
+    effectiveMinutesById: Map<number, number>;
+};
+
+/**
+ * O(n) rollup index for editable estimation lines (by client_key).
+ */
+export function buildEditableMinutesIndex<T extends EstimationMinutesLine>(
+    lines: readonly T[],
+): EstimationMinutesIndex {
+    const hasChildrenByKey = new Set<string>();
+    const childrenByParentKey = new Map<string, T[]>();
+
+    for (const line of lines) {
+        const parentKey = line.parent_client_key;
+
+        if (parentKey === null || parentKey === '') {
+            continue;
+        }
+
+        hasChildrenByKey.add(parentKey);
+
+        const siblings = childrenByParentKey.get(parentKey) ?? [];
+        siblings.push(line);
+        childrenByParentKey.set(parentKey, siblings);
+    }
+
+    const effectiveMinutesByKey = new Map<string, number>();
+
+    const compute = (line: T): number => {
+        const cached = effectiveMinutesByKey.get(line.client_key);
+
+        if (cached !== undefined) {
+            return cached;
+        }
+
+        if (hasChildrenByKey.has(line.client_key)) {
+            const sum = (childrenByParentKey.get(line.client_key) ?? []).reduce(
+                (total, child) => total + compute(child),
+                0,
+            );
+            effectiveMinutesByKey.set(line.client_key, sum);
+
+            return sum;
+        }
+
+        const minutes = parseMinutes(line.estimated_minutes);
+        effectiveMinutesByKey.set(line.client_key, minutes);
+
+        return minutes;
+    };
+
+    for (const line of lines) {
+        compute(line);
+    }
+
+    const totalEffectiveMinutes = lines
+        .filter(
+            (line) =>
+                line.parent_client_key === null || line.parent_client_key === '',
+        )
+        .reduce((sum, root) => sum + (effectiveMinutesByKey.get(root.client_key) ?? 0), 0);
+
+    return {
+        hasChildrenByKey,
+        effectiveMinutesByKey,
+        totalEffectiveMinutes,
+    };
+}
+
+/**
+ * O(n) rollup index for read-only estimation lines (by id).
+ */
+export function buildReadonlyMinutesIndex<T extends EstimationMinutesLineById>(
+    lines: readonly T[],
+): EstimationMinutesIndexById {
+    const hasChildrenById = new Set<number>();
+    const childrenByParentId = new Map<number, T[]>();
+
+    for (const line of lines) {
+        const parentId = line.parent_estimation_item_id;
+
+        if (parentId === null) {
+            continue;
+        }
+
+        hasChildrenById.add(parentId);
+
+        const siblings = childrenByParentId.get(parentId) ?? [];
+        siblings.push(line);
+        childrenByParentId.set(parentId, siblings);
+    }
+
+    const effectiveMinutesById = new Map<number, number>();
+
+    const compute = (line: T): number => {
+        const cached = effectiveMinutesById.get(line.id);
+
+        if (cached !== undefined) {
+            return cached;
+        }
+
+        if (hasChildrenById.has(line.id)) {
+            const sum = (childrenByParentId.get(line.id) ?? []).reduce(
+                (total, child) => total + compute(child),
+                0,
+            );
+            effectiveMinutesById.set(line.id, sum);
+
+            return sum;
+        }
+
+        const minutes = parseMinutes(line.estimated_minutes);
+        effectiveMinutesById.set(line.id, minutes);
+
+        return minutes;
+    };
+
+    for (const line of lines) {
+        compute(line);
+    }
+
+    return {
+        hasChildrenById,
+        effectiveMinutesById,
+    };
+}

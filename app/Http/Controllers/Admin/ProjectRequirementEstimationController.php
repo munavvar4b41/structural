@@ -92,10 +92,17 @@ class ProjectRequirementEstimationController extends Controller
     ): RedirectResponse {
         $this->ensureEstimationContext($project, $requirement, $estimation);
 
-        $this->syncLines->sync($estimation, $request->validated('lines'));
+        $partialModule = $request->boolean('partial_module');
 
-        return $this->estimationRedirect($project, $requirement)
-            ->with('toast', __('Estimation lines saved.'));
+        $this->syncLines->sync($estimation, $request->validated('lines'), $partialModule);
+
+        return back()
+            ->with(
+                'toast',
+                $partialModule
+                    ? __('Module saved.')
+                    : __('Estimation lines saved.'),
+            );
     }
 
     public function submit(

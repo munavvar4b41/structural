@@ -24,7 +24,7 @@ class ProjectRequirementEstimationFactory extends Factory
             'project_requirement_id' => ProjectRequirement::factory(),
             'version' => 1,
             'status' => RequirementEstimationStatus::Draft,
-            'created_by_user_id' => User::factory(),
+            'created_by_user_id' => User::first()->id,
             'submitted_at' => null,
             'submitted_to_user_id' => null,
             'submission_notes' => null,

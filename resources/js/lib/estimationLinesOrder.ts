@@ -114,3 +114,14 @@ export function depthFirstEstimationLines<T extends EstimationLineOrderable>(
 
     return result;
 }
+
+/**
+ * Depth-first order without mutating the source array (clones each line first).
+ */
+export function depthFirstEstimationLinesCopy<T extends EstimationLineOrderable>(
+    lines: readonly T[],
+): Array<T & { tree_depth: number }> {
+    const copies = lines.map((line) => ({ ...line }));
+
+    return depthFirstEstimationLines(copies);
+}

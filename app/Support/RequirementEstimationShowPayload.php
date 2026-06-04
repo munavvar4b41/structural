@@ -63,7 +63,16 @@ final class RequirementEstimationShowPayload
             'reviewedBy:id,name,email',
             'transferredBy:id,name,email',
         ]);
-        $items = $estimation->items()->get();
+        $items = $estimation->items()->get([
+            'id',
+            'project_requirement_estimation_id',
+            'parent_estimation_item_id',
+            'title',
+            'description',
+            'estimated_minutes',
+            'sort_order',
+            'transferred_project_task_id',
+        ]);
 
         $lines = [];
         foreach (RequirementEstimationDisplayOrder::depthFirstWithDepth($items) as ['item' => $item, 'depth' => $depth]) {

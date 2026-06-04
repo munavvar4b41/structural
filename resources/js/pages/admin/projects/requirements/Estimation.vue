@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { CornerDownRight, Plus, Send } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { Plus, Send } from 'lucide-vue-next';
+import { computed, nextTick, ref, toRef, watch } from 'vue';
 import RequirementEstimationAnalyticsCards, {
     type EstimationAnalytics,
 } from '@/components/requirements/RequirementEstimationAnalyticsCards.vue';
+import EstimationLinesTable from '@/components/requirements/EstimationLinesTable.vue';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
@@ -20,18 +21,19 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useEstimationDisplayLines } from '@/composables/useEstimationDisplayLines';
+import { useEstimationLineCollapse } from '@/composables/useEstimationLineCollapse';
+import {
+    useEstimationLinesIndex,
+    type EstimationLineEditable,
+    type EstimationLineReadonly,
+} from '@/composables/useEstimationLinesIndex';
 import {
     depthFirstEstimationLines,
     insertIndexAfterSubtree,
 } from '@/lib/estimationLinesOrder';
-import {
-    effectiveMinutes,
-    effectiveMinutesById,
-    lineHasChildren,
-    lineHasChildrenById,
-} from '@/lib/estimationMinutesRollup';
+import { moduleLinesForRoot } from '@/lib/estimationModuleLines';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { generateUuid } from '@/lib/generateUuid';
 import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
@@ -57,16 +59,6 @@ type UserBrief = {
     email: string;
 } | null;
 
-type EstimationLine = {
-    id: number;
-    parent_estimation_item_id: number | null;
-    title: string;
-    description: string | null;
-    estimated_minutes: number | null;
-    sort_order: number;
-    tree_depth: number;
-};
-
 type EstimationDetail = {
     id: number;
     version: number;
@@ -83,24 +75,12 @@ type EstimationDetail = {
     transferred_by: UserBrief;
 };
 
-type EditableLine = {
-    id: number | null;
-    client_key: string;
-    parent_id: number | null;
-    parent_client_key: string | null;
-    title: string;
-    description: string;
-    estimated_minutes: string;
-    sort_order: number;
-    tree_depth: number;
-};
-
 const props = defineProps<{
     project: { id: number; name: string; code: string | null };
     requirement: { id: number; title: string };
     understanding_confirmed: boolean;
     estimation: EstimationDetail | null;
-    estimation_lines: EstimationLine[];
+    estimation_lines: EstimationLineReadonly[];
     analytics: EstimationAnalytics;
     total_minutes: number;
     approver_options: { value: number; label: string }[];
@@ -167,7 +147,7 @@ function newClientKey(): string {
     return `new-${generateUuid()}`;
 }
 
-function linesToEditable(source: EstimationLine[]): EditableLine[] {
+function linesToEditable(source: EstimationLineReadonly[]): EstimationLineEditable[] {
     const idToKey = new Map<number, string>();
 
     for (const line of source) {
@@ -191,7 +171,7 @@ function linesToEditable(source: EstimationLine[]): EditableLine[] {
     }));
 }
 
-const editableLines = ref<EditableLine[]>(linesToEditable(props.estimation_lines));
+const editableLines = ref<EstimationLineEditable[]>(linesToEditable(props.estimation_lines));
 
 watch(
     () => props.estimation_lines,
@@ -202,10 +182,46 @@ watch(
 
         editableLines.value = linesToEditable(next);
     },
-    { deep: true },
 );
 
+const {
+    displayLines,
+    hasChildrenByKey,
+    effectiveMinutesByKey,
+    hasChildrenById,
+    effectiveMinutesById,
+    totalEffectiveMinutes,
+} = useEstimationLinesIndex(
+    editableLines,
+    toRef(props, 'estimation_lines'),
+    isEditable,
+);
+
+const displayedTotalMinutes = computed(() =>
+    isEditable.value ? totalEffectiveMinutes.value : props.total_minutes,
+);
+
+const { treeLines, parentKeysWithChildren } = useEstimationDisplayLines(
+    displayLines,
+    isEditable,
+);
+
+const {
+    visibleLines,
+    directChildCountByKey,
+    isCollapsed,
+    toggleCollapsed,
+    expandLine,
+    expandAll,
+    collapseAllParents,
+    anyCollapsed,
+} = useEstimationLineCollapse(treeLines, parentKeysWithChildren);
+
+const linesTableRef = ref<{ scrollToEnd: () => Promise<void> } | null>(null);
+
 function addRootRow(): void {
+    collapseAllParents();
+
     editableLines.value.push({
         id: null,
         client_key: newClientKey(),
@@ -217,10 +233,12 @@ function addRootRow(): void {
         sort_order: editableLines.value.length,
         tree_depth: 0,
     });
+
+    void nextTick(() => linesTableRef.value?.scrollToEnd());
 }
 
-function addSubRow(parent: EditableLine): void {
-    const newLine: EditableLine = {
+function addSubRow(parent: EstimationLineEditable): void {
+    const newLine: EstimationLineEditable = {
         id: null,
         client_key: newClientKey(),
         parent_id: parent.id,
@@ -234,13 +252,15 @@ function addSubRow(parent: EditableLine): void {
 
     parent.estimated_minutes = '';
 
+    expandLine(parent.client_key);
+
     const insertAt = insertIndexAfterSubtree(editableLines.value, parent.client_key);
     const next = [...editableLines.value];
     next.splice(insertAt, 0, newLine);
     editableLines.value = next;
 }
 
-function removeRow(row: EditableLine): void {
+function removeRow(row: EstimationLineEditable): void {
     const key = row.client_key;
     editableLines.value = editableLines.value
         .filter((line) => line.client_key !== key)
@@ -258,75 +278,78 @@ function removeRow(row: EditableLine): void {
         });
 }
 
-const parentOptionsForRow = (row: EditableLine) =>
-    depthFirstEstimationLines(editableLines.value)
-        .filter((candidate) => candidate.client_key !== row.client_key)
-        .map((candidate) => ({
-            value: candidate.client_key,
-            label:
-                candidate.tree_depth > 0
-                    ? `${'— '.repeat(candidate.tree_depth)}${candidate.title || 'Untitled'}`
-                    : candidate.title || 'Untitled',
-        }));
-
-function onParentChange(row: EditableLine, parentKey: string): void {
-    if (parentKey === '') {
-        row.parent_id = null;
-        row.parent_client_key = null;
-        row.tree_depth = 0;
-
-        return;
-    }
-
-    const parent = editableLines.value.find((line) => line.client_key === parentKey);
-    row.parent_client_key = parentKey;
-    row.parent_id = parent?.id ?? null;
-    row.tree_depth = parent ? parent.tree_depth + 1 : 0;
-
-    if (parent !== undefined) {
-        parent.estimated_minutes = '';
-    }
-}
-
 const saveProcessing = ref(false);
+const savingModuleKey = ref<string | null>(null);
 const saveErrors = ref<Record<string, string>>({});
 
-function saveLines(): void {
+function buildLinesPayload(linesToSave: EstimationLineEditable[]) {
+    return depthFirstEstimationLines([...linesToSave]).map((line, index) => ({
+        id: line.id,
+        client_key: line.id === null ? line.client_key : undefined,
+        parent_id: line.parent_id,
+        parent_client_key:
+            line.parent_id === null ? line.parent_client_key : undefined,
+        title: line.title,
+        description: line.description || null,
+        estimated_minutes: hasChildrenByKey.value.has(line.client_key)
+            ? null
+            : line.estimated_minutes === ''
+                ? null
+                : Number(line.estimated_minutes),
+        sort_order: index,
+    }));
+}
+
+function syncLinesRequest(
+    linesToSave: EstimationLineEditable[],
+    partialModule: boolean,
+    moduleKey: string | null,
+): void {
     if (estimationRoute.value === null) {
         return;
     }
 
-    saveProcessing.value = true;
     saveErrors.value = {};
+
+    if (partialModule) {
+        savingModuleKey.value = moduleKey;
+    } else {
+        saveProcessing.value = true;
+    }
 
     router.put(
         lines.url(estimationRoute.value),
         {
-            lines: editableLines.value.map((line, index) => ({
-                id: line.id,
-                client_key: line.id === null ? line.client_key : undefined,
-                parent_id: line.parent_id,
-                parent_client_key:
-                    line.parent_id === null ? line.parent_client_key : undefined,
-                title: line.title,
-                description: line.description || null,
-                estimated_minutes: lineHasChildren(line, editableLines.value)
-                    ? null
-                    : line.estimated_minutes === ''
-                        ? null
-                        : Number(line.estimated_minutes),
-                sort_order: index,
-            })),
+            lines: buildLinesPayload(linesToSave),
+            partial_module: partialModule,
         },
         {
             preserveScroll: true,
+            onSuccess: () => {
+                router.reload({
+                    only: ['estimation_lines', 'analytics', 'total_minutes'],
+                });
+            },
             onFinish: () => {
                 saveProcessing.value = false;
+                savingModuleKey.value = null;
             },
             onError: (errors) => {
                 saveErrors.value = errors as Record<string, string>;
             },
         },
+    );
+}
+
+function saveLines(): void {
+    syncLinesRequest(editableLines.value, false, null);
+}
+
+function saveModule(root: EstimationLineEditable): void {
+    syncLinesRequest(
+        moduleLinesForRoot(editableLines.value, root.client_key),
+        true,
+        root.client_key,
     );
 }
 
@@ -405,12 +428,6 @@ function confirmTransferEstimation(): void {
     router.post(transfer.url(estimationRoute.value));
 }
 
-const displayLines = computed(() =>
-    isEditable.value
-        ? depthFirstEstimationLines(editableLines.value)
-        : props.estimation_lines,
-);
-
 const statusBadgeClass = computed(() => {
     const status = props.estimation?.status ?? '';
 
@@ -478,7 +495,10 @@ const statusBadgeClass = computed(() => {
                     <div>
                         <h2 class="text-lg font-semibold">Estimation lines</h2>
                         <p class="text-sm text-muted-foreground">
-                            Total: {{ formatTaskMinutes(total_minutes) }}
+                            Total: {{ formatTaskMinutes(displayedTotalMinutes) }}
+                            <span v-if="displayLines.length > 0" class="text-muted-foreground">
+                                · {{ displayLines.length }} lines total
+                            </span>
                         </p>
                     </div>
                     <div class="flex flex-wrap gap-2">
@@ -508,123 +528,27 @@ const statusBadgeClass = computed(() => {
                     </div>
                 </div>
 
-                <div class="md:overflow-x-auto">
-                    <table data-responsive-table
-                        class="data-table-responsive w-full table-fixed text-left text-sm md:min-w-[720px]"
-                        style="--data-table-min-width: 720px">
-                        <thead class="border-b bg-muted/40">
-                            <tr>
-                                <th class="w-[22%] px-3 py-3 font-medium">Title</th>
-                                <th class="w-[28%] px-3 py-3 font-medium">Description</th>
-                                <th class="w-[12%] px-3 py-3 font-medium">Minutes</th>
-                                <th v-if="isEditable" class="w-[18%] px-3 py-3 font-medium">
-                                    Parent
-                                </th>
-                                <th class="px-3 py-3 text-right font-medium">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="row in displayLines" :key="isEditable
-                                ? (row as EditableLine).client_key
-                                : (row as EstimationLine).id
-                                " class="border-b border-border/60 last:border-0">
-                                <td data-label="Title" class="px-3 py-2 align-top" :style="{
-                                    paddingLeft: `calc(0.75rem + ${row.tree_depth} * 1rem)`,
-                                }">
-                                    <div class="flex min-w-0 items-start gap-1">
-                                        <CornerDownRight v-if="row.tree_depth > 0"
-                                            class="mt-2 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                                        <Input v-if="isEditable" v-model="(row as EditableLine).title" type="text"
-                                            placeholder="Task title" class="min-w-0" />
-                                        <span v-else class="font-medium">{{
-                                            (row as EstimationLine).title
-                                        }}</span>
-                                    </div>
-                                </td>
-                                <td data-label="Description" class="px-3 py-2 align-top">
-                                    <textarea v-if="isEditable" v-model="(row as EditableLine).description" rows="2"
-                                        class="w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-xs"
-                                        placeholder="Optional" />
-                                    <span v-else class="text-muted-foreground">{{
-                                        (row as EstimationLine).description || '—'
-                                    }}</span>
-                                </td>
-                                <td data-label="Minutes" class="px-3 py-2 align-top">
-                                    <div v-if="
-                                        isEditable
-                                        && lineHasChildren(
-                                            row as EditableLine,
-                                            editableLines,
-                                        )
-                                    " class="flex flex-col gap-0.5">
-                                        <span class="tabular-nums text-muted-foreground">
-                                            {{
-                                                formatTaskMinutes(
-                                                    effectiveMinutes(
-                                                        row as EditableLine,
-                                                        editableLines,
-                                                    ),
-                                                )
-                                            }}
-                                        </span>
-                                        <span class="text-xs text-muted-foreground">
-                                            Sum of subtasks
-                                        </span>
-                                    </div>
-                                    <Input v-else-if="isEditable" v-model="(row as EditableLine).estimated_minutes"
-                                        type="number" min="1" step="1" placeholder="min" />
-                                    <div v-else-if="
-                                        lineHasChildrenById(
-                                            row as EstimationLine,
-                                            props.estimation_lines,
-                                        )
-                                    " class="flex flex-col gap-0.5">
-                                        <span class="tabular-nums">
-                                            {{
-                                                formatTaskMinutes(
-                                                    effectiveMinutesById(
-                                                        row as EstimationLine,
-                                                        props.estimation_lines,
-                                                    ),
-                                                )
-                                            }}
-                                        </span>
-                                        <span class="text-xs text-muted-foreground">
-                                            Sum of subtasks
-                                        </span>
-                                    </div>
-                                    <span v-else class="tabular-nums">{{
-                                        formatTaskMinutes(
-                                            (row as EstimationLine).estimated_minutes,
-                                        )
-                                    }}</span>
-                                </td>
-                                <td v-if="isEditable" data-label="Parent" class="px-3 py-2 align-top">
-                                    <TaskFormSelect :id="`est-line-parent-${(row as EditableLine).client_key}`"
-                                        :name="`parent_${(row as EditableLine).client_key}`" exclude-from-submit
-                                        :model-value="(row as EditableLine).parent_client_key ?? ''"
-                                        placeholder="None (root)" none-label="None (root)"
-                                        :options="parentOptionsForRow(row as EditableLine)" @update:model-value="
-                                            onParentChange(row as EditableLine, $event)
-                                            " />
-                                </td>
-                                <td data-label="Actions" class="px-3 py-2 align-top text-right">
-                                    <div v-if="isEditable" class="flex flex-wrap justify-end gap-1">
-                                        <Button type="button" variant="outline" size="sm"
-                                            @click="addSubRow(row as EditableLine)">
-                                            Subtask
-                                        </Button>
-                                        <Button type="button" variant="outline" size="sm" class="text-destructive"
-                                            :disabled="editableLines.length <= 1"
-                                            @click="removeRow(row as EditableLine)">
-                                            Remove
-                                        </Button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                <EstimationLinesTable
+                    ref="linesTableRef"
+                    :is-editable="isEditable"
+                    :visible-lines="visibleLines"
+                    :total-line-count="displayLines.length"
+                    :has-children-by-key="hasChildrenByKey"
+                    :effective-minutes-by-key="effectiveMinutesByKey"
+                    :has-children-by-id="hasChildrenById"
+                    :effective-minutes-by-id="effectiveMinutesById"
+                    :direct-child-count-by-key="directChildCountByKey"
+                    :is-collapsed="isCollapsed"
+                    :any-collapsed="anyCollapsed"
+                    :can-remove-line="editableLines.length > 1"
+                    :saving-module-key="savingModuleKey"
+                    @add-subtask="addSubRow"
+                    @remove="removeRow"
+                    @save-module="saveModule"
+                    @toggle-collapse="toggleCollapsed"
+                    @expand-all="expandAll"
+                    @collapse-all="collapseAllParents"
+                />
 
                 <InputError class="mt-2" :message="saveErrors.lines" />
 

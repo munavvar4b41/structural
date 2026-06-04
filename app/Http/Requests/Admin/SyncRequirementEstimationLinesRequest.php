@@ -22,7 +22,8 @@ class SyncRequirementEstimationLinesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'lines' => ['required', 'array', 'min:1'],
+            'lines' => ['required', 'array', 'min:1', 'max:500'],
+            'partial_module' => ['sometimes', 'boolean'],
             'lines.*.id' => ['nullable', 'integer'],
             'lines.*.client_key' => ['nullable', 'string', 'max:64'],
             'lines.*.parent_id' => ['nullable', 'integer'],

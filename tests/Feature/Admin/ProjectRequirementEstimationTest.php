@@ -11,6 +11,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Notifications\RequirementEstimationSubmittedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -78,6 +79,7 @@ class ProjectRequirementEstimationTest extends TestCase
         $root = $estimation->items()->firstOrFail();
 
         $this->actingAs($staff)
+            ->from(route('admin.projects.requirements.estimation.show', [$project, $requirement]))
             ->put(route('admin.projects.requirements.estimation.lines', [$project, $requirement, $estimation]), [
                 'lines' => [
                     [
@@ -292,6 +294,132 @@ class ProjectRequirementEstimationTest extends TestCase
                 ->where('can_open_estimation', true)
                 ->missing('estimation_lines')
                 ->missing('analytics'));
+    }
+
+    public function test_syncs_two_hundred_lines_in_one_request_with_batched_queries(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
+
+        $estimation = ProjectRequirementEstimation::factory()->create([
+            'project_requirement_id' => $requirement->id,
+            'created_by_user_id' => $staff->id,
+            'status' => RequirementEstimationStatus::Draft,
+        ]);
+
+        for ($index = 0; $index < 200; $index++) {
+            $estimation->items()->create([
+                'title' => 'Line '.$index,
+                'estimated_minutes' => 30,
+                'sort_order' => $index,
+            ]);
+        }
+
+        $lines = $estimation->items()
+            ->orderBy('sort_order')
+            ->get()
+            ->map(static fn ($item): array => [
+                'id' => $item->id,
+                'title' => 'Updated '.$item->id,
+                'estimated_minutes' => 45,
+                'sort_order' => $item->sort_order,
+            ])
+            ->all();
+
+        $queryCount = 0;
+        DB::listen(static function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        $this->actingAs($staff)
+            ->from(route('admin.projects.requirements.estimation.show', [$project, $requirement]))
+            ->put(route('admin.projects.requirements.estimation.lines', [$project, $requirement, $estimation]), [
+                'lines' => $lines,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(200, $estimation->items()->count());
+        $this->assertSame('Updated '.$estimation->items()->orderBy('id')->value('id'), $estimation->items()->orderBy('id')->value('title'));
+        $this->assertLessThan(40, $queryCount);
+    }
+
+    public function test_partial_module_sync_updates_one_module_without_deleting_others(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.requirements.estimation.store', [$project, $requirement]))
+            ->assertRedirect();
+
+        $estimation = ProjectRequirementEstimation::query()->firstOrFail();
+        $moduleA = $estimation->items()->firstOrFail();
+
+        $this->actingAs($staff)
+            ->put(route('admin.projects.requirements.estimation.lines', [$project, $requirement, $estimation]), [
+                'lines' => [
+                    [
+                        'id' => $moduleA->id,
+                        'title' => 'Module A',
+                        'estimated_minutes' => 60,
+                        'sort_order' => 0,
+                    ],
+                    [
+                        'client_key' => 'module-b',
+                        'title' => 'Module B',
+                        'estimated_minutes' => 90,
+                        'sort_order' => 1,
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        $moduleB = $estimation->items()->where('title', 'Module B')->firstOrFail();
+
+        $this->actingAs($staff)
+            ->put(route('admin.projects.requirements.estimation.lines', [$project, $requirement, $estimation]), [
+                'partial_module' => true,
+                'lines' => [
+                    [
+                        'id' => $moduleB->id,
+                        'title' => 'Module B updated',
+                        'estimated_minutes' => 120,
+                        'sort_order' => 0,
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(2, $estimation->items()->count());
+        $this->assertSame('Module A', $moduleA->fresh()->title);
+        $this->assertSame(60, $moduleA->fresh()->estimated_minutes);
+        $this->assertSame('Module B updated', $moduleB->fresh()->title);
+        $this->assertSame(120, $moduleB->fresh()->estimated_minutes);
+    }
+
+    public function test_estimation_show_returns_many_lines(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
+
+        $estimation = ProjectRequirementEstimation::factory()->create([
+            'project_requirement_id' => $requirement->id,
+            'created_by_user_id' => $staff->id,
+            'status' => RequirementEstimationStatus::Draft,
+        ]);
+
+        for ($index = 0; $index < 120; $index++) {
+            $estimation->items()->create([
+                'title' => 'Line '.$index,
+                'estimated_minutes' => 30,
+                'sort_order' => $index,
+            ]);
+        }
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.requirements.estimation.show', [$project, $requirement]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/projects/requirements/Estimation')
+                ->has('estimation_lines', 120)
+                ->where('analytics.total_lines', 120));
     }
 
     public function test_estimation_reviews_index_lists_pending_for_approver(): void
