@@ -19,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
-import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
+import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import {
     create as requirementsCreate,
     index as requirementsIndex,
@@ -69,9 +69,7 @@ defineOptions({
             { title: 'Projects', href: projectsIndex.url() },
             {
                 title: pageProps.project.name,
-                href: pageProps.canManageProject
-                    ? projectsEdit.url(pageProps.project.id)
-                    : requirementsIndex.url(pageProps.project.id),
+                href: projectsShow.url(pageProps.project.id),
             },
             { title: 'Requirements', href: requirementsIndex.url(pageProps.project.id) },
             {

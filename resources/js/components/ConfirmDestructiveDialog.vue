@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ButtonVariants } from '@/components/ui/button';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -14,10 +15,12 @@ type Props = {
     title: string;
     description: string;
     confirmLabel?: string;
+    confirmVariant?: ButtonVariants['variant'];
 };
 
 withDefaults(defineProps<Props>(), {
     confirmLabel: 'Delete',
+    confirmVariant: 'destructive',
 });
 
 const open = defineModel<boolean>('open', { default: false });
@@ -43,7 +46,7 @@ function confirm(): void {
                 <DialogClose as-child>
                     <Button type="button" variant="secondary">Cancel</Button>
                 </DialogClose>
-                <Button type="button" variant="destructive" @click="confirm">
+                <Button type="button" :variant="confirmVariant" @click="confirm">
                     {{ confirmLabel }}
                 </Button>
             </DialogFooter>

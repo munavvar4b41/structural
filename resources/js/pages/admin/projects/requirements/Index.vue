@@ -13,7 +13,7 @@ import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
-import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
+import { edit as projectsEdit, index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import {
     create as requirementsCreate,
     edit as requirementsEdit,
@@ -141,7 +141,7 @@ defineOptions({
             { title: 'Projects', href: projectsIndex.url() },
             {
                 title: pageProps.project.name,
-                href: projectTasksIndex.url(pageProps.project.id),
+                href: projectsShow.url(pageProps.project.id),
             },
             {
                 title: 'Requirements',

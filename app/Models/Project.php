@@ -69,6 +69,22 @@ class Project extends Model
     }
 
     /**
+     * @return HasMany<ProjectTag, $this>
+     */
+    public function tags(): HasMany
+    {
+        return $this->hasMany(ProjectTag::class);
+    }
+
+    /**
+     * @return HasMany<ProjectMetadata, $this>
+     */
+    public function metadata(): HasMany
+    {
+        return $this->hasMany(ProjectMetadata::class);
+    }
+
+    /**
      * @param  Builder<Project>  $query
      */
     public function scopeVisibleToUser(Builder $query, User $user): void

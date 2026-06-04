@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import {
     Building2,
     CalendarDays,
+    Calculator,
     ClipboardCheck,
     ClipboardList,
     FolderKanban,
@@ -31,6 +32,7 @@ import { edit as adminLeaveSettingsEdit } from '@/routes/admin/leave-settings/in
 import { index as adminMyWorkIndex } from '@/routes/admin/my-work/index';
 import { index as adminProjectsIndex } from '@/routes/admin/projects/index';
 import { index as adminTaskRatingsReportIndex } from '@/routes/admin/task-ratings-report/index';
+import { index as adminEstimationReviewsIndex } from '@/routes/admin/estimation-reviews/index';
 import { index as adminTaskReviewsIndex } from '@/routes/admin/task-reviews/index';
 import { index as adminTasksIndex } from '@/routes/admin/tasks/index';
 import { index as adminTeamsIndex } from '@/routes/admin/teams/index';
@@ -96,6 +98,14 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Task reviews',
             href: adminTaskReviewsIndex(),
             icon: ClipboardCheck,
+        });
+    }
+
+    if (page.props.auth.user?.role !== 'client') {
+        items.push({
+            title: 'Estimation reviews',
+            href: adminEstimationReviewsIndex(),
+            icon: Calculator,
         });
     }
 

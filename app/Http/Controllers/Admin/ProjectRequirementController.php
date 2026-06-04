@@ -17,6 +17,8 @@ use App\Models\User;
 use App\Support\AssignmentNotificationDispatcher;
 use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\ProjectTaskDisplayOrder;
+use App\Support\RequirementEstimationSummaryPayload;
+use App\Support\RequirementEstimationTaskSource;
 use App\Support\TipTapDocument;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -121,20 +123,23 @@ class ProjectRequirementController extends Controller
 
         $requirement->loadMissing(['creator', 'responsibleUser', 'reviewer', 'project', 'understandingConfirmedBy']);
 
-        return Inertia::render('admin/projects/requirements/Show', [
-            'project' => $this->projectSummary($project),
-            'requirement' => $this->requirementDetailPayload($requirement),
-            'requirement_chat_messages' => $this->requirementChatMessagesPayload($request, $requirement),
-            'requirement_tasks' => $this->requirementTaskSummaries($requirement, $actor),
-            'task_status_options' => $this->taskStatusOptions(),
-            'task_assignable_users' => $this->taskAssignableUserOptions($project),
-            'can_post_requirement_chat' => $actor->can('create', [ProjectRequirementMessage::class, $requirement]),
-            'can_update' => $actor->can('update', $requirement),
-            'can_mark_reviewed' => $actor->can('markReviewed', $requirement),
-            'can_confirm_understanding' => $actor->can('confirmUnderstanding', $requirement),
-            'can_manage_project' => $actor->can('update', $project),
-            'can_create_tasks' => $actor->can('create', [ProjectTask::class, $project]),
-        ]);
+        return Inertia::render('admin/projects/requirements/Show', array_merge(
+            [
+                'project' => $this->projectSummary($project),
+                'requirement' => $this->requirementDetailPayload($requirement),
+                'requirement_chat_messages' => $this->requirementChatMessagesPayload($request, $requirement),
+                'requirement_tasks' => $this->requirementTaskSummaries($requirement, $actor),
+                'task_status_options' => $this->taskStatusOptions(),
+                'task_assignable_users' => $this->taskAssignableUserOptions($project),
+                'can_post_requirement_chat' => $actor->can('create', [ProjectRequirementMessage::class, $requirement]),
+                'can_update' => $actor->can('update', $requirement),
+                'can_mark_reviewed' => $actor->can('markReviewed', $requirement),
+                'can_confirm_understanding' => $actor->can('confirmUnderstanding', $requirement),
+                'can_manage_project' => $actor->can('update', $project),
+                'can_create_tasks' => $actor->can('create', [ProjectTask::class, $project]),
+            ],
+            RequirementEstimationSummaryPayload::forRequirementShow($requirement, $project, $actor),
+        ));
     }
 
     public function markReviewed(
@@ -341,6 +346,7 @@ class ProjectRequirementController extends Controller
                 'tree_depth' => $depth,
                 'can_update' => $actor->can('update', $task),
                 'can_delete' => $actor->can('delete', $task),
+                'estimation_source' => RequirementEstimationTaskSource::forTask($task, $requirement),
             ];
         }
 

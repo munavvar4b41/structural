@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
-import { index as projectsIndex } from '@/routes/admin/projects/index';
+import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import {
     index as requirementsIndex,
     show as requirementsShow,
@@ -61,6 +61,7 @@ type TaskRow = {
     is_assignee_only_limited: boolean;
     can_submit_task_completion: boolean;
     can_confirm_task_completion: boolean;
+    estimation_source: 'transferred' | 'ad_hoc' | null;
 };
 
 type Option = { value: string; label: string };
@@ -84,20 +85,31 @@ const props = defineProps<{
         search: string;
         assignee_id: string;
         status: string[];
+        estimation_source: string;
     };
     status_options: Option[];
     assignable_users: UserOption[];
     requirements: ReqOption[];
     can_create_tasks: boolean;
     can_manage_project: boolean;
+    can_filter_estimation_source: boolean;
+    estimation_source_options: Option[];
 }>();
 
 const assigneeFilter = ref(props.filters.assignee_id);
+const estimationSourceFilter = ref(props.filters.estimation_source);
 
 watch(
     () => props.filters.assignee_id,
     (v) => {
         assigneeFilter.value = v;
+    },
+);
+
+watch(
+    () => props.filters.estimation_source,
+    (v) => {
+        estimationSourceFilter.value = v;
     },
 );
 
@@ -109,6 +121,7 @@ function reloadTasks(overrides: Record<string, unknown> = {}): void {
                 search: props.filters.search,
                 assignee_id: props.filters.assignee_id,
                 status: props.filters.status,
+                estimation_source: props.filters.estimation_source,
                 ...overrides,
             }),
         }),
@@ -121,9 +134,15 @@ function reloadTasks(overrides: Record<string, unknown> = {}): void {
             'requirements',
             'can_create_tasks',
             'can_manage_project',
+            'can_filter_estimation_source',
+            'estimation_source_options',
             'project',
         ],
     );
+}
+
+function onEstimationSource(v: string): void {
+    reloadTasks({ estimation_source: v });
 }
 
 function onSearch(search: string): void {
@@ -144,7 +163,7 @@ defineOptions({
             { title: 'Projects', href: projectsIndex.url() },
             {
                 title: pageProps.project.name,
-                href: requirementsIndex.url(pageProps.project.id),
+                href: projectsShow.url(pageProps.project.id),
             },
             {
                 title: 'Tasks',
@@ -445,6 +464,19 @@ onMounted(() => {
                                     :options="status_options" placeholder="All statuses" menu-label="Statuses"
                                     @update:model-value="onStatusFilter" />
                             </div>
+                            <div v-if="can_filter_estimation_source" class="grid gap-1">
+                                <Label class="text-xs text-muted-foreground" for="filter-estimation-source">Estimation source</Label>
+                                <TaskFormSelect
+                                    id="filter-estimation-source"
+                                    name="estimation_source"
+                                    :model-value="estimationSourceFilter"
+                                    :options="estimation_source_options"
+                                    placeholder="Any"
+                                    none-label="Any"
+                                    exclude-from-submit
+                                    @update:model-value="onEstimationSource"
+                                />
+                            </div>
                         </div>
                     </div>
                 </template>
@@ -630,6 +662,18 @@ onMounted(() => {
                                     <CornerDownRight v-if="task.tree_depth > 0"
                                         class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                                     <div class="min-w-0 flex-1 flex flex-col justify-center">
+                                        <span
+                                            v-if="task.estimation_source === 'transferred'"
+                                            class="mb-0.5 w-fit rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200"
+                                        >
+                                            From estimation
+                                        </span>
+                                        <span
+                                            v-else-if="task.estimation_source === 'ad_hoc'"
+                                            class="mb-0.5 w-fit rounded bg-sky-500/15 px-1.5 py-0.5 text-xs font-medium text-sky-800 dark:text-sky-200"
+                                        >
+                                            New task
+                                        </span>
                                         <Button variant="link"
                                             class="h-auto w-full min-w-0 justify-start p-0 font-medium text-foreground"
                                             as-child>
