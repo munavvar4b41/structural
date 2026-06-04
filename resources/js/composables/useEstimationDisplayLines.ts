@@ -17,11 +17,13 @@ export function useEstimationDisplayLines(
 } {
     const treeLines = computed((): EstimationDisplayLine[] => {
         if (isEditable.value) {
-            return (displayLines.value as EstimationLineEditable[]).map((line) => ({
-                ...line,
-                lineKey: line.client_key,
-                parentKey: line.parent_client_key,
-            }));
+            return (displayLines.value as EstimationLineEditable[]).map(
+                (line): EstimationDisplayLine =>
+                    Object.assign(line, {
+                        lineKey: line.client_key,
+                        parentKey: line.parent_client_key,
+                    }) as EstimationDisplayLine,
+            );
         }
 
         return (displayLines.value as EstimationLineReadonly[]).map((line) => ({

@@ -24,9 +24,9 @@ final class SyncRequirementEstimationLines
      *     sort_order?: int
      * }>  $lines
      */
-    public function sync(ProjectRequirementEstimation $estimation, array $lines): void
+    public function sync(ProjectRequirementEstimation $estimation, array $lines, bool $partialModule = false): void
     {
-        DB::transaction(function () use ($estimation, $lines): void {
+        DB::transaction(function () use ($estimation, $lines, $partialModule): void {
             $lines = RequirementEstimationLineSyncOrder::sortForSync($lines);
             $estimationId = $estimation->id;
             $now = now();
@@ -36,13 +36,19 @@ final class SyncRequirementEstimationLines
 
             $this->assertPayloadIdsBelongToEstimation($lines, $existingById);
 
+            if ($partialModule) {
+                $this->assertPartialModulePayload($lines);
+            }
+
             $payloadIds = collect($lines)
                 ->pluck('id')
                 ->filter(static fn ($id): bool => $id !== null && $id !== '')
                 ->map(static fn ($id): int => (int) $id)
                 ->all();
 
-            $idsToDelete = array_diff($existingById->keys()->all(), $payloadIds);
+            $idsToDelete = $partialModule
+                ? $this->moduleScopedIdsToDelete($lines, $existingById, $payloadIds)
+                : array_diff($existingById->keys()->all(), $payloadIds);
 
             if ($idsToDelete !== []) {
                 ProjectRequirementEstimationItem::query()
@@ -129,6 +135,101 @@ final class SyncRequirementEstimationLines
 
             $this->assertNoCycles($items);
         });
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $lines
+     */
+    private function assertPartialModulePayload(array $lines): void
+    {
+        $rootCount = 0;
+
+        foreach ($lines as $line) {
+            $hasParentClientKey = ! empty($line['parent_client_key']);
+            $hasParentId = isset($line['parent_id']) && $line['parent_id'] !== null && $line['parent_id'] !== '';
+
+            if (! $hasParentClientKey && ! $hasParentId) {
+                $rootCount++;
+            }
+        }
+
+        if ($rootCount !== 1) {
+            throw ValidationException::withMessages([
+                'lines' => [__('Module save must include exactly one parent line.')],
+            ]);
+        }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $lines
+     * @param  Collection<int, ProjectRequirementEstimationItem>  $existingById
+     * @param  list<int>  $payloadIds
+     * @return list<int>
+     */
+    private function moduleScopedIdsToDelete(array $lines, Collection $existingById, array $payloadIds): array
+    {
+        $rootId = $this->resolveModuleRootId($lines, $existingById);
+
+        if ($rootId === null) {
+            return [];
+        }
+
+        $moduleScopeIds = $this->descendantIdsIncludingRoot($existingById, $rootId);
+
+        return array_values(array_diff($moduleScopeIds, $payloadIds));
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $lines
+     * @param  Collection<int, ProjectRequirementEstimationItem>  $existingById
+     */
+    private function resolveModuleRootId(array $lines, Collection $existingById): ?int
+    {
+        foreach ($lines as $line) {
+            $hasParentClientKey = ! empty($line['parent_client_key']);
+            $hasParentId = isset($line['parent_id']) && $line['parent_id'] !== null && $line['parent_id'] !== '';
+
+            if ($hasParentClientKey || $hasParentId) {
+                continue;
+            }
+
+            if (isset($line['id']) && $line['id'] !== null && $line['id'] !== '') {
+                return (int) $line['id'];
+            }
+
+            return null;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  Collection<int, ProjectRequirementEstimationItem>  $items
+     * @return list<int>
+     */
+    private function descendantIdsIncludingRoot(Collection $items, int $rootId): array
+    {
+        $ids = [$rootId];
+        $changed = true;
+
+        while ($changed) {
+            $changed = false;
+
+            foreach ($items as $item) {
+                $parentId = $item->parent_estimation_item_id;
+
+                if (
+                    $parentId !== null
+                    && in_array($parentId, $ids, true)
+                    && ! in_array($item->id, $ids, true)
+                ) {
+                    $ids[] = (int) $item->id;
+                    $changed = true;
+                }
+            }
+        }
+
+        return $ids;
     }
 
     /**

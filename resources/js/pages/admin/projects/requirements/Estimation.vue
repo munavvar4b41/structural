@@ -33,6 +33,7 @@ import {
     depthFirstEstimationLines,
     insertIndexAfterSubtree,
 } from '@/lib/estimationLinesOrder';
+import { moduleLinesForRoot } from '@/lib/estimationModuleLines';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { generateUuid } from '@/lib/generateUuid';
 import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
@@ -278,37 +279,50 @@ function removeRow(row: EstimationLineEditable): void {
 }
 
 const saveProcessing = ref(false);
+const savingModuleKey = ref<string | null>(null);
 const saveErrors = ref<Record<string, string>>({});
 
-function saveLines(): void {
+function buildLinesPayload(linesToSave: EstimationLineEditable[]) {
+    return depthFirstEstimationLines([...linesToSave]).map((line, index) => ({
+        id: line.id,
+        client_key: line.id === null ? line.client_key : undefined,
+        parent_id: line.parent_id,
+        parent_client_key:
+            line.parent_id === null ? line.parent_client_key : undefined,
+        title: line.title,
+        description: line.description || null,
+        estimated_minutes: hasChildrenByKey.value.has(line.client_key)
+            ? null
+            : line.estimated_minutes === ''
+                ? null
+                : Number(line.estimated_minutes),
+        sort_order: index,
+    }));
+}
+
+function syncLinesRequest(
+    linesToSave: EstimationLineEditable[],
+    partialModule: boolean,
+    moduleKey: string | null,
+): void {
     if (estimationRoute.value === null) {
         return;
     }
 
-    saveProcessing.value = true;
     saveErrors.value = {};
 
-    const linesPayload = depthFirstEstimationLines([...editableLines.value]).map(
-        (line, index) => ({
-            id: line.id,
-            client_key: line.id === null ? line.client_key : undefined,
-            parent_id: line.parent_id,
-            parent_client_key:
-                line.parent_id === null ? line.parent_client_key : undefined,
-            title: line.title,
-            description: line.description || null,
-            estimated_minutes: hasChildrenByKey.value.has(line.client_key)
-                ? null
-                : line.estimated_minutes === ''
-                    ? null
-                    : Number(line.estimated_minutes),
-            sort_order: index,
-        }),
-    );
+    if (partialModule) {
+        savingModuleKey.value = moduleKey;
+    } else {
+        saveProcessing.value = true;
+    }
 
     router.put(
         lines.url(estimationRoute.value),
-        { lines: linesPayload },
+        {
+            lines: buildLinesPayload(linesToSave),
+            partial_module: partialModule,
+        },
         {
             preserveScroll: true,
             onSuccess: () => {
@@ -318,11 +332,24 @@ function saveLines(): void {
             },
             onFinish: () => {
                 saveProcessing.value = false;
+                savingModuleKey.value = null;
             },
             onError: (errors) => {
                 saveErrors.value = errors as Record<string, string>;
             },
         },
+    );
+}
+
+function saveLines(): void {
+    syncLinesRequest(editableLines.value, false, null);
+}
+
+function saveModule(root: EstimationLineEditable): void {
+    syncLinesRequest(
+        moduleLinesForRoot(editableLines.value, root.client_key),
+        true,
+        root.client_key,
     );
 }
 
@@ -514,8 +541,10 @@ const statusBadgeClass = computed(() => {
                     :is-collapsed="isCollapsed"
                     :any-collapsed="anyCollapsed"
                     :can-remove-line="editableLines.length > 1"
+                    :saving-module-key="savingModuleKey"
                     @add-subtask="addSubRow"
                     @remove="removeRow"
+                    @save-module="saveModule"
                     @toggle-collapse="toggleCollapsed"
                     @expand-all="expandAll"
                     @collapse-all="collapseAllParents"

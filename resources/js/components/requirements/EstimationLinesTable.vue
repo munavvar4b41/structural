@@ -24,11 +24,13 @@ const props = defineProps<{
     isCollapsed: (lineKey: string) => boolean;
     canRemoveLine: boolean;
     anyCollapsed: boolean;
+    savingModuleKey: string | null;
 }>();
 
 const emit = defineEmits<{
     addSubtask: [line: EstimationLineEditable];
     remove: [line: EstimationLineEditable];
+    saveModule: [line: EstimationLineEditable];
     toggleCollapse: [lineKey: string];
     expandAll: [];
     collapseAll: [];
@@ -156,6 +158,14 @@ function onRemove(index: number): void {
     }
 }
 
+function onSaveModule(index: number): void {
+    const line = editableLineAt(index);
+
+    if (line !== undefined) {
+        emit('saveModule', line);
+    }
+}
+
 async function scrollToEnd(): Promise<void> {
     await nextTick();
 
@@ -230,9 +240,13 @@ defineExpose({
                                 :child-count="childCountAt(virtualRow.index)"
                                 :effective-minutes="effectiveMinutesAt(virtualRow.index)" :can-remove="canRemoveLine"
                                 :editable-line="editableLineAt(virtualRow.index)"
-                                :readonly-line="readonlyLineAt(virtualRow.index)" @toggle-collapse="
+                                :readonly-line="readonlyLineAt(virtualRow.index)"
+                                :show-module-save="isEditable && (lineAt(virtualRow.index)?.tree_depth ?? 0) === 0"
+                                :saving-module="savingModuleKey === lineAt(virtualRow.index)?.lineKey"
+                                @toggle-collapse="
                                     emit('toggleCollapse', lineAt(virtualRow.index)!.lineKey)
-                                    " @add-subtask="onAddSubtask(virtualRow.index)" @remove="onRemove(virtualRow.index)" />
+                                    " @add-subtask="onAddSubtask(virtualRow.index)" @remove="onRemove(virtualRow.index)"
+                                @save-module="onSaveModule(virtualRow.index)" />
                         </div>
                     </template>
                 </div>

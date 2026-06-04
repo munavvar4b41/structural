@@ -26,6 +26,8 @@ const props = defineProps<{
     childCount: number;
     effectiveMinutes: number;
     canRemove: boolean;
+    showModuleSave?: boolean;
+    savingModule?: boolean;
     editableLine?: EstimationLineEditable;
     readonlyLine?: EstimationLineReadonly;
 }>();
@@ -33,6 +35,7 @@ const props = defineProps<{
 const emit = defineEmits<{
     addSubtask: [];
     remove: [];
+    saveModule: [];
     toggleCollapse: [];
 }>();
 
@@ -48,6 +51,8 @@ const notesDialogOpen = ref(false);
         childCount,
         effectiveMinutes,
         canRemove,
+        showModuleSave,
+        savingModule,
         editableLine?.client_key,
         editableLine?.title,
         editableLine?.description,
@@ -70,7 +75,7 @@ const notesDialogOpen = ref(false);
                     {{ isCollapsed ? 'Expand subtasks' : 'Collapse subtasks' }}
                 </span>
             </Button>
-            <span v-if="treeDepth > 0 && !hasChildren" class="size-8 shrink-0" aria-hidden="true" />
+            <span v-if="treeDepth > 0 && !hasChildren" class="size-4 shrink-0" aria-hidden="true" />
             <CornerDownRight v-if="treeDepth > 0" class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <Input v-if="isEditable && editableLine !== undefined" v-model="editableLine.title" type="text"
                 placeholder="Task title" class="min-w-0 h-9" />
@@ -114,6 +119,16 @@ const notesDialogOpen = ref(false);
 
         <div role="cell" class="px-3 text-right">
             <div v-if="isEditable && editableLine !== undefined" class="flex flex-wrap justify-end gap-1">
+                <Button
+                    v-if="showModuleSave"
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    :disabled="savingModule"
+                    @click="emit('saveModule')"
+                >
+                    Save
+                </Button>
                 <Button type="button" variant="outline" size="sm" @click="emit('addSubtask')">
                     Subtask
                 </Button>

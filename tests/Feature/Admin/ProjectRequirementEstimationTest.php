@@ -342,6 +342,59 @@ class ProjectRequirementEstimationTest extends TestCase
         $this->assertLessThan(40, $queryCount);
     }
 
+    public function test_partial_module_sync_updates_one_module_without_deleting_others(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.requirements.estimation.store', [$project, $requirement]))
+            ->assertRedirect();
+
+        $estimation = ProjectRequirementEstimation::query()->firstOrFail();
+        $moduleA = $estimation->items()->firstOrFail();
+
+        $this->actingAs($staff)
+            ->put(route('admin.projects.requirements.estimation.lines', [$project, $requirement, $estimation]), [
+                'lines' => [
+                    [
+                        'id' => $moduleA->id,
+                        'title' => 'Module A',
+                        'estimated_minutes' => 60,
+                        'sort_order' => 0,
+                    ],
+                    [
+                        'client_key' => 'module-b',
+                        'title' => 'Module B',
+                        'estimated_minutes' => 90,
+                        'sort_order' => 1,
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        $moduleB = $estimation->items()->where('title', 'Module B')->firstOrFail();
+
+        $this->actingAs($staff)
+            ->put(route('admin.projects.requirements.estimation.lines', [$project, $requirement, $estimation]), [
+                'partial_module' => true,
+                'lines' => [
+                    [
+                        'id' => $moduleB->id,
+                        'title' => 'Module B updated',
+                        'estimated_minutes' => 120,
+                        'sort_order' => 0,
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(2, $estimation->items()->count());
+        $this->assertSame('Module A', $moduleA->fresh()->title);
+        $this->assertSame(60, $moduleA->fresh()->estimated_minutes);
+        $this->assertSame('Module B updated', $moduleB->fresh()->title);
+        $this->assertSame(120, $moduleB->fresh()->estimated_minutes);
+    }
+
     public function test_estimation_show_returns_many_lines(): void
     {
         ['staff' => $staff, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
