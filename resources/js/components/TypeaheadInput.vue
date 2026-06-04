@@ -27,7 +27,7 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), {
     modelValue: '',
-    debounceMs: 3000,
+    debounceMs: 1000,
     metadataKey: undefined,
     id: undefined,
     name: undefined,
