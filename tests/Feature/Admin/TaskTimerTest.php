@@ -443,4 +443,119 @@ class TaskTimerTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    public function test_starting_timer_on_parent_cascades_children_to_in_progress(): void
+    {
+        ['staff' => $staff, 'head' => $head, 'project' => $project, 'task' => $parent] = $this->setupProjectWithTask();
+
+        $child = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $this->tracker()->start($staff, $parent);
+
+        $this->assertSame(ProjectTaskStatus::InProgress, $parent->fresh()->status);
+        $this->assertSame(ProjectTaskStatus::InProgress, $child->fresh()->status);
+
+        $entry = TaskTimeEntry::query()->firstOrFail();
+        $this->assertIsArray($entry->status_snapshots);
+        $this->assertSame(ProjectTaskStatus::ToDo->value, $entry->status_snapshots[(string) $child->id]);
+    }
+
+    public function test_stopping_parent_timer_restores_child_statuses(): void
+    {
+        ['staff' => $staff, 'head' => $head, 'project' => $project, 'task' => $parent] = $this->setupProjectWithTask();
+
+        $child = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $this->tracker()->start($staff, $parent);
+        $this->tracker()->stop($staff);
+
+        $this->assertSame(ProjectTaskStatus::ToDo, $parent->fresh()->status);
+        $this->assertSame(ProjectTaskStatus::ToDo, $child->fresh()->status);
+    }
+
+    public function test_stopping_parent_timer_splits_time_by_child_estimates(): void
+    {
+        ['staff' => $staff, 'head' => $head, 'project' => $project, 'task' => $parent] = $this->setupProjectWithTask();
+
+        $childOne = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+                'estimated_minutes' => 10,
+            ]);
+
+        $childTwo = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+                'estimated_minutes' => 20,
+            ]);
+
+        $childThree = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+                'estimated_minutes' => 30,
+            ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 10:00:00'));
+        $this->tracker()->start($staff, $parent);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 11:00:00'));
+        $this->tracker()->stop($staff);
+
+        $this->assertSame(0, TaskTimeEntry::query()->where('project_task_id', $parent->id)->count());
+
+        $this->assertSame(10 * 60, TaskTimeEntry::query()->where('project_task_id', $childOne->id)->value('duration_seconds'));
+        $this->assertSame(20 * 60, TaskTimeEntry::query()->where('project_task_id', $childTwo->id)->value('duration_seconds'));
+        $this->assertSame(30 * 60, TaskTimeEntry::query()->where('project_task_id', $childThree->id)->value('duration_seconds'));
+
+        Carbon::setTestNow();
+    }
+
+    public function test_stopping_parent_timer_splits_time_equally_without_estimates(): void
+    {
+        ['staff' => $staff, 'head' => $head, 'project' => $project, 'task' => $parent] = $this->setupProjectWithTask();
+
+        $children = collect(range(1, 3))->map(fn (int $n): ProjectTask => ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+                'estimated_minutes' => $n === 2 ? 15 : null,
+            ]));
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 10:00:00'));
+        $this->tracker()->start($staff, $parent);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 10:09:00'));
+        $this->tracker()->stop($staff);
+
+        foreach ($children as $child) {
+            $this->assertSame(3 * 60, TaskTimeEntry::query()->where('project_task_id', $child->id)->value('duration_seconds'));
+        }
+
+        Carbon::setTestNow();
+    }
 }

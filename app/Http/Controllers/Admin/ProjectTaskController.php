@@ -15,6 +15,7 @@ use App\Support\AssignmentNotificationDispatcher;
 use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\ProjectTaskAssigneeCapabilities;
 use App\Support\ProjectTaskDisplayOrder;
+use App\Support\ProjectTaskHierarchy;
 use App\Support\ProjectTaskShowPayloadBuilder;
 use App\Support\RequirementEstimationTaskSource;
 use App\Support\RequirementPhaseRegistry;
@@ -34,6 +35,7 @@ class ProjectTaskController extends Controller
         private readonly ProjectTaskShowPayloadBuilder $showPayloadBuilder,
         private readonly AssignmentNotificationDispatcher $assignmentNotificationDispatcher,
         private readonly RequirementPhaseRegistry $requirementPhaseRegistry,
+        private readonly ProjectTaskHierarchy $taskHierarchy,
     ) {}
 
     public function index(Request $request, Project $project): Response
@@ -273,6 +275,7 @@ class ProjectTaskController extends Controller
         abort_if(! $actor instanceof User, 403);
 
         $originalAssigneeId = $task->assignee_user_id;
+        $originalStatus = $task->status;
         $payload = $request->validated();
 
         if (array_key_exists('notify_at', $payload)) {
@@ -285,6 +288,13 @@ class ProjectTaskController extends Controller
         }
 
         $task->update($payload);
+
+        if ($task->wasChanged('status')
+            && $task->status !== $originalStatus
+            && $this->taskHierarchy->hasDirectChildren($task)) {
+            $this->taskHierarchy->cascadeStatus($task, $task->status);
+        }
+
         $assigneeChanged = $task->wasChanged('assignee_user_id') && $originalAssigneeId !== $task->assignee_user_id;
 
         if ($assigneeChanged && $task->assignee_user_id !== null) {

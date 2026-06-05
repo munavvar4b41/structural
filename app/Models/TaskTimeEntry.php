@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'duration_seconds',
     'source',
     'previous_task_status',
+    'status_snapshots',
     'notes',
 ])]
 class TaskTimeEntry extends Model
@@ -51,6 +52,7 @@ class TaskTimeEntry extends Model
             'duration_seconds' => 'integer',
             'source' => TimeEntrySource::class,
             'previous_task_status' => ProjectTaskStatus::class,
+            'status_snapshots' => 'array',
         ];
     }
 
@@ -231,6 +233,19 @@ class TaskTimeEntry extends Model
         }
 
         return $result;
+    }
+
+    /**
+     * @param  list<int>  $taskIds
+     */
+    public static function todayElapsedSecondsForUserOnTaskFamily(
+        int $userId,
+        array $taskIds,
+        ?\DateTimeInterface $at = null,
+    ): int {
+        $totals = self::todayElapsedSecondsForUserOnTasks($userId, $taskIds, $at);
+
+        return array_sum($totals);
     }
 
     /**

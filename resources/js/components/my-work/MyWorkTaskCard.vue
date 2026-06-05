@@ -25,6 +25,7 @@ export type MyWorkTaskCardData = {
     can_submit_task_completion: boolean;
     timer_today_seconds: number;
     timer_state: 'running' | 'paused' | 'idle';
+    children_count?: number;
 };
 
 const props = withDefaults(
@@ -78,6 +79,9 @@ function onDragStart(event: DragEvent): void {
             </p>
             <p class="mt-2 text-xs text-muted-foreground">
                 Est.: {{ formatTaskMinutes(task.estimated_minutes) }}
+                <span v-if="task.children_count && task.children_count > 0" class="ml-2">
+                    · {{ task.children_count }} subtasks
+                </span>
             </p>
         </button>
         <div class="flex flex-col gap-2 p-3 pt-2" @click.stop>

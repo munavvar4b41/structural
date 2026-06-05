@@ -146,6 +146,77 @@ class ProjectTaskTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_parent_status_update_cascades_to_descendants(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $parent = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $child = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.show', [$project, $parent]))
+            ->patch(route('admin.projects.tasks.update', [$project, $parent]), [
+                'title' => $parent->title,
+                'status' => ProjectTaskStatus::Blocked->value,
+            ])
+            ->assertRedirect(route('admin.projects.tasks.show', [$project, $parent]));
+
+        $this->assertSame(ProjectTaskStatus::Blocked, $parent->fresh()->status);
+        $this->assertSame(ProjectTaskStatus::Blocked, $child->fresh()->status);
+    }
+
+    public function test_child_status_update_does_not_cascade_to_parent_or_siblings(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $parent = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $child = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $sibling = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.show', [$project, $child]))
+            ->patch(route('admin.projects.tasks.update', [$project, $child]), [
+                'title' => $child->title,
+                'status' => ProjectTaskStatus::InProgress->value,
+            ])
+            ->assertRedirect(route('admin.projects.tasks.show', [$project, $child]));
+
+        $this->assertSame(ProjectTaskStatus::ToDo, $parent->fresh()->status);
+        $this->assertSame(ProjectTaskStatus::InProgress, $child->fresh()->status);
+        $this->assertSame(ProjectTaskStatus::ToDo, $sibling->fresh()->status);
+    }
+
     public function test_task_show_lists_direct_subtasks(): void
     {
         extract($this->projectWithTeamHead());

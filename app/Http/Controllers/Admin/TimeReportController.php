@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
 use App\Models\User;
+use App\Support\ProjectTaskHierarchy;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
@@ -17,6 +19,8 @@ use Inertia\Response;
 class TimeReportController extends Controller
 {
     use AuthorizesRequests;
+
+    public function __construct(private readonly ProjectTaskHierarchy $taskHierarchy) {}
 
     public function index(Request $request): Response
     {
@@ -57,7 +61,7 @@ class TimeReportController extends Controller
             ->when($projectFilterId !== null, fn ($q) => $q->where('project_id', $projectFilterId));
 
         $entries = (clone $entriesQuery)
-            ->with(['project:id,name,code', 'task:id,title,project_id'])
+            ->with(['project:id,name,code', 'task:id,title,project_id,parent_project_task_id'])
             ->orderByDesc('started_at')
             ->limit(50)
             ->get();
@@ -283,6 +287,7 @@ class TimeReportController extends Controller
      */
     private function aggregatePerProject($entries, \DateTimeInterface $at): array
     {
+        $parentLinksByProject = $this->parentLinksByProjectForEntries($entries);
         $byProject = [];
 
         foreach ($entries as $entry) {
@@ -297,7 +302,11 @@ class TimeReportController extends Controller
             ];
 
             $byProject[$pid]['total_seconds'] += $duration;
-            $byProject[$pid]['task_ids'][$entry->project_task_id] = true;
+            $rootTaskId = $this->taskHierarchy->rootAncestorId(
+                $entry->project_task_id,
+                $parentLinksByProject[$pid] ?? [],
+            );
+            $byProject[$pid]['task_ids'][$rootTaskId] = true;
         }
 
         $rows = [];
@@ -318,24 +327,59 @@ class TimeReportController extends Controller
      */
     private function aggregatePerTask($entries, \DateTimeInterface $at): array
     {
+        $parentLinksByProject = $this->parentLinksByProjectForEntries($entries);
         $byTask = [];
 
         foreach ($entries as $entry) {
             $duration = $this->effectiveDurationSeconds($entry, $at);
-            $tid = $entry->project_task_id;
-            $byTask[$tid] ??= [
-                'task_id' => $tid,
-                'task_title' => $entry->task?->title,
+            $rootTaskId = $this->taskHierarchy->rootAncestorId(
+                $entry->project_task_id,
+                $parentLinksByProject[$entry->project_id] ?? [],
+            );
+
+            $byTask[$rootTaskId] ??= [
+                'task_id' => $rootTaskId,
+                'task_title' => null,
                 'project_id' => $entry->project_id,
                 'project_name' => $entry->project?->name,
                 'total_seconds' => 0,
             ];
-            $byTask[$tid]['total_seconds'] += $duration;
+            $byTask[$rootTaskId]['total_seconds'] += $duration;
         }
+
+        $rootTitles = ProjectTask::query()
+            ->whereIn('id', array_keys($byTask))
+            ->pluck('title', 'id');
+
+        foreach ($byTask as $rootTaskId => &$row) {
+            $row['task_title'] = $rootTitles[$rootTaskId] ?? $row['task_title'];
+        }
+        unset($row);
 
         $rows = array_values($byTask);
         usort($rows, static fn ($a, $b) => $b['total_seconds'] <=> $a['total_seconds']);
 
         return $rows;
+    }
+
+    /**
+     * @param  Collection<int, TaskTimeEntry>  $entries
+     * @return array<int, array<int, int|null>>
+     */
+    private function parentLinksByProjectForEntries(Collection $entries): array
+    {
+        $projectIds = $entries
+            ->pluck('project_id')
+            ->unique()
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all();
+
+        $links = [];
+
+        foreach ($projectIds as $projectId) {
+            $links[$projectId] = $this->taskHierarchy->parentLinksForProject($projectId);
+        }
+
+        return $links;
     }
 }

@@ -408,7 +408,7 @@ const projectChartOptions = computed(() => ({
         <Card>
             <CardHeader>
                 <CardTitle>Per task</CardTitle>
-                <CardDescription>Total time spent per task in the date range.</CardDescription>
+                <CardDescription>Parent tasks with time rolled up from all subtasks in the date range.</CardDescription>
             </CardHeader>
             <CardContent>
                 <DataTable>
