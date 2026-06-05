@@ -10,6 +10,7 @@ use App\Models\ProjectTag;
 use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
 use App\Models\User;
+use App\Settings\CompanySettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -72,6 +73,8 @@ class ProjectShowPayloadBuilder
             ])
             ->all();
 
+        $companySettings = app(CompanySettings::class);
+
         return [
             'project' => $this->projectDetail($project),
             'tags' => $project->tags()->orderBy('name')->get()->map(
@@ -109,6 +112,10 @@ class ProjectShowPayloadBuilder
             'requirement_options' => $requirementOptions,
             'task_options' => $taskOptions,
             'status_options' => $this->statusOptions(),
+            'working_hours' => [
+                'start' => $companySettings->work_day_start_time,
+                'end' => $companySettings->work_day_end_time,
+            ],
         ];
     }
 

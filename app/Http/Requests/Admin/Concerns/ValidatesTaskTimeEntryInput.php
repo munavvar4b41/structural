@@ -3,10 +3,19 @@
 namespace App\Http\Requests\Admin\Concerns;
 
 use Illuminate\Contracts\Validation\ValidationRule;
-use Illuminate\Validation\Validator;
 
 trait ValidatesTaskTimeEntryInput
 {
+    protected function prepareForValidation(): void
+    {
+        if ($this->filled('duration_minutes')) {
+            $this->merge([
+                'started_at' => null,
+                'ended_at' => null,
+            ]);
+        }
+    }
+
     /**
      * @return array<string, array<int, ValidationRule|string>>
      */
@@ -14,17 +23,22 @@ trait ValidatesTaskTimeEntryInput
     {
         return [
             'duration_minutes' => [
+                'nullable',
                 'required_without_all:started_at,ended_at',
                 'integer',
                 'min:1',
                 'max:'.(24 * 60),
             ],
             'started_at' => [
+                'exclude_if:duration_minutes,*',
                 'required_without:duration_minutes',
+                'nullable',
                 'date',
             ],
             'ended_at' => [
+                'exclude_if:duration_minutes,*',
                 'required_without:duration_minutes',
+                'nullable',
                 'date',
                 'after:started_at',
             ],
@@ -34,20 +48,5 @@ trait ValidatesTaskTimeEntryInput
                 'max:500',
             ],
         ];
-    }
-
-    public function withValidator(Validator $validator): void
-    {
-        $validator->after(function (Validator $validator): void {
-            $hasDuration = $this->filled('duration_minutes');
-            $hasRange = $this->filled('started_at') || $this->filled('ended_at');
-
-            if ($hasDuration && $hasRange) {
-                $validator->errors()->add(
-                    'duration_minutes',
-                    __('Provide either duration or start/end times, not both.'),
-                );
-            }
-        });
     }
 }

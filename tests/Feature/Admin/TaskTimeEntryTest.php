@@ -210,7 +210,7 @@ class TaskTimeEntryTest extends TestCase
         Carbon::setTestNow(null);
     }
 
-    public function test_duration_entry_rejects_duration_with_start_and_end(): void
+    public function test_duration_entry_ignores_start_and_end_when_duration_provided(): void
     {
         ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
         Carbon::setTestNow(Carbon::parse('2026-05-07 12:00:00'));
@@ -221,14 +221,17 @@ class TaskTimeEntryTest extends TestCase
                 'started_at' => '2026-05-07 09:00:00',
                 'ended_at' => '2026-05-07 10:00:00',
             ])
-            ->assertSessionHasErrors('duration_minutes');
+            ->assertRedirect();
 
-        $this->assertSame(0, TaskTimeEntry::query()->count());
+        $entry = TaskTimeEntry::query()->firstOrFail();
+        $this->assertSame(40 * 60, $entry->duration_seconds);
+        $this->assertSame('2026-05-07 11:20:00', $entry->started_at?->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-05-07 12:00:00', $entry->ended_at?->format('Y-m-d H:i:s'));
 
         Carbon::setTestNow(null);
     }
 
-    public function test_duration_entry_rejects_duration_longer_than_work_day(): void
+    public function test_duration_entry_accepts_long_duration_without_working_hours_limit(): void
     {
         ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
         Carbon::setTestNow(Carbon::parse('2026-05-07 12:00:00'));
@@ -237,9 +240,10 @@ class TaskTimeEntryTest extends TestCase
             ->post(route('admin.projects.tasks.time-entries.store', [$project, $task]), [
                 'duration_minutes' => 500,
             ])
-            ->assertSessionHasErrors('duration_minutes');
+            ->assertRedirect();
 
-        $this->assertSame(0, TaskTimeEntry::query()->count());
+        $entry = TaskTimeEntry::query()->firstOrFail();
+        $this->assertSame(500 * 60, $entry->duration_seconds);
 
         Carbon::setTestNow(null);
     }
