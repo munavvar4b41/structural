@@ -17,6 +17,7 @@ use App\Support\ProjectTaskAssigneeCapabilities;
 use App\Support\ProjectTaskDisplayOrder;
 use App\Support\ProjectTaskShowPayloadBuilder;
 use App\Support\RequirementEstimationTaskSource;
+use App\Support\RequirementPhaseRegistry;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -32,6 +33,7 @@ class ProjectTaskController extends Controller
     public function __construct(
         private readonly ProjectTaskShowPayloadBuilder $showPayloadBuilder,
         private readonly AssignmentNotificationDispatcher $assignmentNotificationDispatcher,
+        private readonly RequirementPhaseRegistry $requirementPhaseRegistry,
     ) {}
 
     public function index(Request $request, Project $project): Response
@@ -179,9 +181,10 @@ class ProjectTaskController extends Controller
                 : [],
             'status_options' => $this->statusOptions(),
             'assignable_users' => $this->assignableUserOptions($project),
-            'requirements' => $project->requirements()->orderBy('title')->get(['id', 'title'])->map(static fn (ProjectRequirement $r): array => [
+            'requirements' => $project->requirements()->orderBy('title')->get(['id', 'title', 'max_generated_phase'])->map(static fn (ProjectRequirement $r): array => [
                 'value' => $r->id,
                 'label' => $r->title,
+                'max_generated_phase' => max(1, (int) ($r->max_generated_phase ?? RequirementPhaseRegistry::INITIAL_MAX_PHASE)),
             ])->all(),
             'can_create_tasks' => $actor->can('create', [ProjectTask::class, $project]),
             'can_manage_project' => $actor->can('update', $project),
@@ -361,6 +364,8 @@ class ProjectTaskController extends Controller
             'requirement_title' => $task->requirement?->title,
             'parent_project_task_id' => $task->parent_project_task_id,
             'estimated_minutes' => $task->estimated_minutes,
+            'phase' => $task->phase,
+            'phase_label' => $task->phase !== null ? $this->requirementPhaseRegistry->phaseLabel((int) $task->phase) : null,
             'display_after_at' => $task->display_after_at?->toIso8601String(),
             'notify_at' => $task->notify_at?->toIso8601String(),
             'children_count' => $task->children_count,

@@ -47,6 +47,7 @@ const props = defineProps<{
 const descriptionJson = ref(emptyTipTapDocumentJson());
 
 const responsibleUserId = ref('');
+const maxGeneratedPhase = ref('1');
 
 const responsibleLabel = computed(() => {
     if (responsibleUserId.value === '') {
@@ -116,6 +117,22 @@ defineOptions({
                             input-name="description"
                         />
                         <InputError :message="errors.description" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="max-generated-phase">Number of phases</Label>
+                        <Input
+                            id="max-generated-phase"
+                            name="max_generated_phase"
+                            type="number"
+                            min="1"
+                            max="100"
+                            v-model="maxGeneratedPhase"
+                            required
+                        />
+                        <p class="text-xs text-muted-foreground">
+                            How many phases this requirement spans. Use 1 when no phase split is needed.
+                        </p>
+                        <InputError :message="errors.max_generated_phase" />
                     </div>
                     <div class="grid gap-2">
                         <Label id="responsible_user_id-label">Responsible (optional)</Label>

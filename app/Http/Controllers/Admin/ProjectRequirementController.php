@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\ConfirmProjectRequirementUnderstandingRequest;
 use App\Http\Requests\Admin\MarkProjectRequirementReviewedRequest;
 use App\Http\Requests\Admin\StoreProjectRequirementRequest;
 use App\Http\Requests\Admin\UpdateProjectRequirementRequest;
+use App\Http\Requests\Admin\UpdateRequirementPhaseSettingsRequest;
 use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectRequirementMessage;
@@ -19,6 +20,7 @@ use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\ProjectTaskDisplayOrder;
 use App\Support\RequirementEstimationSummaryPayload;
 use App\Support\RequirementEstimationTaskSource;
+use App\Support\RequirementPhaseRegistry;
 use App\Support\TipTapDocument;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -33,7 +35,10 @@ class ProjectRequirementController extends Controller
 {
     use AuthorizesRequests;
 
-    public function __construct(private readonly AssignmentNotificationDispatcher $assignmentNotificationDispatcher) {}
+    public function __construct(
+        private readonly AssignmentNotificationDispatcher $assignmentNotificationDispatcher,
+        private readonly RequirementPhaseRegistry $requirementPhaseRegistry,
+    ) {}
 
     public function index(Request $request, Project $project): Response
     {
@@ -137,9 +142,27 @@ class ProjectRequirementController extends Controller
                 'can_confirm_understanding' => $actor->can('confirmUnderstanding', $requirement),
                 'can_manage_project' => $actor->can('update', $project),
                 'can_create_tasks' => $actor->can('create', [ProjectTask::class, $project]),
+                'phase_settings' => $this->requirementPhaseRegistry->settingsPayload($requirement),
+                'can_update_phase_settings' => $actor->can('update', $requirement),
             ],
             RequirementEstimationSummaryPayload::forRequirementShow($requirement, $project, $actor),
         ));
+    }
+
+    public function updatePhaseSettings(
+        UpdateRequirementPhaseSettingsRequest $request,
+        Project $project,
+        ProjectRequirement $requirement,
+    ): RedirectResponse {
+        $this->ensureRequirementBelongsToProject($project, $requirement);
+
+        $this->requirementPhaseRegistry->setMaxGeneratedPhase(
+            $requirement,
+            (int) $request->validated('max_generated_phase'),
+        );
+
+        return to_route('admin.projects.requirements.show', [$project, $requirement])
+            ->with('toast', __('Phase settings updated.'));
     }
 
     public function markReviewed(
@@ -222,6 +245,7 @@ class ProjectRequirementController extends Controller
             'responsible_user_id' => $responsibleId,
             'title' => $request->validated('title'),
             'description' => $request->validated('description'),
+            'max_generated_phase' => (int) $request->validated('max_generated_phase'),
         ]);
 
         $this->assignmentNotificationDispatcher->sendRequirementAssigned($requirement, $actor);
@@ -342,6 +366,8 @@ class ProjectRequirementController extends Controller
                 'requirement_title' => $requirement->title,
                 'parent_project_task_id' => $task->parent_project_task_id,
                 'estimated_minutes' => $task->estimated_minutes,
+                'phase' => $task->phase,
+                'phase_label' => $task->phase !== null ? $this->requirementPhaseRegistry->phaseLabel((int) $task->phase) : null,
                 'children_count' => $task->children_count,
                 'tree_depth' => $depth,
                 'can_update' => $actor->can('update', $task),

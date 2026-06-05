@@ -57,10 +57,11 @@ class ProjectShowPayloadBuilder
         $assignableUsers = $this->assignableUserOptions($project);
         $requirementOptions = $project->requirements()
             ->orderBy('title')
-            ->get(['id', 'title'])
+            ->get(['id', 'title', 'max_generated_phase'])
             ->map(static fn (ProjectRequirement $r): array => [
                 'value' => $r->id,
                 'label' => $r->title,
+                'max_generated_phase' => max(1, (int) ($r->max_generated_phase ?? RequirementPhaseRegistry::INITIAL_MAX_PHASE)),
             ])
             ->all();
 
@@ -187,6 +188,10 @@ class ProjectShowPayloadBuilder
             'requirement_title' => $task->requirement?->title,
             'parent_project_task_id' => $task->parent_project_task_id,
             'estimated_minutes' => $task->estimated_minutes,
+            'phase' => $task->phase,
+            'phase_label' => $task->phase !== null
+                ? app(RequirementPhaseRegistry::class)->phaseLabel((int) $task->phase)
+                : null,
             'display_after_at' => $task->display_after_at?->toIso8601String(),
             'notify_at' => $task->notify_at?->toIso8601String(),
             'children_count' => $task->children_count,

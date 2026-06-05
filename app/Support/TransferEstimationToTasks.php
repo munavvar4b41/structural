@@ -40,6 +40,7 @@ final class TransferEstimationToTasks
                     'assignee_user_id' => null,
                     'created_by_user_id' => $actor->id,
                     'estimated_minutes' => $item->estimated_minutes,
+                    'phase' => $item->phase,
                 ]);
 
                 $taskIdByItemId[$item->id] = $task->id;

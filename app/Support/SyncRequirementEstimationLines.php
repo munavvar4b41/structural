@@ -12,6 +12,8 @@ final class SyncRequirementEstimationLines
 {
     private const int UPSERT_CHUNK_SIZE = 100;
 
+    public function __construct(private readonly RequirementPhaseRegistry $requirementPhaseRegistry) {}
+
     /**
      * @param  list<array{
      *     id?: int|null,
@@ -21,12 +23,16 @@ final class SyncRequirementEstimationLines
      *     title: string,
      *     description?: string|null,
      *     estimated_minutes?: int|null,
-     *     sort_order?: int
+     *     sort_order?: int,
+     *     phase?: int|null
      * }>  $lines
      */
     public function sync(ProjectRequirementEstimation $estimation, array $lines, bool $partialModule = false): void
     {
         DB::transaction(function () use ($estimation, $lines, $partialModule): void {
+            $estimation->loadMissing('requirement');
+            $requirement = $estimation->requirement;
+            abort_if($requirement === null, 404);
             $lines = RequirementEstimationLineSyncOrder::sortForSync($lines);
             $estimationId = $estimation->id;
             $now = now();
@@ -69,6 +75,17 @@ final class SyncRequirementEstimationLines
                     ? (int) $line['estimated_minutes']
                     : null;
 
+                try {
+                    $phase = $this->requirementPhaseRegistry->resolvePhase(
+                        $requirement,
+                        $line['phase'] ?? null,
+                    );
+                } catch (ValidationException $exception) {
+                    throw ValidationException::withMessages([
+                        'lines' => $exception->errors()['phase'] ?? [__('One or more estimation lines have an invalid phase.')],
+                    ]);
+                }
+
                 $id = isset($line['id']) && $line['id'] !== null && $line['id'] !== ''
                     ? (int) $line['id']
                     : null;
@@ -90,6 +107,7 @@ final class SyncRequirementEstimationLines
                         'description' => $line['description'] ?? null,
                         'estimated_minutes' => $estimatedMinutes,
                         'sort_order' => $sortOrder,
+                        'phase' => $phase,
                         'created_at' => $existing->created_at,
                         'updated_at' => $now,
                     ];
@@ -108,6 +126,7 @@ final class SyncRequirementEstimationLines
                     'description' => $line['description'] ?? null,
                     'estimated_minutes' => $estimatedMinutes,
                     'sort_order' => $sortOrder,
+                    'phase' => $phase,
                 ]);
 
                 if (! empty($line['client_key'])) {
@@ -125,6 +144,7 @@ final class SyncRequirementEstimationLines
                         'description',
                         'estimated_minutes',
                         'sort_order',
+                        'phase',
                         'updated_at',
                     ],
                 );

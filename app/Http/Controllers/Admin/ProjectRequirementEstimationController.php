@@ -78,6 +78,7 @@ class ProjectRequirementEstimationController extends Controller
         $estimation->items()->create([
             'title' => __('Parent task'),
             'sort_order' => 0,
+            'phase' => 1,
         ]);
 
         return $this->estimationRedirect($project, $requirement)

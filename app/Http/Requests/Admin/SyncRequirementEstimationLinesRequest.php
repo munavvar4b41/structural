@@ -32,6 +32,7 @@ class SyncRequirementEstimationLinesRequest extends FormRequest
             'lines.*.description' => ['nullable', 'string', 'max:50000'],
             'lines.*.estimated_minutes' => ['nullable', 'integer', 'min:1'],
             'lines.*.sort_order' => ['nullable', 'integer', 'min:0'],
+            'lines.*.phase' => ['nullable', 'integer', 'min:1'],
         ];
     }
 

@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'review_understanding',
     'understanding_confirmed_at',
     'understanding_confirmed_by_user_id',
+    'max_generated_phase',
 ])]
 class ProjectRequirement extends Model
 {

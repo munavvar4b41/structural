@@ -93,6 +93,8 @@ const props = defineProps<{
     can_request_changes: boolean;
     can_request_revision: boolean;
     can_transfer: boolean;
+    phase_options: { value: number; label: string }[];
+    show_phase_column: boolean;
 }>();
 
 defineOptions({
@@ -167,6 +169,7 @@ function linesToEditable(source: EstimationLineReadonly[]): EstimationLineEditab
         estimated_minutes:
             line.estimated_minutes !== null ? String(line.estimated_minutes) : '',
         sort_order: line.sort_order,
+        phase: line.phase,
         tree_depth: line.tree_depth,
     }));
 }
@@ -231,6 +234,7 @@ function addRootRow(): void {
         description: '',
         estimated_minutes: '',
         sort_order: editableLines.value.length,
+        phase: 1,
         tree_depth: 0,
     });
 
@@ -247,6 +251,7 @@ function addSubRow(parent: EstimationLineEditable): void {
         description: '',
         estimated_minutes: '',
         sort_order: editableLines.value.length,
+        phase: parent.phase,
         tree_depth: parent.tree_depth + 1,
     };
 
@@ -297,8 +302,16 @@ function buildLinesPayload(linesToSave: EstimationLineEditable[]) {
                 ? null
                 : Number(line.estimated_minutes),
         sort_order: index,
+        phase: line.phase,
     }));
 }
+
+const phaseSelectOptions = computed(() =>
+    props.phase_options.map((option) => ({
+        value: String(option.value),
+        label: option.label,
+    })),
+);
 
 function syncLinesRequest(
     linesToSave: EstimationLineEditable[],
@@ -541,6 +554,8 @@ const statusBadgeClass = computed(() => {
                     :is-collapsed="isCollapsed"
                     :any-collapsed="anyCollapsed"
                     :can-remove-line="editableLines.length > 1"
+                    :show-phase-column="show_phase_column"
+                    :phase-select-options="phaseSelectOptions"
                     :saving-module-key="savingModuleKey"
                     @add-subtask="addSubRow"
                     @remove="removeRow"

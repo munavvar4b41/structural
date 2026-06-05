@@ -9,6 +9,9 @@ import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue'
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
+import RequirementPhaseSettingsCard, {
+    type RequirementPhaseSettings,
+} from '@/components/requirements/RequirementPhaseSettingsCard.vue';
 import RequirementRichTextEditor from '@/components/RequirementRichTextEditor.vue';
 import RequirementRichTextViewer from '@/components/RequirementRichTextViewer.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
@@ -24,6 +27,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { buildPhaseSelectOptions } from '@/lib/requirementPhaseOptions';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
 import { cn, isCurrentUser } from '@/lib/utils';
@@ -64,6 +68,8 @@ type RequirementTaskRow = {
     requirement_title: string | null | undefined;
     parent_project_task_id: number | null;
     estimated_minutes: number | null;
+    phase: number | null;
+    phase_label: string | null;
     children_count: number;
     tree_depth: number;
     can_update: boolean;
@@ -130,6 +136,8 @@ const props = defineProps<{
     can_open_estimation: boolean;
     can_create_estimation: boolean;
     estimation_summary: EstimationSummary | null;
+    phase_settings: RequirementPhaseSettings;
+    can_update_phase_settings: boolean;
 }>();
 
 const page = usePage();
@@ -166,12 +174,22 @@ function formatParentTaskLabel(task: RequirementTaskRow): string {
 const createTaskStatus = ref('to_do');
 const createTaskAssignee = ref('');
 const createTaskParent = ref('');
+const createTaskPhase = ref('1');
+
+const requirementPhaseSelectOptions = computed(() =>
+    buildPhaseSelectOptions(props.phase_settings.max_generated_phase),
+);
+
+const showRequirementPhaseField = computed(
+    () => props.phase_settings.requires_phase_selection,
+);
 
 watch(createTaskOpen, (open) => {
     if (open) {
         createTaskStatus.value = 'to_do';
         createTaskAssignee.value = '';
         createTaskParent.value = '';
+        createTaskPhase.value = '1';
     }
 });
 
@@ -494,6 +512,13 @@ defineOptions({
                     </div>
                 </GlassCard>
 
+                <RequirementPhaseSettingsCard
+                    :project-id="project.id"
+                    :requirement-id="requirement.id"
+                    :phase-settings="phase_settings"
+                    :can-update="can_update_phase_settings"
+                />
+
                 <GlassCard class="lg:col-span-12">
                     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div class="space-y-1">
@@ -544,6 +569,18 @@ defineOptions({
                                             placeholder="Unassigned" :options="taskAssigneeSelectOptions" />
                                         <InputError :message="errors.assignee_user_id" />
                                     </div>
+                                    <div v-if="showRequirementPhaseField" class="grid gap-2">
+                                        <Label for="req-task-phase">Phase</Label>
+                                        <TaskFormSelect
+                                            id="req-task-phase"
+                                            name="phase"
+                                            v-model="createTaskPhase"
+                                            required
+                                            placeholder="Phase"
+                                            :options="requirementPhaseSelectOptions"
+                                        />
+                                        <InputError :message="errors.phase" />
+                                    </div>
                                     <div class="grid gap-2">
                                         <Label for="req-task-parent">Parent task (subtask)</Label>
                                         <TaskFormSelect id="req-task-parent" name="parent_project_task_id"
@@ -575,6 +612,7 @@ defineOptions({
                                     <th class="w-[30%] px-4 py-3 font-medium">Title</th>
                                     <th class="px-4 py-3 font-medium">Status</th>
                                     <th class="px-4 py-3 font-medium">Assignee</th>
+                                    <th v-if="showRequirementPhaseField" class="px-4 py-3 font-medium">Phase</th>
                                     <th class="px-4 py-3 font-medium">Estimate</th>
                                     <th class="px-4 py-3 text-right font-medium">Actions</th>
                                 </tr>
@@ -624,6 +662,10 @@ defineOptions({
                                     </td>
                                     <td data-label="Status" class="px-4 py-3 text-muted-foreground">{{ task.status_label
                                         }}</td>
+                                    <td v-if="showRequirementPhaseField" data-label="Phase"
+                                        class="px-4 py-3 text-muted-foreground">
+                                        {{ task.phase_label ?? '—' }}
+                                    </td>
                                     <td data-label="Assignee" class="px-4 py-3 text-muted-foreground">
                                         {{ task.assignee?.name ?? '—' }}
                                     </td>
