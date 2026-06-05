@@ -85,6 +85,20 @@ class ProjectTaskController extends Controller
             ));
         }
 
+        $phaseFilterPayload = $this->requirementPhaseRegistry->taskFilterPayloadForProject($project);
+        $allowedPhaseValues = array_map(
+            static fn (array $option): int => (int) $option['value'],
+            $phaseFilterPayload['options'],
+        );
+        $phaseQuery = $request->query('phase');
+        $phase = null;
+        if ($phaseQuery !== null && $phaseQuery !== '') {
+            $parsedPhase = (int) $phaseQuery;
+            if (in_array($parsedPhase, $allowedPhaseValues, true)) {
+                $phase = $parsedPhase;
+            }
+        }
+
         $parentLinks = ProjectTask::query()
             ->where('project_id', $project->id)
             ->get(['id', 'parent_project_task_id']);
@@ -120,7 +134,8 @@ class ProjectTaskController extends Controller
                     ->whereHas('requirement.estimations', static function ($estimationQuery): void {
                         $estimationQuery->where('status', RequirementEstimationStatus::Transferred);
                     });
-            });
+            })
+            ->when($phase !== null, static fn ($query) => $query->where('phase', $phase));
 
         $matchingIds = $matchQuery->pluck('id')->all();
 
@@ -171,7 +186,16 @@ class ProjectTaskController extends Controller
                 'assignee_id' => $assigneeId !== null ? (string) $assigneeId : '',
                 'status' => $statuses,
                 'estimation_source' => $estimationSource,
+                'phase' => $phase !== null ? (string) $phase : '',
             ],
+            'show_phase_filter' => $phaseFilterPayload['show_filter'],
+            'phase_filter_options' => array_map(
+                static fn (array $option): array => [
+                    'value' => (string) $option['value'],
+                    'label' => $option['label'],
+                ],
+                $phaseFilterPayload['options'],
+            ),
             'can_filter_estimation_source' => $canFilterEstimationSource,
             'estimation_source_options' => $canFilterEstimationSource
                 ? [

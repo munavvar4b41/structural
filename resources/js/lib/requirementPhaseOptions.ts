@@ -18,3 +18,16 @@ export function buildPhaseSelectOptions(maxGeneratedPhase: number): PhaseSelectO
 export function requiresPhaseSelection(maxGeneratedPhase: number): boolean {
     return maxGeneratedPhase > 1;
 }
+
+export function buildPhaseFilterOptions(maxGeneratedPhase: number): PhaseSelectOption[] {
+    const max = Math.max(1, maxGeneratedPhase);
+
+    return Array.from({ length: max }, (_, index) => {
+        const phase = index + 1;
+
+        return {
+            value: String(phase),
+            label: `Phase ${phase}`,
+        };
+    });
+}

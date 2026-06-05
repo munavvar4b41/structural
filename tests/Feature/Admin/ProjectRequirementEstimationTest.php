@@ -107,7 +107,9 @@ class ProjectRequirementEstimationTest extends TestCase
                 ->component('admin/projects/requirements/Estimation')
                 ->where('total_minutes', 60)
                 ->where('analytics.total_minutes', 60)
-                ->has('estimation_lines', 2));
+                ->where('max_generated_phase', 1)
+                ->has('estimation_lines', 2)
+                ->where('estimation_lines.0.phase', 1));
 
         $root->refresh();
         $this->assertSame(60, $root->estimated_minutes);

@@ -89,7 +89,10 @@ const props = defineProps<{
         assignee_id: string;
         status: string[];
         estimation_source: string;
+        phase: string;
     };
+    show_phase_filter: boolean;
+    phase_filter_options: Option[];
     status_options: Option[];
     assignable_users: UserOption[];
     requirements: ReqOption[];
@@ -101,6 +104,7 @@ const props = defineProps<{
 
 const assigneeFilter = ref(props.filters.assignee_id);
 const estimationSourceFilter = ref(props.filters.estimation_source);
+const phaseFilter = ref(props.filters.phase);
 
 watch(
     () => props.filters.assignee_id,
@@ -116,6 +120,13 @@ watch(
     },
 );
 
+watch(
+    () => props.filters.phase,
+    (v) => {
+        phaseFilter.value = v;
+    },
+);
+
 function reloadTasks(overrides: Record<string, unknown> = {}): void {
     routerReloadOnly(
         projectTasksIndex.url(props.project.id, {
@@ -125,6 +136,7 @@ function reloadTasks(overrides: Record<string, unknown> = {}): void {
                 assignee_id: props.filters.assignee_id,
                 status: props.filters.status,
                 estimation_source: props.filters.estimation_source,
+                phase: props.filters.phase,
                 ...overrides,
             }),
         }),
@@ -132,6 +144,8 @@ function reloadTasks(overrides: Record<string, unknown> = {}): void {
             'tasks',
             'filters',
             'task_filter',
+            'show_phase_filter',
+            'phase_filter_options',
             'status_options',
             'assignable_users',
             'requirements',
@@ -142,6 +156,10 @@ function reloadTasks(overrides: Record<string, unknown> = {}): void {
             'project',
         ],
     );
+}
+
+function onPhase(v: string): void {
+    reloadTasks({ phase: v });
 }
 
 function onEstimationSource(v: string): void {
@@ -450,6 +468,7 @@ function tryOpenEditFromQuery(): void {
             search: props.filters.search,
             assignee_id: props.filters.assignee_id,
             status: props.filters.status,
+            phase: props.filters.phase,
         }),
     };
 
@@ -520,6 +539,20 @@ onMounted(() => {
                                     none-label="Any"
                                     exclude-from-submit
                                     @update:model-value="onEstimationSource"
+                                />
+                            </div>
+                            <div v-if="show_phase_filter" class="grid gap-1">
+                                <Label class="text-xs text-muted-foreground" for="filter-phase">Phase</Label>
+                                <TaskFormSelect
+                                    id="filter-phase"
+                                    name="phase"
+                                    class="min-w-[10rem]"
+                                    :model-value="phaseFilter"
+                                    :options="phase_filter_options"
+                                    placeholder="Any phase"
+                                    none-label="Any phase"
+                                    exclude-from-submit
+                                    @update:model-value="onPhase"
                                 />
                             </div>
                         </div>

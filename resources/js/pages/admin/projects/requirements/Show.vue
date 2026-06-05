@@ -184,6 +184,43 @@ const showRequirementPhaseField = computed(
     () => props.phase_settings.requires_phase_selection,
 );
 
+const taskPhaseFilter = ref('');
+
+const taskPhaseFilterOptions = computed(() =>
+    buildPhaseSelectOptions(props.phase_settings.max_generated_phase),
+);
+
+const filteredRequirementTasks = computed(() => {
+    if (taskPhaseFilter.value === '') {
+        return props.requirement_tasks;
+    }
+
+    const phase = Number(taskPhaseFilter.value);
+    const matchingIds = new Set(
+        props.requirement_tasks
+            .filter((task) => task.phase === phase)
+            .map((task) => task.id),
+    );
+
+    if (matchingIds.size === 0) {
+        return [];
+    }
+
+    const byId = new Map(props.requirement_tasks.map((task) => [task.id, task]));
+    const visibleIds = new Set(matchingIds);
+
+    for (const id of matchingIds) {
+        let cursor = byId.get(id);
+
+        while (cursor?.parent_project_task_id !== null && cursor?.parent_project_task_id !== undefined) {
+            visibleIds.add(cursor.parent_project_task_id);
+            cursor = byId.get(cursor.parent_project_task_id);
+        }
+    }
+
+    return props.requirement_tasks.filter((task) => visibleIds.has(task.id));
+});
+
 watch(createTaskOpen, (open) => {
     if (open) {
         createTaskStatus.value = 'to_do';
@@ -528,9 +565,24 @@ defineOptions({
                                 {{ project.estimation_required ? 'required on this project.' : 'optional.' }}
                             </p>
                         </div>
-                        <Button v-if="can_create_tasks" type="button" class="shrink-0" @click="openCreateTaskDialog">
-                            Add task
-                        </Button>
+                        <div class="flex flex-wrap items-end gap-3">
+                            <div v-if="requirement_tasks.length > 0" class="grid gap-1">
+                                <Label class="text-xs text-muted-foreground" for="req-task-phase-filter">Phase</Label>
+                                <TaskFormSelect
+                                    id="req-task-phase-filter"
+                                    name="task_phase_filter"
+                                    class="min-w-[10rem]"
+                                    v-model="taskPhaseFilter"
+                                    :options="taskPhaseFilterOptions"
+                                    placeholder="Any phase"
+                                    none-label="Any phase"
+                                    exclude-from-submit
+                                />
+                            </div>
+                            <Button v-if="can_create_tasks" type="button" class="shrink-0" @click="openCreateTaskDialog">
+                                Add task
+                            </Button>
+                        </div>
                     </div>
                     <div class="md:overflow-x-auto">
                         <Dialog v-model:open="createTaskOpen">
@@ -618,7 +670,7 @@ defineOptions({
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="task in requirement_tasks" :key="task.id"
+                                <tr v-for="task in filteredRequirementTasks" :key="task.id"
                                     class="border-b border-border/60 last:border-0">
                                     <td data-label="Title" class="max-w-0 px-4 py-3 align-top" :style="{
                                         paddingLeft: `calc(0.75rem + ${task.tree_depth} * 1.25rem)`,

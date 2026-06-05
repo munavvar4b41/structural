@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectRequirementEstimationItem;
 use Illuminate\Validation\ValidationException;
@@ -109,6 +110,26 @@ final class RequirementPhaseRegistry
     public function phaseLabel(int $phase): string
     {
         return __('Phase :number', ['number' => $phase]);
+    }
+
+    /**
+     * @return array{
+     *     show_filter: bool,
+     *     options: list<array{value: int, label: string}>
+     * }
+     */
+    public function taskFilterPayloadForProject(Project $project): array
+    {
+        $requirementMax = (int) ($project->requirements()->max('max_generated_phase') ?? self::INITIAL_MAX_PHASE);
+        $taskMax = (int) ($project->tasks()->max('phase') ?? 0);
+        $max = max(1, $requirementMax, $taskMax);
+
+        $hasLinkedTasks = $project->tasks()->whereNotNull('project_requirement_id')->exists();
+
+        return [
+            'show_filter' => $max > 1 || $hasLinkedTasks,
+            'options' => $this->buildOptions($max),
+        ];
     }
 
     public function assertPhaseInRange(ProjectRequirement $requirement, int $phase): void

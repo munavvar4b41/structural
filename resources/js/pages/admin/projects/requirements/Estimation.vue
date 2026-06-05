@@ -34,6 +34,11 @@ import {
     insertIndexAfterSubtree,
 } from '@/lib/estimationLinesOrder';
 import { moduleLinesForRoot } from '@/lib/estimationModuleLines';
+import {
+    filterEditableEstimationLinesByPhase,
+    filterReadonlyEstimationLinesByPhase,
+} from '@/lib/filterEstimationLinesByPhase';
+import { buildPhaseFilterOptions } from '@/lib/requirementPhaseOptions';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { generateUuid } from '@/lib/generateUuid';
 import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
@@ -95,6 +100,7 @@ const props = defineProps<{
     can_transfer: boolean;
     phase_options: { value: number; label: string }[];
     show_phase_column: boolean;
+    max_generated_phase: number;
 }>();
 
 defineOptions({
@@ -200,12 +206,52 @@ const {
     isEditable,
 );
 
-const displayedTotalMinutes = computed(() =>
-    isEditable.value ? totalEffectiveMinutes.value : props.total_minutes,
+const phaseFilter = ref('');
+
+const phaseFilterOptions = computed(() =>
+    buildPhaseFilterOptions(props.max_generated_phase),
 );
 
+const phaseFilteredDisplayLines = computed(() => {
+    if (phaseFilter.value === '') {
+        return displayLines.value;
+    }
+
+    const phase = Number(phaseFilter.value);
+
+    if (isEditable.value) {
+        return filterEditableEstimationLinesByPhase(
+            displayLines.value as EstimationLineEditable[],
+            phase,
+        );
+    }
+
+    return filterReadonlyEstimationLinesByPhase(
+        displayLines.value as EstimationLineReadonly[],
+        phase,
+    );
+});
+
+const displayedTotalMinutes = computed(() => {
+    if (phaseFilter.value === '') {
+        return isEditable.value ? totalEffectiveMinutes.value : props.total_minutes;
+    }
+
+    const lines = phaseFilteredDisplayLines.value;
+
+    if (isEditable.value) {
+        return (lines as EstimationLineEditable[])
+            .filter((line) => !hasChildrenByKey.value.has(line.client_key))
+            .reduce((sum, line) => sum + (Number(line.estimated_minutes) || 0), 0);
+    }
+
+    return (lines as EstimationLineReadonly[])
+        .filter((line) => !hasChildrenById.value.has(line.id))
+        .reduce((sum, line) => sum + (line.estimated_minutes ?? 0), 0);
+});
+
 const { treeLines, parentKeysWithChildren } = useEstimationDisplayLines(
-    displayLines,
+    phaseFilteredDisplayLines,
     isEditable,
 );
 
@@ -510,11 +556,25 @@ const statusBadgeClass = computed(() => {
                         <p class="text-sm text-muted-foreground">
                             Total: {{ formatTaskMinutes(displayedTotalMinutes) }}
                             <span v-if="displayLines.length > 0" class="text-muted-foreground">
-                                · {{ displayLines.length }} lines total
+                                · {{ phaseFilteredDisplayLines.length }} of {{ displayLines.length }} lines
+                                <span v-if="phaseFilter !== ''"> (Phase {{ phaseFilter }})</span>
                             </span>
                         </p>
                     </div>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-wrap items-end gap-2">
+                        <div v-if="displayLines.length > 0" class="grid gap-1">
+                            <Label class="text-xs text-muted-foreground" for="estimation-phase-filter">Phase</Label>
+                            <TaskFormSelect
+                                id="estimation-phase-filter"
+                                name="estimation_phase_filter"
+                                class="min-w-[10rem]"
+                                v-model="phaseFilter"
+                                :options="phaseFilterOptions"
+                                placeholder="Any phase"
+                                none-label="Any phase"
+                                exclude-from-submit
+                            />
+                        </div>
                         <Button v-if="can_submit" type="button" @click="openSubmitDialog">
                             <Send class="size-4" aria-hidden="true" />
                             Submit for approval
@@ -545,7 +605,7 @@ const statusBadgeClass = computed(() => {
                     ref="linesTableRef"
                     :is-editable="isEditable"
                     :visible-lines="visibleLines"
-                    :total-line-count="displayLines.length"
+                    :total-line-count="phaseFilteredDisplayLines.length"
                     :has-children-by-key="hasChildrenByKey"
                     :effective-minutes-by-key="effectiveMinutesByKey"
                     :has-children-by-id="hasChildrenById"

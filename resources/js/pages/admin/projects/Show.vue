@@ -236,7 +236,7 @@ const requirementSelectOptions = computed(() =>
     props.requirement_options.map((r) => ({ value: String(r.value), label: r.label })),
 );
 
-function requirementMaxPhase(requirementId: string): number {
+function maxPhaseForRequirement(requirementId: string): number {
     if (requirementId === '') {
         return 1;
     }
@@ -247,11 +247,11 @@ function requirementMaxPhase(requirementId: string): number {
 }
 
 const createPhaseSelectOptions = computed(() =>
-    buildPhaseSelectOptions(requirementMaxPhase(createRequirement.value)),
+    buildPhaseSelectOptions(maxPhaseForRequirement(createRequirement.value)),
 );
 
 const showCreatePhaseField = computed(
-    () => createRequirement.value !== '' && requiresPhaseSelection(requirementMaxPhase(createRequirement.value)),
+    () => createRequirement.value !== '' && requiresPhaseSelection(maxPhaseForRequirement(createRequirement.value)),
 );
 
 const showPhaseColumn = computed(() =>

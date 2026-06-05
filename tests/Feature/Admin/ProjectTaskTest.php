@@ -712,4 +712,48 @@ class ProjectTaskTest extends TestCase
                 ->where('requirements.0.max_generated_phase', 4)
                 ->where('requirements.0.value', $requirement->id));
     }
+
+    public function test_tasks_index_can_filter_by_phase(): void
+    {
+        extract($this->projectWithTeamHead());
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'max_generated_phase' => 3,
+        ]);
+
+        $phaseOneTask = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'project_requirement_id' => $requirement->id,
+                'phase' => 1,
+                'title' => 'Phase one task',
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'project_requirement_id' => $requirement->id,
+                'phase' => 2,
+                'title' => 'Phase two task',
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.index', [
+                'project' => $project,
+                'phase' => 1,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.phase', '1')
+                ->where('show_phase_filter', true)
+                ->has('phase_filter_options', 3)
+                ->has('tasks', 1)
+                ->where('tasks.0.id', $phaseOneTask->id)
+                ->where('tasks.0.phase', 1));
+    }
 }
