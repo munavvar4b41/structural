@@ -68,4 +68,42 @@ class NotificationMarkAsReadTest extends TestCase
 
         $this->assertNull($notification->fresh()->read_at);
     }
+
+    public function test_user_can_mark_all_notifications_as_read(): void
+    {
+        $team = Team::factory()->create();
+        $lead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create([
+            'client_user_id' => $client->id,
+            'lead_user_id' => $lead->id,
+        ]);
+        $project->teams()->sync([$team->id]);
+
+        $taskOne = ProjectTask::factory()->forProject($project)->create([
+            'created_by_user_id' => $lead->id,
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+        ]);
+
+        $taskTwo = ProjectTask::factory()->forProject($project)->create([
+            'created_by_user_id' => $lead->id,
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+        ]);
+
+        $staff->notify(new TaskReminderNotification($taskOne));
+        $staff->notify(new TaskReminderNotification($taskTwo));
+
+        $this->assertSame(2, $staff->unreadNotifications()->count());
+
+        $this->actingAs($staff)
+            ->from(route('admin.my-work.index'))
+            ->patch(route('admin.notifications.mark-all-read'))
+            ->assertRedirect(route('admin.my-work.index'));
+
+        $this->assertSame(0, $staff->unreadNotifications()->count());
+        $this->assertSame(2, $staff->readNotifications()->count());
+    }
 }

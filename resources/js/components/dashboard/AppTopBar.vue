@@ -99,6 +99,21 @@ const currentPageTitle = computed(() => {
 const breadcrumbListClass =
     'flex-nowrap overflow-x-auto whitespace-nowrap [scrollbar-width:thin]';
 
+function markAllNotificationsAsRead(): void {
+    router.patch(
+        NotificationController.markAllAsRead.url(),
+        {},
+        {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['notifications'],
+            onSuccess: () => {
+                notificationFilter.value = 'read';
+            },
+        },
+    );
+}
+
 function openNotification(item: NotificationItem): void {
     const navigate = (): void => {
         if (item.task_show_url !== null) {
@@ -206,6 +221,13 @@ function openNotification(item: NotificationItem): void {
                                 " class="border-0 bg-transparent" />
                         <EmptyState v-else title="No notifications" description="You're all caught up."
                             class="border-0 bg-transparent" />
+                        <div v-if="unreadNotificationCount > 0"
+                            class="border-t border-border/60 p-2">
+                            <Button type="button" variant="ghost" size="sm" class="h-8 w-full text-xs"
+                                @click="markAllNotificationsAsRead">
+                                Mark all as read
+                            </Button>
+                        </div>
                     </DropdownMenuContent>
                 </DropdownMenu>
                 <DropdownMenu>

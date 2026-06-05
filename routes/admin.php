@@ -51,6 +51,8 @@ Route::patch('leave-requests/{leaveRequest}/reject', [LeaveRequestController::cl
 Route::resource('leave-requests', LeaveRequestController::class)->only(['index', 'store', 'destroy']);
 
 Route::get('my-work', [MyWorkController::class, 'index'])->name('my-work.index');
+Route::patch('notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])
+    ->name('notifications.mark-all-read');
 Route::patch('notifications/{notification}', [NotificationController::class, 'markAsRead'])
     ->name('notifications.read');
 Route::get('tasks', [TaskController::class, 'index'])->name('tasks.index');
