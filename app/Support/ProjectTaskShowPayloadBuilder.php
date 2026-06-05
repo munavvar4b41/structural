@@ -167,6 +167,10 @@ class ProjectTaskShowPayloadBuilder
                 'title' => $task->parent->title,
             ],
             'estimated_minutes' => $task->estimated_minutes,
+            'phase' => $task->phase,
+            'phase_label' => $task->phase !== null
+                ? app(RequirementPhaseRegistry::class)->phaseLabel((int) $task->phase)
+                : null,
             'children_count' => $task->children_count,
             'subtasks' => $directChildren
                 ->map(fn (ProjectTask $child): array => [

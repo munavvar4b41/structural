@@ -15,6 +15,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import { Input } from '@/components/ui/input';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 
@@ -30,6 +31,8 @@ const props = defineProps<{
     savingModule?: boolean;
     editableLine?: EstimationLineEditable;
     readonlyLine?: EstimationLineReadonly;
+    showPhaseColumn?: boolean;
+    phaseSelectOptions?: { value: string; label: string }[];
 }>();
 
 const emit = defineEmits<{
@@ -61,8 +64,14 @@ const notesDialogOpen = ref(false);
         readonlyLine?.title,
         readonlyLine?.description,
         readonlyLine?.estimated_minutes,
+        editableLine?.phase,
+        readonlyLine?.phase,
+        showPhaseColumn,
     ]"
-        class="grid h-[72px] w-full grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_minmax(0,0.6fr)_minmax(0,0.85fr)] items-center border-b border-border/60 text-sm"
+        class="grid h-[72px] w-full items-center border-b border-border/60 text-sm"
+        :class="showPhaseColumn
+            ? 'grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,0.5fr)_minmax(0,0.6fr)_minmax(0,0.85fr)]'
+            : 'grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_minmax(0,0.6fr)_minmax(0,0.85fr)]'"
         role="row">
         <div role="cell" class="flex min-w-0 items-center gap-1 px-3"
             :style="{ paddingLeft: `calc(0.75rem + ${treeDepth} * 1rem)` }">
@@ -100,6 +109,23 @@ const notesDialogOpen = ref(false);
             <span v-else-if="readonlyLine !== undefined" class="block truncate text-muted-foreground"
                 :title="readonlyLine.description ?? undefined">
                 {{ readonlyLine.description || '—' }}
+            </span>
+        </div>
+
+        <div v-if="showPhaseColumn" role="cell" class="px-3">
+            <TaskFormSelect
+                v-if="isEditable && editableLine !== undefined"
+                :id="`estimation-phase-${editableLine.client_key}`"
+                :name="`lines.${editableLine.client_key}.phase`"
+                :model-value="String(editableLine.phase)"
+                :options="phaseSelectOptions ?? []"
+                placeholder="Phase"
+                exclude-from-submit
+                required
+                @update:model-value="editableLine.phase = Number($event)"
+            />
+            <span v-else-if="readonlyLine !== undefined" class="text-muted-foreground">
+                Phase {{ readonlyLine.phase }}
             </span>
         </div>
 

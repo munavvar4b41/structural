@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'description',
     'estimated_minutes',
     'sort_order',
+    'phase',
     'transferred_project_task_id',
 ])]
 class ProjectRequirementEstimationItem extends Model

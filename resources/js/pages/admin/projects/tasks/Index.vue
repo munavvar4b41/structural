@@ -23,6 +23,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
+import { buildPhaseSelectOptions, requiresPhaseSelection } from '@/lib/requirementPhaseOptions';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import {
@@ -52,6 +53,8 @@ type TaskRow = {
     requirement_title: string | null | undefined;
     parent_project_task_id: number | null;
     estimated_minutes: number | null;
+    phase: number | null;
+    phase_label: string | null;
     display_after_at: string | null;
     notify_at: string | null;
     children_count: number;
@@ -65,7 +68,7 @@ type TaskRow = {
 };
 
 type Option = { value: string; label: string };
-type ReqOption = { value: number; label: string };
+type ReqOption = { value: number; label: string; max_generated_phase: number };
 type UserOption = { value: number; label: string };
 
 type ProjectSummary = {
@@ -86,7 +89,10 @@ const props = defineProps<{
         assignee_id: string;
         status: string[];
         estimation_source: string;
+        phase: string;
     };
+    show_phase_filter: boolean;
+    phase_filter_options: Option[];
     status_options: Option[];
     assignable_users: UserOption[];
     requirements: ReqOption[];
@@ -98,6 +104,7 @@ const props = defineProps<{
 
 const assigneeFilter = ref(props.filters.assignee_id);
 const estimationSourceFilter = ref(props.filters.estimation_source);
+const phaseFilter = ref(props.filters.phase);
 
 watch(
     () => props.filters.assignee_id,
@@ -113,6 +120,13 @@ watch(
     },
 );
 
+watch(
+    () => props.filters.phase,
+    (v) => {
+        phaseFilter.value = v;
+    },
+);
+
 function reloadTasks(overrides: Record<string, unknown> = {}): void {
     routerReloadOnly(
         projectTasksIndex.url(props.project.id, {
@@ -122,6 +136,7 @@ function reloadTasks(overrides: Record<string, unknown> = {}): void {
                 assignee_id: props.filters.assignee_id,
                 status: props.filters.status,
                 estimation_source: props.filters.estimation_source,
+                phase: props.filters.phase,
                 ...overrides,
             }),
         }),
@@ -129,6 +144,8 @@ function reloadTasks(overrides: Record<string, unknown> = {}): void {
             'tasks',
             'filters',
             'task_filter',
+            'show_phase_filter',
+            'phase_filter_options',
             'status_options',
             'assignable_users',
             'requirements',
@@ -139,6 +156,10 @@ function reloadTasks(overrides: Record<string, unknown> = {}): void {
             'project',
         ],
     );
+}
+
+function onPhase(v: string): void {
+    reloadTasks({ phase: v });
 }
 
 function onEstimationSource(v: string): void {
@@ -180,6 +201,7 @@ const editingTask = ref<TaskRow | null>(null);
 const createStatus = ref('to_do');
 const createAssignee = ref('');
 const createRequirement = ref('');
+const createPhase = ref('1');
 const createParent = ref('');
 const createDisplayAfterAt = ref('');
 const createNotifyAt = ref('');
@@ -187,6 +209,7 @@ const createNotifyAt = ref('');
 const editStatus = ref('to_do');
 const editAssignee = ref('');
 const editRequirement = ref('');
+const editPhase = ref('1');
 const editParent = ref('');
 const editDisplayAfterAt = ref('');
 const editNotifyAt = ref('');
@@ -212,6 +235,7 @@ watch(createOpen, (open) => {
         createStatus.value = 'to_do';
         createAssignee.value = '';
         createRequirement.value = '';
+        createPhase.value = '1';
         createParent.value = '';
         createDisplayAfterAt.value = '';
         createNotifyAt.value = '';
@@ -225,6 +249,7 @@ watch([editOpen, editingTask], () => {
         editAssignee.value = t.assignee_user_id !== null ? String(t.assignee_user_id) : '';
         editRequirement.value =
             t.project_requirement_id !== null ? String(t.project_requirement_id) : '';
+        editPhase.value = t.phase !== null ? String(t.phase) : '1';
         editParent.value =
             t.parent_project_task_id !== null ? String(t.parent_project_task_id) : '';
         editDisplayAfterAt.value = toDatetimeLocalValue(t.display_after_at);
@@ -265,6 +290,44 @@ const assigneeSelectOptions = computed(() =>
 const requirementSelectOptions = computed(() =>
     props.requirements.map((r) => ({ value: String(r.value), label: r.label })),
 );
+
+function requirementMaxPhase(requirementId: string): number {
+    if (requirementId === '') {
+        return 1;
+    }
+
+    const requirement = props.requirements.find((r) => String(r.value) === requirementId);
+
+    return requirement?.max_generated_phase ?? 1;
+}
+
+const createPhaseSelectOptions = computed(() =>
+    buildPhaseSelectOptions(requirementMaxPhase(createRequirement.value)),
+);
+
+const editPhaseSelectOptions = computed(() =>
+    buildPhaseSelectOptions(requirementMaxPhase(editRequirement.value)),
+);
+
+const showCreatePhaseField = computed(
+    () => createRequirement.value !== '' && requiresPhaseSelection(requirementMaxPhase(createRequirement.value)),
+);
+
+const showEditPhaseField = computed(
+    () => editRequirement.value !== '' && requiresPhaseSelection(requirementMaxPhase(editRequirement.value)),
+);
+
+const showPhaseColumn = computed(() =>
+    props.requirements.some((requirement) => requiresPhaseSelection(requirement.max_generated_phase)),
+);
+
+watch(createRequirement, () => {
+    createPhase.value = '1';
+});
+
+watch(editRequirement, () => {
+    editPhase.value = '1';
+});
 
 function formatParentTaskLabel(task: TaskRow): string {
     if (task.tree_depth <= 0) {
@@ -405,6 +468,7 @@ function tryOpenEditFromQuery(): void {
             search: props.filters.search,
             assignee_id: props.filters.assignee_id,
             status: props.filters.status,
+            phase: props.filters.phase,
         }),
     };
 
@@ -477,6 +541,20 @@ onMounted(() => {
                                     @update:model-value="onEstimationSource"
                                 />
                             </div>
+                            <div v-if="show_phase_filter" class="grid gap-1">
+                                <Label class="text-xs text-muted-foreground" for="filter-phase">Phase</Label>
+                                <TaskFormSelect
+                                    id="filter-phase"
+                                    name="phase"
+                                    class="min-w-[10rem]"
+                                    :model-value="phaseFilter"
+                                    :options="phase_filter_options"
+                                    placeholder="Any phase"
+                                    none-label="Any phase"
+                                    exclude-from-submit
+                                    @update:model-value="onPhase"
+                                />
+                            </div>
                         </div>
                     </div>
                 </template>
@@ -522,6 +600,18 @@ onMounted(() => {
                         <TaskFormSelect id="create-requirement" name="project_requirement_id"
                             v-model="createRequirement" placeholder="None" :options="requirementSelectOptions" />
                         <InputError :message="errors.project_requirement_id" />
+                    </div>
+                    <div v-if="showCreatePhaseField" class="grid gap-2">
+                        <Label for="create-phase">Phase</Label>
+                        <TaskFormSelect
+                            id="create-phase"
+                            name="phase"
+                            v-model="createPhase"
+                            required
+                            placeholder="Phase"
+                            :options="createPhaseSelectOptions"
+                        />
+                        <InputError :message="errors.phase" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-parent">Parent task (subtask)</Label>
@@ -596,6 +686,18 @@ onMounted(() => {
                             placeholder="None" :options="requirementSelectOptions" />
                         <InputError :message="errors.project_requirement_id" />
                     </div>
+                    <div v-if="showEditPhaseField" class="grid gap-2">
+                        <Label for="edit-phase">Phase</Label>
+                        <TaskFormSelect
+                            id="edit-phase"
+                            name="phase"
+                            v-model="editPhase"
+                            required
+                            placeholder="Phase"
+                            :options="editPhaseSelectOptions"
+                        />
+                        <InputError :message="errors.phase" />
+                    </div>
                     <div class="grid gap-2">
                         <Label for="edit-parent">Parent task</Label>
                         <TaskFormSelect id="edit-parent" name="parent_project_task_id" v-model="editParent"
@@ -649,6 +751,7 @@ onMounted(() => {
                             <th class="px-4 py-3 font-medium">Status</th>
                             <th class="px-4 py-3 font-medium">Assignee</th>
                             <th class="min-w-[25%] px-4 py-3 font-medium">Requirement</th>
+                            <th v-if="showPhaseColumn" class="px-4 py-3 font-medium">Phase</th>
                             <th class="px-4 py-3 font-medium">Estimate</th>
                             <th class="px-4 py-3 font-medium text-right">Actions</th>
                         </tr>
@@ -712,6 +815,9 @@ onMounted(() => {
                                     </Button>
                                 </template>
                                 <template v-else>—</template>
+                            </td>
+                            <td v-if="showPhaseColumn" data-label="Phase" class="px-4 py-3 text-muted-foreground">
+                                {{ task.phase_label ?? '—' }}
                             </td>
                             <td data-label="Estimate" class="px-4 py-3 text-muted-foreground">
                                 {{ formatTaskMinutes(task.estimated_minutes) }}

@@ -310,9 +310,8 @@ const editEnd = ref('');
 const editNotes = ref('');
 const editDurationMinutes = ref('');
 
-const workingHoursHint = computed(
-    () =>
-        `Placed within today's working hours (${props.time_tracking.working_hours.start}–${props.time_tracking.working_hours.end}).`,
+const durationOnlyHint = computed(
+    () => 'Duration is counted back from the current time. Start and end times are not required.',
 );
 
 function resetManualTimeForm(): void {
@@ -605,14 +604,14 @@ const checklistDeleteDescription = computed(() => {
                 v-slot="{ errors, processing }">
                 <div class="flex items-center justify-between gap-4">
                     <Label for="manual-time-only" class="cursor-pointer">Time only</Label>
-                    <Switch id="manual-time-only" v-model:checked="manualTimeOnly" />
+                    <Switch id="manual-time-only" v-model="manualTimeOnly" />
                 </div>
                 <template v-if="manualTimeOnly">
                     <div class="grid gap-2">
                         <Label for="manual-duration">Duration (minutes)</Label>
                         <Input id="manual-duration" name="duration_minutes" type="number" min="1" step="1"
                             required v-model="manualDurationMinutes" />
-                        <p class="text-xs text-muted-foreground">{{ workingHoursHint }}</p>
+                        <p class="text-xs text-muted-foreground">{{ durationOnlyHint }}</p>
                         <InputError :message="errors.duration_minutes" />
                     </div>
                 </template>
@@ -659,14 +658,14 @@ const checklistDeleteDescription = computed(() => {
                 v-slot="{ errors, processing }">
                 <div class="flex items-center justify-between gap-4">
                     <Label for="edit-time-only" class="cursor-pointer">Time only</Label>
-                    <Switch id="edit-time-only" v-model:checked="editTimeOnly" />
+                    <Switch id="edit-time-only" v-model="editTimeOnly" />
                 </div>
                 <template v-if="editTimeOnly">
                     <div class="grid gap-2">
                         <Label for="edit-duration">Duration (minutes)</Label>
                         <Input id="edit-duration" name="duration_minutes" type="number" min="1" step="1" required
                             v-model="editDurationMinutes" />
-                        <p class="text-xs text-muted-foreground">{{ workingHoursHint }}</p>
+                        <p class="text-xs text-muted-foreground">{{ durationOnlyHint }}</p>
                         <InputError :message="errors.duration_minutes" />
                     </div>
                 </template>

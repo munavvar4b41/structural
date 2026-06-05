@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'assignee_user_id',
     'created_by_user_id',
     'estimated_minutes',
+    'phase',
     'display_after_at',
     'notify_at',
     'notified_at',

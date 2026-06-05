@@ -25,6 +25,8 @@ const props = defineProps<{
     canRemoveLine: boolean;
     anyCollapsed: boolean;
     savingModuleKey: string | null;
+    showPhaseColumn: boolean;
+    phaseSelectOptions: { value: string; label: string }[];
 }>();
 
 const emit = defineEmits<{
@@ -208,10 +210,15 @@ defineExpose({
 
         <div ref="listRef" class="md:overflow-x-auto">
             <div class="w-full text-left text-sm md:min-w-[720px]" role="table" aria-label="Estimation lines">
-                <div class="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_minmax(0,0.6fr)_minmax(0,0.85fr)] border-b bg-muted/40 text-sm"
+                <div
+                    class="grid border-b bg-muted/40 text-sm"
+                    :class="showPhaseColumn
+                        ? 'grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,0.5fr)_minmax(0,0.6fr)_minmax(0,0.85fr)]'
+                        : 'grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_minmax(0,0.6fr)_minmax(0,0.85fr)]'"
                     role="row">
                     <div role="columnheader" class="px-3 py-3 font-medium">Title</div>
                     <div role="columnheader" class="px-3 py-3 font-medium">Description</div>
+                    <div v-if="showPhaseColumn" role="columnheader" class="px-3 py-3 font-medium">Phase</div>
                     <div role="columnheader" class="px-3 py-3 font-medium">Minutes</div>
                     <div role="columnheader" class="px-3 py-3 text-right font-medium">
                         Actions
@@ -243,6 +250,8 @@ defineExpose({
                                 :readonly-line="readonlyLineAt(virtualRow.index)"
                                 :show-module-save="isEditable && (lineAt(virtualRow.index)?.tree_depth ?? 0) === 0"
                                 :saving-module="savingModuleKey === lineAt(virtualRow.index)?.lineKey"
+                                :show-phase-column="showPhaseColumn"
+                                :phase-select-options="phaseSelectOptions"
                                 @toggle-collapse="
                                     emit('toggleCollapse', lineAt(virtualRow.index)!.lineKey)
                                     " @add-subtask="onAddSubtask(virtualRow.index)" @remove="onRemove(virtualRow.index)"

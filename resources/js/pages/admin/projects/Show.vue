@@ -39,6 +39,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
+import { buildPhaseSelectOptions, requiresPhaseSelection } from '@/lib/requirementPhaseOptions';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { edit as projectsEdit, index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import {
@@ -106,6 +107,8 @@ type TaskRow = {
     requirement_title: string | null | undefined;
     parent_project_task_id: number | null;
     estimated_minutes: number | null;
+    phase: number | null;
+    phase_label: string | null;
     display_after_at: string | null;
     notify_at: string | null;
     children_count: number;
@@ -132,6 +135,7 @@ type TimeEntryRow = {
 
 type Option = { value: string; label: string };
 type UserOption = { value: number; label: string };
+type RequirementOption = { value: number; label: string; max_generated_phase: number };
 type AssignableUser = { id: number; name: string; email: string };
 
 const props = defineProps<{
@@ -151,9 +155,13 @@ const props = defineProps<{
     can_create_time_entries: boolean;
     assignable_responsibles: AssignableUser[];
     assignable_users: UserOption[];
-    requirement_options: UserOption[];
+    requirement_options: RequirementOption[];
     task_options: UserOption[];
     status_options: Option[];
+    working_hours: {
+        start: string;
+        end: string;
+    };
 }>();
 
 defineOptions({
@@ -181,11 +189,13 @@ const requirementOpen = ref(false);
 const requirementDescription = ref(emptyTipTapDocumentJson());
 const responsibleUserId = ref('');
 const requirementTitle = ref('');
+const requirementMaxPhase = ref('1');
 
 const taskOpen = ref(false);
 const createStatus = ref('to_do');
 const createAssignee = ref('');
 const createRequirement = ref('');
+const createPhase = ref('1');
 const createParent = ref('');
 const createTitle = ref('');
 const createDisplayAfterAt = ref('');
@@ -207,6 +217,10 @@ const editEnd = ref('');
 const editNotes = ref('');
 const editDurationMinutes = ref('');
 
+const durationOnlyHint = computed(
+    () => 'Duration is counted back from the current time. Start and end times are not required.',
+);
+
 const entryDeleteOpen = ref(false);
 const entryPendingDelete = ref<TimeEntryRow | null>(null);
 
@@ -220,6 +234,28 @@ const assigneeSelectOptions = computed(() =>
 
 const requirementSelectOptions = computed(() =>
     props.requirement_options.map((r) => ({ value: String(r.value), label: r.label })),
+);
+
+function maxPhaseForRequirement(requirementId: string): number {
+    if (requirementId === '') {
+        return 1;
+    }
+
+    const requirement = props.requirement_options.find((r) => String(r.value) === requirementId);
+
+    return requirement?.max_generated_phase ?? 1;
+}
+
+const createPhaseSelectOptions = computed(() =>
+    buildPhaseSelectOptions(maxPhaseForRequirement(createRequirement.value)),
+);
+
+const showCreatePhaseField = computed(
+    () => createRequirement.value !== '' && requiresPhaseSelection(maxPhaseForRequirement(createRequirement.value)),
+);
+
+const showPhaseColumn = computed(() =>
+    props.requirement_options.some((requirement) => requiresPhaseSelection(requirement.max_generated_phase)),
 );
 
 const taskSelectOptions = computed(() =>
@@ -368,12 +404,14 @@ function resetRequirementDialog(): void {
     requirementTitle.value = '';
     requirementDescription.value = emptyTipTapDocumentJson();
     responsibleUserId.value = '';
+    requirementMaxPhase.value = '1';
 }
 
 function resetTaskDialog(): void {
     createStatus.value = 'to_do';
     createAssignee.value = '';
     createRequirement.value = '';
+    createPhase.value = '1';
     createParent.value = '';
     createTitle.value = '';
     createDisplayAfterAt.value = '';
@@ -470,6 +508,10 @@ watch(taskOpen, (open) => {
     if (open) {
         resetTaskDialog();
     }
+});
+
+watch(createRequirement, () => {
+    createPhase.value = '1';
 });
 
 watch(timeEntryOpen, (open) => {
@@ -676,6 +718,7 @@ watch(timeEntryOpen, (open) => {
                         <DataTableTh>Title</DataTableTh>
                         <DataTableTh>Status</DataTableTh>
                         <DataTableTh>Assignee</DataTableTh>
+                        <DataTableTh v-if="showPhaseColumn">Phase</DataTableTh>
                         <DataTableTh>Estimate</DataTableTh>
                         <DataTableTh class="text-right">Actions</DataTableTh>
                     </tr>
@@ -696,6 +739,9 @@ watch(timeEntryOpen, (open) => {
                         <DataTableTd label="Status">{{ row.status_label }}</DataTableTd>
                         <DataTableTd label="Assignee" class="text-muted-foreground">
                             {{ row.assignee?.name ?? '—' }}
+                        </DataTableTd>
+                        <DataTableTd v-if="showPhaseColumn" label="Phase" class="text-muted-foreground">
+                            {{ row.phase_label ?? '—' }}
                         </DataTableTd>
                         <DataTableTd label="Estimate">{{ formatTaskMinutes(row.estimated_minutes) }}</DataTableTd>
                         <DataTableTd label="Actions" class="text-right">
@@ -906,6 +952,19 @@ watch(timeEntryOpen, (open) => {
                     <InputError :message="errors.description" />
                 </div>
                 <div class="grid gap-2">
+                    <Label for="requirement-max-phase">Number of phases</Label>
+                    <Input
+                        id="requirement-max-phase"
+                        name="max_generated_phase"
+                        type="number"
+                        min="1"
+                        max="100"
+                        v-model="requirementMaxPhase"
+                        required
+                    />
+                    <InputError :message="errors.max_generated_phase" />
+                </div>
+                <div class="grid gap-2">
                     <Label>Responsible</Label>
                     <DropdownMenu>
                         <DropdownMenuTrigger as-child>
@@ -976,6 +1035,18 @@ watch(timeEntryOpen, (open) => {
                         placeholder="None" :options="requirementSelectOptions" />
                     <InputError :message="errors.project_requirement_id" />
                 </div>
+                <div v-if="showCreatePhaseField" class="grid gap-2">
+                    <Label for="create-phase">Phase</Label>
+                    <TaskFormSelect
+                        id="create-phase"
+                        name="phase"
+                        v-model="createPhase"
+                        required
+                        placeholder="Phase"
+                        :options="createPhaseSelectOptions"
+                    />
+                    <InputError :message="errors.phase" />
+                </div>
                 <div class="grid gap-2">
                     <Label for="create-parent">Parent task (subtask)</Label>
                     <TaskFormSelect id="create-parent" name="parent_project_task_id" v-model="createParent"
@@ -1025,13 +1096,14 @@ watch(timeEntryOpen, (open) => {
                     preserve-scroll @success="timeEntryOpen = false" v-slot="{ errors, processing }">
                     <div class="flex items-center justify-between gap-4">
                         <Label for="manual-time-only" class="cursor-pointer">Time only</Label>
-                        <Switch id="manual-time-only" v-model:checked="manualTimeOnly" />
+                        <Switch id="manual-time-only" v-model="manualTimeOnly" />
                     </div>
                     <template v-if="manualTimeOnly">
                         <div class="grid gap-2">
                             <Label for="manual-duration">Duration (minutes)</Label>
                             <Input id="manual-duration" name="duration_minutes" type="number" min="1" step="1" required
                                 v-model="manualDurationMinutes" />
+                            <p class="text-xs text-muted-foreground">{{ durationOnlyHint }}</p>
                             <InputError :message="errors.duration_minutes" />
                         </div>
                     </template>
@@ -1073,13 +1145,14 @@ watch(timeEntryOpen, (open) => {
                 @success="closeEditEntry()" v-slot="{ errors, processing }">
                 <div class="flex items-center justify-between gap-4">
                     <Label for="edit-time-only" class="cursor-pointer">Time only</Label>
-                    <Switch id="edit-time-only" v-model:checked="editTimeOnly" />
+                    <Switch id="edit-time-only" v-model="editTimeOnly" />
                 </div>
                 <template v-if="editTimeOnly">
                     <div class="grid gap-2">
                         <Label for="edit-duration">Duration (minutes)</Label>
                         <Input id="edit-duration" name="duration_minutes" type="number" min="1" step="1" required
                             v-model="editDurationMinutes" />
+                        <p class="text-xs text-muted-foreground">{{ workingHoursHint }}</p>
                         <InputError :message="errors.duration_minutes" />
                     </div>
                 </template>

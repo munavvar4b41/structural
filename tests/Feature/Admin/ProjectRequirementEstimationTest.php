@@ -107,7 +107,9 @@ class ProjectRequirementEstimationTest extends TestCase
                 ->component('admin/projects/requirements/Estimation')
                 ->where('total_minutes', 60)
                 ->where('analytics.total_minutes', 60)
-                ->has('estimation_lines', 2));
+                ->where('max_generated_phase', 1)
+                ->has('estimation_lines', 2)
+                ->where('estimation_lines.0.phase', 1));
 
         $root->refresh();
         $this->assertSame(60, $root->estimated_minutes);
@@ -440,5 +442,116 @@ class ProjectRequirementEstimationTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('admin/estimation-reviews/Index')
                 ->has('estimations', 1));
+    }
+
+    public function test_sync_without_phase_defaults_to_one_when_max_is_one(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
+        $requirement->forceFill(['max_generated_phase' => 1])->save();
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.requirements.estimation.store', [$project, $requirement]));
+
+        $estimation = ProjectRequirementEstimation::query()->firstOrFail();
+        $root = $estimation->items()->firstOrFail();
+
+        $this->actingAs($staff)
+            ->put(route('admin.projects.requirements.estimation.lines', [$project, $requirement, $estimation]), [
+                'lines' => [
+                    [
+                        'id' => $root->id,
+                        'title' => 'Single phase work',
+                        'estimated_minutes' => 45,
+                        'sort_order' => 0,
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(1, $root->fresh()->phase);
+    }
+
+    public function test_sync_with_phase_when_max_greater_than_one(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
+        $requirement->forceFill(['max_generated_phase' => 3])->save();
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.requirements.estimation.store', [$project, $requirement]));
+
+        $estimation = ProjectRequirementEstimation::query()->firstOrFail();
+        $root = $estimation->items()->firstOrFail();
+
+        $this->actingAs($staff)
+            ->put(route('admin.projects.requirements.estimation.lines', [$project, $requirement, $estimation]), [
+                'lines' => [
+                    [
+                        'id' => $root->id,
+                        'title' => 'Phase two work',
+                        'estimated_minutes' => 45,
+                        'phase' => 2,
+                        'sort_order' => 0,
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(2, $root->fresh()->phase);
+    }
+
+    public function test_sync_rejects_phase_above_requirement_max(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
+        $requirement->forceFill(['max_generated_phase' => 2])->save();
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.requirements.estimation.store', [$project, $requirement]));
+
+        $estimation = ProjectRequirementEstimation::query()->firstOrFail();
+        $root = $estimation->items()->firstOrFail();
+
+        $this->actingAs($staff)
+            ->from(route('admin.projects.requirements.estimation.show', [$project, $requirement]))
+            ->put(route('admin.projects.requirements.estimation.lines', [$project, $requirement, $estimation]), [
+                'lines' => [
+                    [
+                        'id' => $root->id,
+                        'title' => 'Too high',
+                        'estimated_minutes' => 45,
+                        'phase' => 3,
+                        'sort_order' => 0,
+                    ],
+                ],
+            ])
+            ->assertSessionHasErrors('lines');
+    }
+
+    public function test_transfer_copies_phase_to_tasks(): void
+    {
+        ['staff' => $staff, 'approver' => $approver, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
+        $requirement->forceFill(['max_generated_phase' => 3])->save();
+        $project->forceFill(['lead_user_id' => $approver->id])->save();
+
+        $estimation = ProjectRequirementEstimation::factory()->create([
+            'project_requirement_id' => $requirement->id,
+            'created_by_user_id' => $staff->id,
+            'status' => RequirementEstimationStatus::Approved,
+            'reviewed_at' => now(),
+            'reviewed_by_user_id' => $approver->id,
+        ]);
+
+        $item = $estimation->items()->create([
+            'title' => 'Phase scoped',
+            'estimated_minutes' => 60,
+            'sort_order' => 0,
+            'phase' => 2,
+        ]);
+
+        $this->actingAs($approver)
+            ->post(route('admin.projects.requirements.estimation.transfer', [$project, $requirement, $estimation]))
+            ->assertRedirect();
+
+        $task = ProjectTask::query()->where('project_requirement_estimation_item_id', $item->id)->firstOrFail();
+        $this->assertSame(2, $task->phase);
     }
 }

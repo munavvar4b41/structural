@@ -37,6 +37,10 @@ final class RequirementEstimationShowPayload
                 ->all()
             : [];
 
+        /** @var RequirementPhaseRegistry $phaseRegistry */
+        $phaseRegistry = app(RequirementPhaseRegistry::class);
+        $phaseSettings = $phaseRegistry->settingsPayload($requirement);
+
         if ($estimation === null) {
             return [
                 'understanding_confirmed' => $understandingConfirmed,
@@ -45,6 +49,9 @@ final class RequirementEstimationShowPayload
                 'analytics' => RequirementEstimationAnalytics::fromItems(new Collection),
                 'total_minutes' => 0,
                 'approver_options' => $approverOptions,
+                'phase_options' => $phaseSettings['phase_options'],
+                'show_phase_column' => $phaseSettings['requires_phase_selection'],
+                'max_generated_phase' => $phaseSettings['max_generated_phase'],
                 'can_manage_estimation' => $canManage,
                 'can_create_estimation' => $canManage && $requirement->activeEstimation() === null,
                 'can_sync_lines' => false,
@@ -71,6 +78,7 @@ final class RequirementEstimationShowPayload
             'description',
             'estimated_minutes',
             'sort_order',
+            'phase',
             'transferred_project_task_id',
         ]);
 
@@ -83,6 +91,7 @@ final class RequirementEstimationShowPayload
                 'description' => $item->description,
                 'estimated_minutes' => $item->estimated_minutes,
                 'sort_order' => $item->sort_order,
+                'phase' => $item->phase,
                 'tree_depth' => $depth,
                 'transferred_project_task_id' => $item->transferred_project_task_id,
             ];
@@ -109,6 +118,9 @@ final class RequirementEstimationShowPayload
             'analytics' => RequirementEstimationAnalytics::fromItems($items),
             'total_minutes' => RequirementEstimationTotals::totalMinutesFromItems($items),
             'approver_options' => $approverOptions,
+            'phase_options' => $phaseSettings['phase_options'],
+            'show_phase_column' => $phaseSettings['requires_phase_selection'],
+            'max_generated_phase' => $phaseSettings['max_generated_phase'],
             'can_manage_estimation' => $canManage,
             'can_create_estimation' => false,
             'can_sync_lines' => $actor->can('syncLines', $estimation),

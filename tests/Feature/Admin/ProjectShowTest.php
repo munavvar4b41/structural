@@ -10,6 +10,7 @@ use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
 use App\Models\Team;
 use App\Models\User;
+use App\Settings\CompanySettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -20,6 +21,11 @@ class ProjectShowTest extends TestCase
 
     public function test_team_head_can_view_project_show_for_assigned_project(): void
     {
+        $settings = app(CompanySettings::class);
+        $settings->work_day_start_time = '09:00';
+        $settings->work_day_end_time = '17:00';
+        $settings->save();
+
         $team = Team::factory()->create();
         $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
         $client = User::factory()->client()->create();
@@ -53,7 +59,9 @@ class ProjectShowTest extends TestCase
                 ->has('time_entries')
                 ->where('can_create_requirements', true)
                 ->where('can_create_tasks', true)
-                ->where('can_manage_tags_metadata', true));
+                ->where('can_manage_tags_metadata', true)
+                ->where('working_hours.start', '09:00')
+                ->where('working_hours.end', '17:00'));
     }
 
     public function test_staff_can_view_assigned_project_show_without_manage_permissions(): void

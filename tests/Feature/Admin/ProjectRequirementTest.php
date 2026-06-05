@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Project;
 use App\Models\ProjectRequirement;
+use App\Models\ProjectTask;
 use App\Models\Team;
 use App\Models\User;
 use App\Notifications\RequirementAssignedNotification;
@@ -141,6 +142,7 @@ class ProjectRequirementTest extends TestCase
             ->post(route('admin.projects.requirements.store', $project), [
                 'title' => 'Need API docs',
                 'description' => $this->tipTapJson('Please document endpoints'),
+                'max_generated_phase' => 1,
             ])
             ->assertForbidden();
     }
@@ -157,6 +159,7 @@ class ProjectRequirementTest extends TestCase
             ->post(route('admin.projects.requirements.store', $project), [
                 'title' => 'Need darker theme',
                 'description' => $this->tipTapJson('Contrast improvements'),
+                'max_generated_phase' => 1,
             ])
             ->assertRedirect(route('admin.projects.requirements.index', $project));
 
@@ -180,6 +183,7 @@ class ProjectRequirementTest extends TestCase
                 'title' => 'Pick staff',
                 'description' => $this->tipTapJson('Body'),
                 'responsible_user_id' => $staff->id,
+                'max_generated_phase' => 1,
             ])
             ->assertRedirect(route('admin.projects.requirements.index', $project));
 
@@ -200,6 +204,7 @@ class ProjectRequirementTest extends TestCase
                 'title' => 'Notify responsible',
                 'description' => $this->tipTapJson('Body'),
                 'responsible_user_id' => $staff->id,
+                'max_generated_phase' => 1,
             ])
             ->assertRedirect(route('admin.projects.requirements.index', $project));
 
@@ -228,6 +233,7 @@ class ProjectRequirementTest extends TestCase
             ->post(route('admin.projects.requirements.store', $project), [
                 'title' => 'Unauthorized',
                 'description' => $this->tipTapJson('x'),
+                'max_generated_phase' => 1,
             ])
             ->assertForbidden();
     }
@@ -247,6 +253,7 @@ class ProjectRequirementTest extends TestCase
             ->post(route('admin.projects.requirements.store', $project), [
                 'title' => 'Lead-owned',
                 'description' => $this->tipTapJson(''),
+                'max_generated_phase' => 1,
             ])
             ->assertRedirect(route('admin.projects.requirements.index', $project));
 
@@ -941,5 +948,95 @@ class ProjectRequirementTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->has('requirements.data', 1)
                 ->where('requirements.data.0.id', $pending->id));
+    }
+
+    public function test_client_can_store_requirement_with_custom_max_phases(): void
+    {
+        $team = Team::factory()->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $this->actingAs($client)
+            ->post(route('admin.projects.requirements.store', $project), [
+                'title' => 'Multi-phase scope',
+                'description' => $this->tipTapJson('Phased delivery'),
+                'max_generated_phase' => 3,
+            ])
+            ->assertRedirect(route('admin.projects.requirements.index', $project));
+
+        $this->assertSame(3, ProjectRequirement::query()->value('max_generated_phase'));
+    }
+
+    public function test_requirement_show_includes_phase_settings(): void
+    {
+        $team = Team::factory()->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'max_generated_phase' => 2,
+        ]);
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.requirements.show', [$project, $requirement]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('phase_settings.max_generated_phase', 2)
+                ->where('phase_settings.requires_phase_selection', true)
+                ->has('phase_settings.phase_options', 2));
+    }
+
+    public function test_client_can_update_phase_settings(): void
+    {
+        $team = Team::factory()->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'max_generated_phase' => 1,
+        ]);
+
+        $this->actingAs($client)
+            ->from(route('admin.projects.requirements.show', [$project, $requirement]))
+            ->patch(route('admin.projects.requirements.phase-settings', [$project, $requirement]), [
+                'max_generated_phase' => 4,
+            ])
+            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
+
+        $this->assertSame(4, $requirement->fresh()->max_generated_phase);
+    }
+
+    public function test_cannot_shrink_max_phases_below_highest_used(): void
+    {
+        $team = Team::factory()->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'max_generated_phase' => 3,
+        ]);
+
+        ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'project_requirement_id' => $requirement->id,
+                'created_by_user_id' => $client->id,
+                'phase' => 2,
+            ]);
+
+        $this->actingAs($client)
+            ->from(route('admin.projects.requirements.show', [$project, $requirement]))
+            ->patch(route('admin.projects.requirements.phase-settings', [$project, $requirement]), [
+                'max_generated_phase' => 1,
+            ])
+            ->assertSessionHasErrors('max_generated_phase');
     }
 }

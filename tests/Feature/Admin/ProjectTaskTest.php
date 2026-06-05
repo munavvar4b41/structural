@@ -614,4 +614,146 @@ class ProjectTaskTest extends TestCase
                 ->component('admin/projects/tasks/Index')
                 ->where('tasks', fn ($tasks) => count($tasks) >= 2));
     }
+
+    public function test_linked_task_defaults_to_phase_one_when_max_is_one(): void
+    {
+        extract($this->projectWithTeamHead());
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'max_generated_phase' => 1,
+        ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->post(route('admin.projects.tasks.store', $project), [
+                'title' => 'Single phase task',
+                'status' => ProjectTaskStatus::ToDo->value,
+                'project_requirement_id' => $requirement->id,
+                'estimated_minutes' => 30,
+            ])
+            ->assertRedirect(route('admin.projects.tasks.index', $project));
+
+        $this->assertDatabaseHas('project_tasks', [
+            'title' => 'Single phase task',
+            'project_requirement_id' => $requirement->id,
+            'phase' => 1,
+        ]);
+    }
+
+    public function test_linked_task_requires_phase_when_max_greater_than_one(): void
+    {
+        extract($this->projectWithTeamHead());
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'max_generated_phase' => 3,
+        ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->post(route('admin.projects.tasks.store', $project), [
+                'title' => 'Missing phase',
+                'status' => ProjectTaskStatus::ToDo->value,
+                'project_requirement_id' => $requirement->id,
+                'estimated_minutes' => 30,
+            ])
+            ->assertSessionHasErrors('phase');
+    }
+
+    public function test_linked_task_rejects_invalid_phase(): void
+    {
+        extract($this->projectWithTeamHead());
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'max_generated_phase' => 2,
+        ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->post(route('admin.projects.tasks.store', $project), [
+                'title' => 'Bad phase',
+                'status' => ProjectTaskStatus::ToDo->value,
+                'project_requirement_id' => $requirement->id,
+                'phase' => 4,
+                'estimated_minutes' => 30,
+            ])
+            ->assertSessionHasErrors('phase');
+    }
+
+    public function test_unlinked_task_must_not_have_phase(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->post(route('admin.projects.tasks.store', $project), [
+                'title' => 'Unlinked with phase',
+                'status' => ProjectTaskStatus::ToDo->value,
+                'phase' => 1,
+            ])
+            ->assertSessionHasErrors('phase');
+    }
+
+    public function test_tasks_index_includes_requirement_max_phases(): void
+    {
+        extract($this->projectWithTeamHead());
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'max_generated_phase' => 4,
+        ]);
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.index', $project))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('requirements.0.max_generated_phase', 4)
+                ->where('requirements.0.value', $requirement->id));
+    }
+
+    public function test_tasks_index_can_filter_by_phase(): void
+    {
+        extract($this->projectWithTeamHead());
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'max_generated_phase' => 3,
+        ]);
+
+        $phaseOneTask = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'project_requirement_id' => $requirement->id,
+                'phase' => 1,
+                'title' => 'Phase one task',
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'project_requirement_id' => $requirement->id,
+                'phase' => 2,
+                'title' => 'Phase two task',
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.index', [
+                'project' => $project,
+                'phase' => 1,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.phase', '1')
+                ->where('show_phase_filter', true)
+                ->has('phase_filter_options', 3)
+                ->has('tasks', 1)
+                ->where('tasks.0.id', $phaseOneTask->id)
+                ->where('tasks.0.phase', 1));
+    }
 }

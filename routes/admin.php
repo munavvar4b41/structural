@@ -71,6 +71,8 @@ Route::patch('projects/{project}/requirements/{requirement}/review', [ProjectReq
     ->name('projects.requirements.review');
 Route::patch('projects/{project}/requirements/{requirement}/confirm-understanding', [ProjectRequirementController::class, 'confirmUnderstanding'])
     ->name('projects.requirements.confirm-understanding');
+Route::patch('projects/{project}/requirements/{requirement}/phase-settings', [ProjectRequirementController::class, 'updatePhaseSettings'])
+    ->name('projects.requirements.phase-settings');
 Route::post('projects/{project}/requirements/{requirement}/messages', [ProjectRequirementMessageController::class, 'store'])
     ->name('projects.requirements.messages.store');
 Route::scopeBindings()->group(function (): void {

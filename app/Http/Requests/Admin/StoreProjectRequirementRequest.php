@@ -75,6 +75,7 @@ class StoreProjectRequirementRequest extends FormRequest
                 },
             ],
             'responsible_user_id' => ['nullable', 'integer', Rule::in($allowedResponsibleIds)],
+            'max_generated_phase' => ['required', 'integer', 'min:1', 'max:100'],
         ];
     }
 }

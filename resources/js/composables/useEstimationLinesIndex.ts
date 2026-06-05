@@ -12,6 +12,7 @@ export type EstimationLineReadonly = {
     description: string | null;
     estimated_minutes: number | null;
     sort_order: number;
+    phase: number;
     tree_depth: number;
 };
 
@@ -24,6 +25,7 @@ export type EstimationLineEditable = {
     description: string;
     estimated_minutes: string;
     sort_order: number;
+    phase: number;
     tree_depth: number;
 };
 

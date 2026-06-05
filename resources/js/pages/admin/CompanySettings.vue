@@ -201,8 +201,8 @@ function dv(value: string | null | undefined): string {
                 <div class="mb-6 space-y-1">
                     <h2 class="text-lg font-semibold">Working hours</h2>
                     <p class="text-sm text-muted-foreground">
-                        Used when logging time by duration only. Manual entries are placed
-                        within this window on the selected day (application timezone).
+                        Reference window for reports and displays. Duration-only time logs
+                        are counted back from the current time and do not use these bounds.
                     </p>
                 </div>
                 <div class="grid max-w-xl gap-6 sm:grid-cols-2">
