@@ -778,7 +778,7 @@ defineOptions({
                     <div class="mb-6 space-y-1">
                         <h2 class="text-lg font-semibold">Confirm understanding</h2>
                         <p class="text-sm text-muted-foreground">
-                            Confirm that this matches your intent as creator or responsible person.
+                            Confirm that this matches your intent as the person who created this requirement.
                         </p>
                     </div>
                     <div>

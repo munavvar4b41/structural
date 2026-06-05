@@ -756,7 +756,7 @@ class ProjectRequirementTest extends TestCase
         Carbon::setTestNow(null);
     }
 
-    public function test_responsible_can_confirm_understanding(): void
+    public function test_responsible_cannot_confirm_understanding(): void
     {
         $team = Team::factory()->create();
         $staff = User::factory()->withPrimaryTeam($team)->create();
@@ -780,9 +780,9 @@ class ProjectRequirementTest extends TestCase
 
         $this->actingAs($teamHead)
             ->patch(route('admin.projects.requirements.confirm-understanding', [$project, $requirement]))
-            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
+            ->assertForbidden();
 
-        $this->assertSame($teamHead->id, $requirement->fresh()->understanding_confirmed_by_user_id);
+        $this->assertNull($requirement->fresh()->understanding_confirmed_at);
     }
 
     public function test_staff_who_is_not_owner_cannot_confirm_understanding(): void
