@@ -55,7 +55,6 @@ class StoreJobPostingRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'max:255', 'alpha_dash', 'unique:job_postings,slug'],
             'team_id' => ['nullable', 'integer', Rule::exists(Team::class, 'id')],
             'location' => ['required', 'string', 'max:255'],
             'employment_type' => ['required', 'string', Rule::in(JobEmploymentType::values())],

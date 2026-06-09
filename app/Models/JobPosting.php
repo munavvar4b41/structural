@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 #[Fillable([
     'slug',
@@ -29,6 +30,22 @@ class JobPosting extends Model
 {
     /** @use HasFactory<JobPostingFactory> */
     use HasFactory;
+
+    /**
+     * On creation, generate a unique slug.
+     */
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::creating(function (JobPosting $jobPosting): void {
+            $jobPosting->slug = Str::slug($jobPosting->title);
+
+            while (self::where('slug', $jobPosting->slug)->exists()) {
+                $jobPosting->slug = $jobPosting->slug . '-' . Str::random(5);
+            }
+        });
+    }
 
     /**
      * @return array<string, string>

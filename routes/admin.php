@@ -3,6 +3,9 @@
 use App\Http\Controllers\Admin\CareersSettingsController;
 use App\Http\Controllers\Admin\CompanySettingsController;
 use App\Http\Controllers\Admin\EstimationReviewController;
+use App\Http\Controllers\Admin\JobApplicationController;
+use App\Http\Controllers\Admin\JobApplicationResumeController;
+use App\Http\Controllers\Admin\JobPostingController;
 use App\Http\Controllers\Admin\LeaveRequestController;
 use App\Http\Controllers\Admin\LeaveSettingsController;
 use App\Http\Controllers\Admin\MyWorkController;
@@ -44,6 +47,21 @@ Route::middleware(EnsureCanManageCompanySettings::class)
     ->name('careers-settings.')->group(function (): void {
         Route::get('careers-settings', [CareersSettingsController::class, 'edit'])->name('edit');
         Route::patch('careers-settings', [CareersSettingsController::class, 'update'])->name('update');
+    });
+
+Route::middleware(EnsureCanManageCompanySettings::class)
+    ->group(function (): void {
+        Route::resource('job-postings', JobPostingController::class)->except(['show']);
+        Route::get('job-postings/{jobPosting}/applications', [JobApplicationController::class, 'index'])
+            ->name('job-postings.applications');
+        Route::get('job-applications/{jobApplication}', [JobApplicationController::class, 'show'])
+            ->name('job-applications.show');
+        Route::patch('job-applications/{jobApplication}/advance', [JobApplicationController::class, 'advance'])
+            ->name('job-applications.advance');
+        Route::patch('job-applications/{jobApplication}/reject', [JobApplicationController::class, 'reject'])
+            ->name('job-applications.reject');
+        Route::get('job-applications/{jobApplication}/resume', [JobApplicationResumeController::class, 'show'])
+            ->name('job-applications.resume');
     });
 
 Route::middleware(EnsureCanManageUsers::class)

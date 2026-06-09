@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import {
+    Briefcase,
     Building2,
     CalendarDays,
     Calculator,
@@ -26,7 +27,9 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { edit as adminCareersSettingsEdit } from '@/routes/admin/careers-settings/index';
 import { edit as adminCompanyEdit } from '@/routes/admin/company/index';
+import { index as adminJobPostingsIndex } from '@/routes/admin/job-postings/index';
 import { index as leaveRequestsIndex, manage as leaveRequestsManage } from '@/routes/admin/leave-requests/index';
 import { edit as adminLeaveSettingsEdit } from '@/routes/admin/leave-settings/index';
 import { index as adminMyWorkIndex } from '@/routes/admin/my-work/index';
@@ -135,6 +138,15 @@ const mainNavItems = computed((): NavItem[] => {
         });
     }
 
+    if (page.props.auth.user?.can_manage_careers) {
+        items.push({
+            title: 'Careers',
+            href: adminJobPostingsIndex(),
+            icon: Briefcase,
+            activeMatch: 'prefix',
+        });
+    }
+
     if (page.props.auth.user?.can_manage_company_settings) {
         items.push({
             title: 'Company settings',
@@ -146,6 +158,12 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Leave emails',
             href: adminLeaveSettingsEdit(),
             icon: CalendarDays,
+            activeMatch: 'prefix',
+        });
+        items.push({
+            title: 'Careers emails',
+            href: adminCareersSettingsEdit(),
+            icon: Briefcase,
             activeMatch: 'prefix',
         });
     }

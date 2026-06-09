@@ -2,6 +2,7 @@
 import { Head, Link } from '@inertiajs/vue3';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import { Button } from '@/components/ui/button';
+import { index as careersIndex } from '@/routes/careers/index';
 import { dashboard, login, register } from '@/routes';
 
 withDefaults(
@@ -15,12 +16,14 @@ withDefaults(
 </script>
 
 <template>
+
     <Head title="Welcome" />
 
-    <div
-        class="page-gradient flex min-h-svh flex-col items-center justify-center p-6 md:p-10"
-    >
+    <div class="page-gradient flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
         <header class="absolute right-6 top-6 flex items-center gap-2 md:right-10 md:top-10">
+            <Button variant="ghost" as-child>
+                <Link :href="careersIndex()">Careers</Link>
+            </Button>
             <Button v-if="$page.props.auth.user" variant="outline" as-child>
                 <Link :href="dashboard()">Dashboard</Link>
             </Button>
@@ -50,12 +53,7 @@ withDefaults(
                     <Button class="w-full sm:w-auto" as-child>
                         <Link :href="login()">Log in</Link>
                     </Button>
-                    <Button
-                        v-if="canRegister"
-                        variant="outline"
-                        class="w-full sm:w-auto"
-                        as-child
-                    >
+                    <Button v-if="canRegister" variant="outline" class="w-full sm:w-auto" as-child>
                         <Link :href="register()">Create account</Link>
                     </Button>
                 </template>
