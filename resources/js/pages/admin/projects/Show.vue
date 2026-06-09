@@ -14,7 +14,7 @@ import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
-import RequirementRichTextEditor from '@/components/RequirementRichTextEditor.vue';
+import RichTextEditor from '@/components/RichTextEditor.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
 import TypeaheadInput from '@/components/TypeaheadInput.vue';
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +46,11 @@ import {
     index as requirementsIndex,
     show as requirementsShow,
 } from '@/routes/admin/projects/requirements/index';
+import {
+    create as proposalsCreate,
+    index as proposalsIndex,
+    show as proposalsShow,
+} from '@/routes/admin/projects/proposals/index';
 import { index as projectTasksIndex, show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
 
 type UserBrief = {
@@ -93,6 +98,16 @@ type RequirementRow = {
     reviewer: UserBrief;
     can_update: boolean;
     can_delete: boolean;
+};
+
+type ProposalRow = {
+    id: number;
+    title: string;
+    description_preview: string | null;
+    status: string;
+    status_label: string;
+    created_at: string | null;
+    creator: UserBrief;
 };
 
 type TaskRow = {
@@ -144,6 +159,9 @@ const props = defineProps<{
     metadata: MetadataRow[];
     requirements: RequirementRow[];
     requirements_total: number;
+    proposals: ProposalRow[];
+    proposals_total: number;
+    can_create_proposals: boolean;
     tasks: TaskRow[];
     tasks_total: number;
     time_entries: TimeEntryRow[];
@@ -537,6 +555,9 @@ watch(timeEntryOpen, (open) => {
                     <Link :href="requirementsIndex.url(project.id)">All requirements</Link>
                 </Button>
                 <Button variant="outline" as-child>
+                    <Link :href="proposalsIndex.url(project.id)">All proposals</Link>
+                </Button>
+                <Button variant="outline" as-child>
                     <Link :href="projectTasksIndex.url(project.id)">All tasks</Link>
                 </Button>
                 <Button v-if="can_manage_project" variant="outline" as-child>
@@ -582,13 +603,8 @@ watch(timeEntryOpen, (open) => {
             <div class="flex flex-wrap gap-2">
                 <Badge v-for="tag in tags" :key="tag.id" variant="secondary" class="gap-1 pr-1">
                     {{ tag.name }}
-                    <button
-                        v-if="can_manage_tags_metadata"
-                        type="button"
-                        class="rounded-sm p-0.5 hover:bg-muted"
-                        :aria-label="`Remove tag ${tag.name}`"
-                        @click="removeTag(tag)"
-                    >
+                    <button v-if="can_manage_tags_metadata" type="button" class="rounded-sm p-0.5 hover:bg-muted"
+                        :aria-label="`Remove tag ${tag.name}`" @click="removeTag(tag)">
                         <X class="size-3" />
                     </button>
                 </Badge>
@@ -616,11 +632,8 @@ watch(timeEntryOpen, (open) => {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr
-                        v-for="row in metadata"
-                        :key="row.id"
-                        class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
-                    >
+                    <tr v-for="row in metadata" :key="row.id"
+                        class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
                         <DataTableTd label="Key" class="font-medium">{{ row.key }}</DataTableTd>
                         <DataTableTd label="Value" class="text-muted-foreground">{{ row.value }}</DataTableTd>
                         <DataTableTd v-if="can_manage_tags_metadata" label="Actions" class="text-right">
@@ -628,13 +641,8 @@ watch(timeEntryOpen, (open) => {
                                 <Button variant="ghost" size="sm" type="button" @click="openMetadataEdit(row)">
                                     Edit
                                 </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    type="button"
-                                    class="text-destructive"
-                                    @click="removeMetadata(row)"
-                                >
+                                <Button variant="ghost" size="sm" type="button" class="text-destructive"
+                                    @click="removeMetadata(row)">
                                     Remove
                                 </Button>
                             </div>
@@ -690,6 +698,59 @@ watch(timeEntryOpen, (open) => {
                                     project: project.id,
                                     requirement: row.id,
                                 })">
+                                    View
+                                </Link>
+                            </Button>
+                        </DataTableTd>
+                    </tr>
+                </tbody>
+            </DataTable>
+        </section>
+
+        <section class="flex flex-col gap-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">Proposals</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Showing {{ proposals.length }} of {{ proposals_total }} proposals.
+                    </p>
+                </div>
+                <Button v-if="can_create_proposals" as-child>
+                    <Link :href="proposalsCreate.url(project.id)">Add proposal</Link>
+                </Button>
+            </div>
+
+            <DataTable>
+                <thead>
+                    <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
+                        <DataTableTh>Title</DataTableTh>
+                        <DataTableTh>Status</DataTableTh>
+                        <DataTableTh>Creator</DataTableTh>
+                        <DataTableTh class="text-right">Actions</DataTableTh>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="row in proposals" :key="row.id"
+                        class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                        <DataTableTd label="Title" class="align-top">
+                            <div class="font-medium">{{ row.title }}</div>
+                            <p v-if="row.description_preview" class="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                                {{ row.description_preview }}
+                            </p>
+                        </DataTableTd>
+                        <DataTableTd label="Status" class="text-muted-foreground">
+                            {{ row.status_label }}
+                        </DataTableTd>
+                        <DataTableTd label="Creator" class="text-muted-foreground">
+                            {{ row.creator?.name ?? '—' }}
+                        </DataTableTd>
+                        <DataTableTd label="Actions" class="text-right">
+                            <Button variant="ghost" size="sm" as-child>
+                                <Link :href="proposalsShow.url({
+                                    project: project.id,
+                                    proposal: row.id,
+                                })
+                                    ">
                                     View
                                 </Link>
                             </Button>
@@ -817,23 +878,12 @@ watch(timeEntryOpen, (open) => {
                 <DialogTitle>Add tag</DialogTitle>
                 <DialogDescription>Add a label for this project.</DialogDescription>
             </DialogHeader>
-            <Form
-                v-bind="ProjectTagController.store.form({ project: project.id })"
-                class="grid gap-4"
-                preserve-scroll
-                @success="tagOpen = false"
-                v-slot="{ errors, processing }"
-            >
+            <Form v-bind="ProjectTagController.store.form({ project: project.id })" class="grid gap-4" preserve-scroll
+                @success="tagOpen = false" v-slot="{ errors, processing }">
                 <div class="grid gap-2">
                     <Label for="project-tag">Tag</Label>
-                    <TypeaheadInput
-                        id="project-tag"
-                        v-model="tagInput"
-                        name="name"
-                        type="tag"
-                        placeholder="manage-user"
-                        required
-                    />
+                    <TypeaheadInput id="project-tag" v-model="tagInput" name="name" type="tag" placeholder="manage-user"
+                        required />
                     <InputError :message="errors.name" />
                 </div>
                 <DialogFooter class="gap-3">
@@ -850,36 +900,18 @@ watch(timeEntryOpen, (open) => {
                 <DialogTitle>Add metadata</DialogTitle>
                 <DialogDescription>Add a custom key-value pair for this project.</DialogDescription>
             </DialogHeader>
-            <Form
-                v-bind="ProjectMetadataController.store.form({ project: project.id })"
-                class="grid gap-4"
-                preserve-scroll
-                @success="metadataAddOpen = false"
-                v-slot="{ errors, processing }"
-            >
+            <Form v-bind="ProjectMetadataController.store.form({ project: project.id })" class="grid gap-4"
+                preserve-scroll @success="metadataAddOpen = false" v-slot="{ errors, processing }">
                 <div class="grid gap-2">
                     <Label for="metadata-key">Key</Label>
-                    <TypeaheadInput
-                        id="metadata-key"
-                        v-model="metadataKeyInput"
-                        name="key"
-                        type="metadata_key"
-                        placeholder="framework"
-                        required
-                    />
+                    <TypeaheadInput id="metadata-key" v-model="metadataKeyInput" name="key" type="metadata_key"
+                        placeholder="framework" required />
                     <InputError :message="errors.key" />
                 </div>
                 <div class="grid gap-2">
                     <Label for="metadata-value">Value</Label>
-                    <TypeaheadInput
-                        id="metadata-value"
-                        v-model="metadataValueInput"
-                        name="value"
-                        type="metadata_value"
-                        :metadata-key="metadataKeyInput"
-                        placeholder="laravel"
-                        required
-                    />
+                    <TypeaheadInput id="metadata-value" v-model="metadataValueInput" name="value" type="metadata_value"
+                        :metadata-key="metadataKeyInput" placeholder="laravel" required />
                     <InputError :message="errors.value" />
                 </div>
                 <DialogFooter class="gap-3">
@@ -896,31 +928,18 @@ watch(timeEntryOpen, (open) => {
                 <DialogTitle>Edit metadata</DialogTitle>
                 <DialogDescription>Update the value for {{ editingMetadata.key }}.</DialogDescription>
             </DialogHeader>
-            <Form
-                :key="editingMetadata.id"
-                v-bind="ProjectMetadataController.update.form({
-                    project: project.id,
-                    metadata: editingMetadata.id,
-                })"
-                class="grid gap-4"
-                preserve-scroll
-                @success="closeMetadataEdit()"
-                v-slot="{ errors, processing }"
-            >
+            <Form :key="editingMetadata.id" v-bind="ProjectMetadataController.update.form({
+                project: project.id,
+                metadata: editingMetadata.id,
+            })" class="grid gap-4" preserve-scroll @success="closeMetadataEdit()" v-slot="{ errors, processing }">
                 <div class="grid gap-2">
                     <Label>Key</Label>
                     <p class="text-sm font-medium">{{ editingMetadata.key }}</p>
                 </div>
                 <div class="grid gap-2">
                     <Label for="metadata-edit-value">Value</Label>
-                    <TypeaheadInput
-                        id="metadata-edit-value"
-                        v-model="metadataEditValue"
-                        name="value"
-                        type="metadata_value"
-                        :metadata-key="editingMetadata.key"
-                        required
-                    />
+                    <TypeaheadInput id="metadata-edit-value" v-model="metadataEditValue" name="value"
+                        type="metadata_value" :metadata-key="editingMetadata.key" required />
                     <InputError :message="errors.value" />
                 </div>
                 <DialogFooter class="gap-3">
@@ -942,26 +961,20 @@ watch(timeEntryOpen, (open) => {
                 <input type="hidden" name="responsible_user_id" :value="responsibleUserId" />
                 <div class="grid gap-2">
                     <Label for="requirement-title">Title</Label>
-                    <TypeaheadInput id="requirement-title" v-model="requirementTitle" name="title" type="requirement_title" required />
+                    <TypeaheadInput id="requirement-title" v-model="requirementTitle" name="title"
+                        type="requirement_title" required />
                     <InputError :message="errors.title" />
                 </div>
                 <div class="grid gap-2">
                     <Label for="requirement-description">Description</Label>
-                    <RequirementRichTextEditor id="requirement-description" v-model="requirementDescription"
+                    <RichTextEditor id="requirement-description" v-model="requirementDescription"
                         input-name="description" />
                     <InputError :message="errors.description" />
                 </div>
                 <div class="grid gap-2">
                     <Label for="requirement-max-phase">Number of phases</Label>
-                    <Input
-                        id="requirement-max-phase"
-                        name="max_generated_phase"
-                        type="number"
-                        min="1"
-                        max="100"
-                        v-model="requirementMaxPhase"
-                        required
-                    />
+                    <Input id="requirement-max-phase" name="max_generated_phase" type="number" min="1" max="100"
+                        v-model="requirementMaxPhase" required />
                     <InputError :message="errors.max_generated_phase" />
                 </div>
                 <div class="grid gap-2">
@@ -1037,14 +1050,8 @@ watch(timeEntryOpen, (open) => {
                 </div>
                 <div v-if="showCreatePhaseField" class="grid gap-2">
                     <Label for="create-phase">Phase</Label>
-                    <TaskFormSelect
-                        id="create-phase"
-                        name="phase"
-                        v-model="createPhase"
-                        required
-                        placeholder="Phase"
-                        :options="createPhaseSelectOptions"
-                    />
+                    <TaskFormSelect id="create-phase" name="phase" v-model="createPhase" required placeholder="Phase"
+                        :options="createPhaseSelectOptions" />
                     <InputError :message="errors.phase" />
                 </div>
                 <div class="grid gap-2">
@@ -1089,8 +1096,8 @@ watch(timeEntryOpen, (open) => {
             <div class="grid gap-4">
                 <div class="grid gap-2">
                     <Label for="time-entry-task">Task</Label>
-                    <TaskFormSelect id="time-entry-task" v-model="timeEntryTaskId" name="task_id" required placeholder="Select task"
-                        :options="taskSelectOptions" />
+                    <TaskFormSelect id="time-entry-task" v-model="timeEntryTaskId" name="task_id" required
+                        placeholder="Select task" :options="taskSelectOptions" />
                 </div>
                 <Form v-if="timeEntryFormBinding !== null" v-bind="timeEntryFormBinding" class="grid gap-4"
                     preserve-scroll @success="timeEntryOpen = false" v-slot="{ errors, processing }">
@@ -1152,7 +1159,7 @@ watch(timeEntryOpen, (open) => {
                         <Label for="edit-duration">Duration (minutes)</Label>
                         <Input id="edit-duration" name="duration_minutes" type="number" min="1" step="1" required
                             v-model="editDurationMinutes" />
-                        <p class="text-xs text-muted-foreground">{{ workingHoursHint }}</p>
+                        <p class="text-xs text-muted-foreground">{{ durationOnlyHint }}</p>
                         <InputError :message="errors.duration_minutes" />
                     </div>
                 </template>

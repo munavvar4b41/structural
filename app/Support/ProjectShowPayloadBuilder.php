@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\ProjectTaskStatus;
 use App\Models\Project;
 use App\Models\ProjectMetadata;
+use App\Models\ProjectProposal;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectTag;
 use App\Models\ProjectTask;
@@ -33,6 +34,14 @@ class ProjectShowPayloadBuilder
             ->limit(self::LIST_LIMIT)
             ->get()
             ->map(fn (ProjectRequirement $r): array => $this->requirementRow($r, $actor))
+            ->all();
+
+        $proposals = $project->proposals()
+            ->with(['creator'])
+            ->orderByDesc('created_at')
+            ->limit(self::LIST_LIMIT)
+            ->get()
+            ->map(fn (ProjectProposal $proposal): array => $this->proposalRow($proposal))
             ->all();
 
         $tasksCollection = $project->tasks()
@@ -93,6 +102,9 @@ class ProjectShowPayloadBuilder
             )->all(),
             'requirements' => $requirements,
             'requirements_total' => $project->requirements()->count(),
+            'proposals' => $proposals,
+            'proposals_total' => $project->proposals()->count(),
+            'can_create_proposals' => $actor->can('create', [ProjectProposal::class, $project]),
             'tasks' => $tasks,
             'tasks_total' => $project->tasks()->count(),
             'time_entries' => $timeEntries,
@@ -168,6 +180,22 @@ class ProjectShowPayloadBuilder
             'reviewer' => $this->userBrief($r->reviewer),
             'can_update' => $actor->can('update', $r),
             'can_delete' => $actor->can('delete', $r),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function proposalRow(ProjectProposal $proposal): array
+    {
+        return [
+            'id' => $proposal->id,
+            'title' => $proposal->title,
+            'description_preview' => TipTapDocument::previewFromStored($proposal->description),
+            'status' => $proposal->status->value,
+            'status_label' => $proposal->status->label(),
+            'created_at' => $proposal->created_at?->toIso8601String(),
+            'creator' => $this->userBrief($proposal->creator),
         ];
     }
 

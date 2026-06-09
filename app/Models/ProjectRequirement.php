@@ -73,6 +73,14 @@ class ProjectRequirement extends Model
     }
 
     /**
+     * @return HasMany<ProjectProposal, $this>
+     */
+    public function proposals(): HasMany
+    {
+        return $this->hasMany(ProjectProposal::class, 'project_requirement_id');
+    }
+
+    /**
      * @return HasMany<ProjectTask, $this>
      */
     public function tasks(): HasMany

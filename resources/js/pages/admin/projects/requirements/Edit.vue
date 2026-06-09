@@ -6,8 +6,8 @@ import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/P
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
-import RequirementRichTextEditor from '@/components/RequirementRichTextEditor.vue';
-import RequirementRichTextViewer from '@/components/RequirementRichTextViewer.vue';
+import RichTextEditor from '@/components/RichTextEditor.vue';
+import RichTextViewer from '@/components/RichTextViewer.vue';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -145,32 +145,20 @@ defineOptions({
 </script>
 
 <template>
+
     <Head :title="`Edit requirement · ${project.name}`" />
 
     <div class="flex flex-col gap-8">
         <PageHeader title="Edit requirement" :description="`Project ${project.name}`" />
 
-        <Form
-            v-bind="
-                ProjectRequirementController.update.form({
-                    project: project.id,
-                    requirement: requirement.id,
-                })
-            "
-            class="flex max-w-2xl flex-col gap-8"
-            v-slot="{ errors, processing, recentlySuccessful }"
-        >
+        <Form v-bind="ProjectRequirementController.update.form({
+            project: project.id,
+            requirement: requirement.id,
+        })
+            " class="flex max-w-2xl flex-col gap-8" v-slot="{ errors, processing, recentlySuccessful }">
             <template v-if="!can_update_assignments">
-                <input
-                    type="hidden"
-                    name="reviewer_user_id"
-                    :value="requirement.reviewer_user_id ?? ''"
-                />
-                <input
-                    type="hidden"
-                    name="responsible_user_id"
-                    :value="requirement.responsible_user_id ?? ''"
-                />
+                <input type="hidden" name="reviewer_user_id" :value="requirement.reviewer_user_id ?? ''" />
+                <input type="hidden" name="responsible_user_id" :value="requirement.responsible_user_id ?? ''" />
             </template>
             <template v-else>
                 <input type="hidden" name="reviewer_user_id" :value="reviewerUserId" />
@@ -187,35 +175,17 @@ defineOptions({
                 <div class="grid gap-6">
                     <div class="grid gap-2">
                         <Label for="title">Title</Label>
-                        <Input
-                            id="title"
-                            name="title"
-                            type="text"
-                            required
-                            :default-value="requirement.title"
-                            :readonly="!can_update_content"
-                            :class="{ 'opacity-80': !can_update_content }"
-                        />
+                        <Input id="title" name="title" type="text" required :default-value="requirement.title"
+                            :readonly="!can_update_content" :class="{ 'opacity-80': !can_update_content }" />
                         <InputError :message="errors.title" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="requirement-description">Description</Label>
-                        <RequirementRichTextEditor
-                            v-if="can_update_content"
-                            id="requirement-description"
-                            v-model="descriptionJson"
-                            input-name="description"
-                        />
-                        <input
-                            v-else
-                            type="hidden"
-                            name="description"
-                            :value="requirement.description ?? emptyTipTapDocumentJson()"
-                        />
-                        <RequirementRichTextViewer
-                            v-if="!can_update_content"
-                            :json="requirement.description"
-                        />
+                        <RichTextEditor v-if="can_update_content" id="requirement-description" v-model="descriptionJson"
+                            input-name="description" />
+                        <input v-else type="hidden" name="description"
+                            :value="requirement.description ?? emptyTipTapDocumentJson()" />
+                        <RichTextViewer v-if="!can_update_content" :json="requirement.description" />
                         <InputError :message="errors.description" />
                     </div>
                 </div>
@@ -232,13 +202,9 @@ defineOptions({
                     <Label id="responsible_user_id-label">Responsible user</Label>
                     <DropdownMenu>
                         <DropdownMenuTrigger as-child>
-                            <Button
-                                id="responsible_user_id"
-                                type="button"
-                                variant="outline"
+                            <Button id="responsible_user_id" type="button" variant="outline"
                                 class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
-                                aria-labelledby="responsible_user_id-label"
-                            >
+                                aria-labelledby="responsible_user_id-label">
                                 <span class="truncate text-left">{{ responsibleLabel }}</span>
                                 <ChevronDown class="size-4 shrink-0 opacity-50" />
                             </Button>
@@ -247,11 +213,8 @@ defineOptions({
                             <DropdownMenuLabel>Responsible</DropdownMenuLabel>
                             <DropdownMenuRadioGroup v-model="responsibleUserId">
                                 <DropdownMenuRadioItem value="">Unassigned</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem
-                                    v-for="u in assignable_responsibles"
-                                    :key="u.id"
-                                    :value="String(u.id)"
-                                >
+                                <DropdownMenuRadioItem v-for="u in assignable_responsibles" :key="u.id"
+                                    :value="String(u.id)">
                                     {{ u.name }} ({{ u.email }})
                                 </DropdownMenuRadioItem>
                             </DropdownMenuRadioGroup>
@@ -272,13 +235,9 @@ defineOptions({
                     <Label id="reviewer_user_id-label">Reviewer (staff)</Label>
                     <DropdownMenu>
                         <DropdownMenuTrigger as-child>
-                            <Button
-                                id="reviewer_user_id"
-                                type="button"
-                                variant="outline"
+                            <Button id="reviewer_user_id" type="button" variant="outline"
                                 class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
-                                aria-labelledby="reviewer_user_id-label"
-                            >
+                                aria-labelledby="reviewer_user_id-label">
                                 <span class="truncate text-left">{{ reviewerLabel }}</span>
                                 <ChevronDown class="size-4 shrink-0 opacity-50" />
                             </Button>
@@ -287,11 +246,7 @@ defineOptions({
                             <DropdownMenuLabel>Reviewer</DropdownMenuLabel>
                             <DropdownMenuRadioGroup v-model="reviewerUserId">
                                 <DropdownMenuRadioItem value="">None</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem
-                                    v-for="u in assignable_staff"
-                                    :key="u.id"
-                                    :value="String(u.id)"
-                                >
+                                <DropdownMenuRadioItem v-for="u in assignable_staff" :key="u.id" :value="String(u.id)">
                                     {{ u.name }} ({{ u.email }})
                                 </DropdownMenuRadioItem>
                             </DropdownMenuRadioGroup>
@@ -307,24 +262,18 @@ defineOptions({
             <div class="flex items-center gap-4">
                 <Button type="submit" :disabled="processing">Save</Button>
                 <Button variant="outline" as-child>
-                    <Link
-                        :href="
-                            requirementsShow.url({
-                                project: project.id,
-                                requirement: requirement.id,
-                            })
-                        "
-                    >
+                    <Link :href="requirementsShow.url({
+                        project: project.id,
+                        requirement: requirement.id,
+                    })
+                        ">
                         View
                     </Link>
                 </Button>
                 <Button variant="outline" as-child>
                     <Link :href="requirementsIndex.url(project.id)">Cancel</Link>
                 </Button>
-                <span
-                    v-show="recentlySuccessful"
-                    class="text-sm text-muted-foreground"
-                >
+                <span v-show="recentlySuccessful" class="text-sm text-muted-foreground">
                     Saved.
                 </span>
             </div>

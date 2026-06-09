@@ -12,6 +12,8 @@ use App\Http\Controllers\Admin\MyWorkController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\ProjectMetadataController;
+use App\Http\Controllers\Admin\ProjectProposalController;
+use App\Http\Controllers\Admin\ProjectProposalMessageController;
 use App\Http\Controllers\Admin\ProjectRequirementController;
 use App\Http\Controllers\Admin\ProjectRequirementEstimationController;
 use App\Http\Controllers\Admin\ProjectRequirementMessageController;
@@ -123,6 +125,17 @@ Route::scopeBindings()->group(function (): void {
         ->name('projects.requirements.estimation.transfer');
 });
 Route::resource('projects.requirements', ProjectRequirementController::class);
+Route::patch('projects/{project}/proposals/{proposal}/submit', [ProjectProposalController::class, 'submit'])
+    ->name('projects.proposals.submit');
+Route::patch('projects/{project}/proposals/{proposal}/confirm', [ProjectProposalController::class, 'confirm'])
+    ->name('projects.proposals.confirm');
+Route::patch('projects/{project}/proposals/{proposal}/reject', [ProjectProposalController::class, 'reject'])
+    ->name('projects.proposals.reject');
+Route::patch('projects/{project}/proposals/{proposal}/reopen', [ProjectProposalController::class, 'reopen'])
+    ->name('projects.proposals.reopen');
+Route::post('projects/{project}/proposals/{proposal}/messages', [ProjectProposalMessageController::class, 'store'])
+    ->name('projects.proposals.messages.store');
+Route::resource('projects.proposals', ProjectProposalController::class);
 
 Route::post('projects/{project}/tasks/{task}/submit-completion', [TaskCompletionReviewController::class, 'submit'])
     ->scopeBindings()

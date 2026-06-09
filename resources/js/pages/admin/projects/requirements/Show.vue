@@ -12,9 +12,10 @@ import InputError from '@/components/InputError.vue';
 import RequirementPhaseSettingsCard, {
     type RequirementPhaseSettings,
 } from '@/components/requirements/RequirementPhaseSettingsCard.vue';
-import RequirementRichTextEditor from '@/components/RequirementRichTextEditor.vue';
-import RequirementRichTextViewer from '@/components/RequirementRichTextViewer.vue';
+import RichTextEditor from '@/components/RichTextEditor.vue';
+import RichTextViewer from '@/components/RichTextViewer.vue';
 import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -138,6 +139,13 @@ const props = defineProps<{
     estimation_summary: EstimationSummary | null;
     phase_settings: RequirementPhaseSettings;
     can_update_phase_settings: boolean;
+    linked_proposals: {
+        id: number;
+        title: string;
+        status: string;
+        status_label: string;
+        show_url: string;
+    }[];
 }>();
 
 const page = usePage();
@@ -414,6 +422,22 @@ defineOptions({
             </div>
         </div>
 
+        <GlassCard v-if="linked_proposals.length > 0" class="p-6">
+            <div class="mb-4 space-y-1">
+                <h2 class="text-lg font-semibold">Linked proposals</h2>
+                <p class="text-sm text-muted-foreground">Proposals associated with this requirement.</p>
+            </div>
+            <ul class="space-y-2">
+                <li v-for="proposal in linked_proposals" :key="proposal.id"
+                    class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 px-3 py-2">
+                    <Link class="font-medium underline-offset-4 hover:underline" :href="proposal.show_url">
+                        {{ proposal.title }}
+                    </Link>
+                    <Badge variant="outline">{{ proposal.status_label }}</Badge>
+                </li>
+            </ul>
+        </GlassCard>
+
         <div class="mx-auto flex w-full flex-col gap-8">
             <div class="grid min-w-0 gap-6 lg:grid-cols-12 lg:items-stretch">
                 <GlassCard class="flex h-full min-h-0 flex-col lg:col-span-7">
@@ -489,7 +513,7 @@ defineOptions({
                                     <span class="font-medium text-foreground">{{ row.user?.name ?? 'Unknown' }}</span>
                                     <span>{{
                                         row.created_at ? new Date(row.created_at).toLocaleString() : '—'
-                                    }}</span>
+                                        }}</span>
                                 </div>
                                 <p class="mt-1 whitespace-pre-wrap break-words">{{ row.body }}</p>
                             </div>
@@ -531,14 +555,11 @@ defineOptions({
                             </p>
                         </div>
                         <Button v-if="can_open_estimation" as-child>
-                            <Link
-                                :href="
-                                    estimationShow.url({
-                                        project: project.id,
-                                        requirement: requirement.id,
-                                    })
-                                "
-                            >
+                            <Link :href="estimationShow.url({
+                                project: project.id,
+                                requirement: requirement.id,
+                            })
+                                ">
                                 {{
                                     can_create_estimation
                                         ? 'Start estimation'
@@ -549,12 +570,8 @@ defineOptions({
                     </div>
                 </GlassCard>
 
-                <RequirementPhaseSettingsCard
-                    :project-id="project.id"
-                    :requirement-id="requirement.id"
-                    :phase-settings="phase_settings"
-                    :can-update="can_update_phase_settings"
-                />
+                <RequirementPhaseSettingsCard :project-id="project.id" :requirement-id="requirement.id"
+                    :phase-settings="phase_settings" :can-update="can_update_phase_settings" />
 
                 <GlassCard class="lg:col-span-12">
                     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -568,18 +585,12 @@ defineOptions({
                         <div class="flex flex-wrap items-end gap-3">
                             <div v-if="requirement_tasks.length > 0" class="grid gap-1">
                                 <Label class="text-xs text-muted-foreground" for="req-task-phase-filter">Phase</Label>
-                                <TaskFormSelect
-                                    id="req-task-phase-filter"
-                                    name="task_phase_filter"
-                                    class="min-w-[10rem]"
-                                    v-model="taskPhaseFilter"
-                                    :options="taskPhaseFilterOptions"
-                                    placeholder="Any phase"
-                                    none-label="Any phase"
-                                    exclude-from-submit
-                                />
+                                <TaskFormSelect id="req-task-phase-filter" name="task_phase_filter"
+                                    class="min-w-[10rem]" v-model="taskPhaseFilter" :options="taskPhaseFilterOptions"
+                                    placeholder="Any phase" none-label="Any phase" exclude-from-submit />
                             </div>
-                            <Button v-if="can_create_tasks" type="button" class="shrink-0" @click="openCreateTaskDialog">
+                            <Button v-if="can_create_tasks" type="button" class="shrink-0"
+                                @click="openCreateTaskDialog">
                                 Add task
                             </Button>
                         </div>
@@ -623,14 +634,8 @@ defineOptions({
                                     </div>
                                     <div v-if="showRequirementPhaseField" class="grid gap-2">
                                         <Label for="req-task-phase">Phase</Label>
-                                        <TaskFormSelect
-                                            id="req-task-phase"
-                                            name="phase"
-                                            v-model="createTaskPhase"
-                                            required
-                                            placeholder="Phase"
-                                            :options="requirementPhaseSelectOptions"
-                                        />
+                                        <TaskFormSelect id="req-task-phase" name="phase" v-model="createTaskPhase"
+                                            required placeholder="Phase" :options="requirementPhaseSelectOptions" />
                                         <InputError :message="errors.phase" />
                                     </div>
                                     <div class="grid gap-2">
@@ -680,16 +685,12 @@ defineOptions({
                                                 class="mt-0.5 size-4 shrink-0 text-muted-foreground"
                                                 aria-hidden="true" />
                                             <div class="min-w-0 flex-1">
-                                                <span
-                                                    v-if="task.estimation_source === 'transferred'"
-                                                    class="mb-0.5 inline-block rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200"
-                                                >
+                                                <span v-if="task.estimation_source === 'transferred'"
+                                                    class="mb-0.5 inline-block rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200">
                                                     From estimation
                                                 </span>
-                                                <span
-                                                    v-else-if="task.estimation_source === 'ad_hoc'"
-                                                    class="mb-0.5 inline-block rounded bg-sky-500/15 px-1.5 py-0.5 text-xs font-medium text-sky-800 dark:text-sky-200"
-                                                >
+                                                <span v-else-if="task.estimation_source === 'ad_hoc'"
+                                                    class="mb-0.5 inline-block rounded bg-sky-500/15 px-1.5 py-0.5 text-xs font-medium text-sky-800 dark:text-sky-200">
                                                     New task
                                                 </span>
                                                 <Button variant="link"
@@ -713,7 +714,7 @@ defineOptions({
                                         </div>
                                     </td>
                                     <td data-label="Status" class="px-4 py-3 text-muted-foreground">{{ task.status_label
-                                        }}</td>
+                                    }}</td>
                                     <td v-if="showRequirementPhaseField" data-label="Phase"
                                         class="px-4 py-3 text-muted-foreground">
                                         {{ task.phase_label ?? '—' }}
@@ -746,8 +747,7 @@ defineOptions({
                                     <td data-label="" colspan="5" class="px-4 py-8 text-center text-muted-foreground"
                                         :class="can_create_tasks ? 'cursor-pointer hover:bg-muted/30' : ''"
                                         :role="can_create_tasks ? 'button' : undefined"
-                                        :tabindex="can_create_tasks ? 0 : undefined"
-                                        @click="openCreateTaskDialog"
+                                        :tabindex="can_create_tasks ? 0 : undefined" @click="openCreateTaskDialog"
                                         @keydown="onEmptyTasksKeydown">
                                         <template v-if="can_create_tasks">
                                             No tasks yet. Click here or use Add task to create one.
@@ -770,7 +770,7 @@ defineOptions({
                         </p>
                     </div>
                     <div>
-                        <RequirementRichTextViewer :json="requirement.review_understanding" />
+                        <RichTextViewer :json="requirement.review_understanding" />
                     </div>
                 </GlassCard>
 
@@ -797,7 +797,7 @@ defineOptions({
                         <h2 class="text-lg font-semibold">Description</h2>
                     </div>
                     <div>
-                        <RequirementRichTextViewer v-if="requirement.description" :json="requirement.description" />
+                        <RichTextViewer v-if="requirement.description" :json="requirement.description" />
                         <p v-else class="text-sm text-muted-foreground">No description.</p>
                     </div>
                 </GlassCard>
@@ -820,7 +820,7 @@ defineOptions({
                     " class="grid gap-4" @success="reviewDialogOpen = false" v-slot="{ errors, processing }">
                     <div class="grid gap-2">
                         <Label for="review-understanding-editor">Your understanding</Label>
-                        <RequirementRichTextEditor id="review-understanding-editor" v-model="reviewUnderstandingJson"
+                        <RichTextEditor id="review-understanding-editor" v-model="reviewUnderstandingJson"
                             input-name="review_understanding" />
                         <InputError :message="errors.review_understanding" />
                     </div>

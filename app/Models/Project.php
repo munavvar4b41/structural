@@ -53,6 +53,14 @@ class Project extends Model
     }
 
     /**
+     * @return HasMany<ProjectProposal, $this>
+     */
+    public function proposals(): HasMany
+    {
+        return $this->hasMany(ProjectProposal::class);
+    }
+
+    /**
      * @return HasMany<ProjectTask, $this>
      */
     public function tasks(): HasMany

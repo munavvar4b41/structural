@@ -2,9 +2,13 @@
 
 namespace App\Support;
 
+use App\Models\ProjectProposal;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectTask;
 use App\Models\User;
+use App\Notifications\ProjectProposalDiscussionNotification;
+use App\Notifications\ProjectProposalReviewedNotification;
+use App\Notifications\ProjectProposalSubmittedNotification;
 use App\Notifications\RequirementAssignedNotification;
 use App\Notifications\RequirementClarificationDiscussionNotification;
 use App\Notifications\RequirementReviewUnderstandingSubmittedNotification;
@@ -109,6 +113,51 @@ class AssignmentNotificationDispatcher
         $this->notifyUsers(
             collect([$requirement->creator, $requirement->responsibleUser, $requirement->reviewer]),
             new RequirementReviewUnderstandingSubmittedNotification($requirement),
+            $actor,
+        );
+    }
+
+    public function sendProjectProposalSubmitted(ProjectProposal $proposal, User $actor): void
+    {
+        $proposal->loadMissing([
+            'project:id,name,code,client_user_id,lead_user_id',
+            'project.clientUser:id,name,email',
+            'project.leadUser:id,name,email',
+        ]);
+
+        $this->notifyUsers(
+            collect([$proposal->project->clientUser, $proposal->project->leadUser]),
+            new ProjectProposalSubmittedNotification($proposal),
+            $actor,
+        );
+    }
+
+    public function sendProjectProposalReviewed(ProjectProposal $proposal, User $actor): void
+    {
+        $proposal->loadMissing([
+            'project:id,name,code',
+            'creator:id,name,email',
+        ]);
+
+        $this->notifyUsers(
+            collect([$proposal->creator]),
+            new ProjectProposalReviewedNotification($proposal),
+            $actor,
+        );
+    }
+
+    public function sendProjectProposalDiscussion(ProjectProposal $proposal, User $actor): void
+    {
+        $proposal->loadMissing([
+            'project:id,name,code,client_user_id,lead_user_id',
+            'project.clientUser:id,name,email',
+            'project.leadUser:id,name,email',
+            'creator:id,name,email',
+        ]);
+
+        $this->notifyUsers(
+            collect([$proposal->creator, $proposal->project->clientUser, $proposal->project->leadUser]),
+            new ProjectProposalDiscussionNotification($proposal),
             $actor,
         );
     }

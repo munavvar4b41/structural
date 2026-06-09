@@ -11,6 +11,7 @@ use App\Http\Requests\Admin\StoreProjectRequirementRequest;
 use App\Http\Requests\Admin\UpdateProjectRequirementRequest;
 use App\Http\Requests\Admin\UpdateRequirementPhaseSettingsRequest;
 use App\Models\Project;
+use App\Models\ProjectProposal;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectRequirementMessage;
 use App\Models\ProjectTask;
@@ -144,6 +145,7 @@ class ProjectRequirementController extends Controller
                 'can_create_tasks' => $actor->can('create', [ProjectTask::class, $project]),
                 'phase_settings' => $this->requirementPhaseRegistry->settingsPayload($requirement),
                 'can_update_phase_settings' => $actor->can('update', $requirement),
+                'linked_proposals' => $this->linkedProposalsPayload($project, $requirement),
             ],
             RequirementEstimationSummaryPayload::forRequirementShow($requirement, $project, $actor),
         ));
@@ -511,6 +513,25 @@ class ProjectRequirementController extends Controller
         });
 
         return $paginator;
+    }
+
+    /**
+     * @return list<array{id: int, title: string, status: string, status_label: string, show_url: string}>
+     */
+    private function linkedProposalsPayload(Project $project, ProjectRequirement $requirement): array
+    {
+        return ProjectProposal::query()
+            ->where('project_requirement_id', $requirement->id)
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(static fn (ProjectProposal $proposal): array => [
+                'id' => $proposal->id,
+                'title' => $proposal->title,
+                'status' => $proposal->status->value,
+                'status_label' => $proposal->status->label(),
+                'show_url' => route('admin.projects.proposals.show', [$project, $proposal]),
+            ])
+            ->all();
     }
 
     private function ensureRequirementBelongsToProject(Project $project, ProjectRequirement $requirement): void
