@@ -6,10 +6,9 @@ use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
 use App\Models\User;
 use App\Settings\CompanySettings;
+use App\Support\NotificationFeedBuilder;
 use App\Support\ProjectTaskHierarchy;
 use Illuminate\Http\Request;
-use Illuminate\Notifications\DatabaseNotification;
-use Illuminate\Support\Collection;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -91,41 +90,7 @@ class HandleInertiaRequests extends Middleware
             ];
         }
 
-        return [
-            'unread_count' => $user->unreadNotifications()->count(),
-            'read_count' => $user->readNotifications()->count(),
-            'unread_items' => $this->mapNotifications(
-                $user->unreadNotifications()->latest()->limit(15)->get(),
-            ),
-            'read_items' => $this->mapNotifications(
-                $user->readNotifications()->latest()->limit(15)->get(),
-            ),
-        ];
-    }
-
-    /**
-     * @param  Collection<int, DatabaseNotification>  $notifications
-     * @return list<array{id: string, type: string, read_at: string|null, created_at: string|null, title: string|null, project_name: string|null, task_show_url: string|null}>
-     */
-    private function mapNotifications(Collection $notifications): array
-    {
-        return $notifications
-            ->map(static function (DatabaseNotification $notification): array {
-                /** @var array<string, mixed> $data */
-                $data = $notification->data;
-
-                return [
-                    'id' => (string) $notification->id,
-                    'type' => (string) $notification->type,
-                    'read_at' => $notification->read_at?->toIso8601String(),
-                    'created_at' => $notification->created_at?->toIso8601String(),
-                    'title' => isset($data['title']) && is_string($data['title']) ? $data['title'] : null,
-                    'project_name' => isset($data['project_name']) && is_string($data['project_name']) ? $data['project_name'] : null,
-                    'task_show_url' => isset($data['task_show_url']) && is_string($data['task_show_url']) ? $data['task_show_url'] : null,
-                ];
-            })
-            ->values()
-            ->all();
+        return app(NotificationFeedBuilder::class)->buildForUser($user);
     }
 
     /**

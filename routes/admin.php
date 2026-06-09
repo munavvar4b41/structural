@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CareersSettingsController;
 use App\Http\Controllers\Admin\CompanySettingsController;
 use App\Http\Controllers\Admin\EstimationReviewController;
 use App\Http\Controllers\Admin\LeaveRequestController;
@@ -37,6 +38,12 @@ Route::middleware(EnsureCanManageCompanySettings::class)
     ->name('leave-settings.')->group(function (): void {
         Route::get('leave-settings', [LeaveSettingsController::class, 'edit'])->name('edit');
         Route::patch('leave-settings', [LeaveSettingsController::class, 'update'])->name('update');
+    });
+
+Route::middleware(EnsureCanManageCompanySettings::class)
+    ->name('careers-settings.')->group(function (): void {
+        Route::get('careers-settings', [CareersSettingsController::class, 'edit'])->name('edit');
+        Route::patch('careers-settings', [CareersSettingsController::class, 'update'])->name('update');
     });
 
 Route::middleware(EnsureCanManageUsers::class)
