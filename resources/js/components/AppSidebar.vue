@@ -9,6 +9,7 @@ import {
     ClipboardList,
     FolderKanban,
     LayoutGrid,
+    FileCheck,
     Star,
     Timer,
     Users,
@@ -34,6 +35,7 @@ import { index as leaveRequestsIndex, manage as leaveRequestsManage } from '@/ro
 import { edit as adminLeaveSettingsEdit } from '@/routes/admin/leave-settings/index';
 import { index as adminMyWorkIndex } from '@/routes/admin/my-work/index';
 import { index as adminProjectsIndex } from '@/routes/admin/projects/index';
+import { index as adminProposalsIndex } from '@/routes/admin/proposals/index';
 import { index as adminTaskRatingsReportIndex } from '@/routes/admin/task-ratings-report/index';
 import { index as adminEstimationReviewsIndex } from '@/routes/admin/estimation-reviews/index';
 import { index as adminTaskReviewsIndex } from '@/routes/admin/task-reviews/index';
@@ -80,6 +82,12 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Tasks',
             href: adminTasksIndex(),
             icon: ClipboardList,
+            activeMatch: 'prefix',
+        });
+        items.push({
+            title: 'Proposals',
+            href: adminProposalsIndex(),
+            icon: FileCheck,
             activeMatch: 'prefix',
         });
         items.push({
