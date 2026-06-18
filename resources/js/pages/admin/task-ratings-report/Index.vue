@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { index as projectsIndex } from '@/routes/admin/projects/index';
 import { index as taskRatingsReportIndex } from '@/routes/admin/task-ratings-report/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type SelectOption = { value: number; label: string };
 
@@ -230,8 +231,7 @@ const ratingsChartOptions = computed(() => ({
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="row in filteredRows" :key="row.user_id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                        <TableRow v-for="row in filteredRows" :key="row.user_id">
                             <DataTableTd label="Name" class="font-medium">{{ row.name }}</DataTableTd>
                             <DataTableTd label="Avg as assignee" class="tabular-nums text-muted-foreground">
                                 {{ avgLabel(row.assignee_avg) }}
@@ -245,7 +245,7 @@ const ratingsChartOptions = computed(() => ({
                             <DataTableTd label="Reviews (creator)" class="tabular-nums text-muted-foreground">
                                 {{ row.creator_count }}
                             </DataTableTd>
-                        </tr>
+                        </TableRow>
                     </tbody>
                 </DataTable>
                 <div v-else class="text-sm text-muted-foreground">
@@ -272,8 +272,7 @@ const ratingsChartOptions = computed(() => ({
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="r in filteredRecentReviews" :key="r.id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                        <TableRow v-for="r in filteredRecentReviews" :key="r.id">
                             <DataTableTd label="Date" class="text-muted-foreground">
                                 {{ new Date(r.created_at).toLocaleString() }}
                             </DataTableTd>
@@ -289,7 +288,7 @@ const ratingsChartOptions = computed(() => ({
                             <DataTableTd label="Creator rating" class="tabular-nums text-muted-foreground">
                                 {{ r.creator_rating ?? '—' }}
                             </DataTableTd>
-                        </tr>
+                        </TableRow>
                     </tbody>
                 </DataTable>
                 <div v-else class="text-sm text-muted-foreground">

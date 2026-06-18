@@ -29,6 +29,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { index as projectsIndex } from '@/routes/admin/projects/index';
 import { index as taskReviewsIndex } from '@/routes/admin/task-reviews/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserBrief = {
     id: number;
@@ -215,8 +216,7 @@ function submittedLabel(at: string | null): string {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="row in filteredTasks" :key="row.id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                        <TableRow v-for="row in filteredTasks" :key="row.id">
                             <DataTableTd label="Task" class="align-top font-medium">{{ row.title }}</DataTableTd>
                             <DataTableTd label="Project" class="align-top text-muted-foreground">
                                 {{ row.project.name }}
@@ -231,8 +231,8 @@ function submittedLabel(at: string | null): string {
                                     by {{ row.completion_submitted_by.name }}
                                 </span>
                             </DataTableTd>
-                            <DataTableTd label="Actions" class="text-right">
-                                <div class="flex flex-wrap justify-end gap-2">
+                            <DataTableTd label="Actions" class="text-left md:text-right">
+                                <div class="flex flex-wrap justify-start md:justify-end gap-2">
                                     <Button variant="outline" size="sm" as-child>
                                         <Link :href="row.task_show_url">Open task</Link>
                                     </Button>
@@ -241,7 +241,7 @@ function submittedLabel(at: string | null): string {
                                     </Button>
                                 </div>
                             </DataTableTd>
-                        </tr>
+                        </TableRow>
                     </tbody>
                 </DataTable>
                 <div v-else class="text-sm text-muted-foreground">

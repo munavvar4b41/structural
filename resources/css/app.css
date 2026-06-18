@@ -62,6 +62,7 @@
 }
 
 @layer base {
+
     *,
     ::after,
     ::before,
@@ -72,6 +73,7 @@
 }
 
 @layer utilities {
+
     body,
     html {
         --font-sans:
@@ -205,6 +207,7 @@
     * {
         @apply border-border outline-ring/50;
     }
+
     body {
         @apply bg-background text-foreground antialiased;
     }
@@ -228,6 +231,13 @@
     }
 
     @media (max-width: 767px) {
+
+        .data-table.glass-panel {
+            background-color: unset !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
         table[data-responsive-table] thead {
             display: none;
         }
@@ -270,7 +280,7 @@
             font-weight: 500;
             letter-spacing: 0.05em;
             text-transform: uppercase;
-            color: hsl(var(--muted-foreground));
+            color: var(--muted-foreground);
         }
 
         table[data-responsive-table] tbody td[data-label='']::before,

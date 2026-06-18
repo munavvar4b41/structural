@@ -21,6 +21,7 @@ import {
     index as leaveRequestsIndex,
     manage as leaveRequestsManage,
 } from '@/routes/admin/leave-requests/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type LeaveRow = {
     id: number;
@@ -243,19 +244,20 @@ const filteredLeaveRequests = computed(() => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="row in filteredLeaveRequests" :key="row.id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                        <TableRow v-for="row in filteredLeaveRequests" :key="row.id">
                             <DataTableTd label="Requester">
-                                <div class="font-medium">{{ row.user?.name ?? '—' }}</div>
-                                <div class="text-xs text-muted-foreground">
-                                    {{ row.user?.email }}
+                                <div>
+                                    <div class="font-medium">{{ row.user?.name ?? '—' }}</div>
+                                    <div class="text-xs text-muted-foreground">
+                                        {{ row.user?.email }}
+                                    </div>
                                 </div>
                             </DataTableTd>
                             <DataTableTd label="Date">{{ row.date }}</DataTableTd>
                             <DataTableTd label="Type">{{ row.type_label }}</DataTableTd>
                             <DataTableTd label="Detail">{{ detailLabel(row) }}</DataTableTd>
                             <DataTableTd label="Status">{{ row.status_label }}</DataTableTd>
-                            <DataTableTd label="Actions" class="text-right whitespace-nowrap">
+                            <DataTableTd label="Actions" class="text-left md:text-right whitespace-nowrap">
                                 <template v-if="row.status === 'pending'">
                                     <Button type="button" size="sm" class="mr-2" @click="approve(row)">
                                         Approve
@@ -270,7 +272,7 @@ const filteredLeaveRequests = computed(() => {
                                     </template>
                                 </span>
                             </DataTableTd>
-                        </tr>
+                        </TableRow>
                         <tr v-if="filteredLeaveRequests.length === 0">
                             <DataTableTd label="" :colspan="6" class="py-8 text-center text-muted-foreground">
                                 {{

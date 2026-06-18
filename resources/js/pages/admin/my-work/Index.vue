@@ -34,6 +34,7 @@ import { index as myWorkIndex } from '@/routes/admin/my-work/index';
 import { index as projectsIndex } from '@/routes/admin/projects/index';
 import { show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
 import type { TaskShowPayload } from '@/types/projectTaskShow';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type TaskCard = MyWorkTaskCardData;
 
@@ -533,8 +534,7 @@ onMounted(() => {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="task in col.tasks" :key="task.id" :class="cn(
-                                'border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30',
+                            <TableRow v-for="task in col.tasks" :key="task.id" :class="cn(
                                 dragTask?.id === task.id && 'opacity-50',
                             )
                                 ">
@@ -573,8 +573,8 @@ onMounted(() => {
                                         placeholder="Status" :options="statusSelectOptionsForTask(task)"
                                         exclude-from-submit @update:model-value="patchTaskStatus(task, $event)" />
                                 </DataTableTd>
-                                <DataTableTd label="Actions" class="text-right align-top">
-                                    <div class="flex flex-wrap justify-end gap-2">
+                                <DataTableTd label="Actions" class="text-left md:text-right align-top">
+                                    <div class="flex flex-wrap justify-start md:justify-end gap-2">
                                         <Tooltip>
                                             <TooltipTrigger as-child>
                                                 <Button v-if="task.can_submit_task_completion" variant="secondary"
@@ -614,7 +614,7 @@ onMounted(() => {
                                         </Tooltip>
                                     </div>
                                 </DataTableTd>
-                            </tr>
+                            </TableRow>
                         </tbody>
                     </DataTable>
 

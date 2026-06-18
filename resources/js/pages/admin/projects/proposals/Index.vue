@@ -20,6 +20,7 @@ import {
     index as proposalsIndex,
     show as proposalsShow,
 } from '@/routes/admin/projects/proposals/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserBrief = {
     id: number;
@@ -205,8 +206,7 @@ function statusBadgeVariant(status: string): 'default' | 'secondary' | 'destruct
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="row in proposals.data" :key="row.id"
-                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                <TableRow v-for="row in proposals.data" :key="row.id">
                     <DataTableTd label="Title" class="align-top">
                         <div class="font-medium">{{ row.title }}</div>
                         <p v-if="row.description_preview" class="mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -225,8 +225,8 @@ function statusBadgeVariant(status: string): 'default' | 'secondary' | 'destruct
                     <DataTableTd label="Created" class="text-muted-foreground">
                         {{ row.created_at ? new Date(row.created_at).toLocaleString() : '—' }}
                     </DataTableTd>
-                    <DataTableTd label="Actions" class="text-right">
-                        <div class="flex justify-end gap-2">
+                    <DataTableTd label="Actions" class="text-left md:text-right">
+                        <div class="flex gap-2 justify-start md:justify-end">
                             <Button variant="ghost" size="sm" as-child>
                                 <Link :href="proposalsShow.url({
                                     project: project.id,
@@ -251,7 +251,7 @@ function statusBadgeVariant(status: string): 'default' | 'secondary' | 'destruct
                             </Button>
                         </div>
                     </DataTableTd>
-                </tr>
+                </TableRow>
                 <tr v-if="proposals.data.length === 0">
                     <DataTableTd label="" :colspan="6" class="py-8 text-center text-muted-foreground">
                         No proposals yet.

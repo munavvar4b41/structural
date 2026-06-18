@@ -18,6 +18,7 @@ import {
     edit as usersEdit,
     index as usersIndex,
 } from '@/routes/admin/users/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserRow = {
     id: number;
@@ -214,8 +215,7 @@ function roleLabel(role: string): string {
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="row in users.data" :key="row.id"
-                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                <TableRow v-for="row in users.data" :key="row.id">
                     <DataTableTd label="Name" class="font-medium">{{ row.name }}</DataTableTd>
                     <DataTableTd label="Email" class="text-muted-foreground">
                         {{ row.email }}
@@ -223,8 +223,8 @@ function roleLabel(role: string): string {
                     <DataTableTd label="Role" class="text-muted-foreground">
                         {{ roleLabel(row.role) }}
                     </DataTableTd>
-                    <DataTableTd label="Actions" class="text-right">
-                        <div class="flex justify-end gap-2">
+                    <DataTableTd label="Actions" class="text-left md:text-right">
+                        <div class="flex gap-2 justify-start md:justify-end">
                             <Button variant="outline" size="sm" as-child>
                                 <Link :href="usersEdit(row.id)">Edit</Link>
                             </Button>
@@ -234,7 +234,7 @@ function roleLabel(role: string): string {
                             </Button>
                         </div>
                     </DataTableTd>
-                </tr>
+                </TableRow>
             </tbody>
         </DataTable>
 

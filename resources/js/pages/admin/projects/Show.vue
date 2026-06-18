@@ -44,6 +44,7 @@ import {
     show as proposalsShow,
 } from '@/routes/admin/projects/proposals/index';
 import { index as projectTasksIndex, show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserBrief = {
     id: number;
@@ -624,12 +625,11 @@ watch(timeEntryOpen, (open) => {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="row in metadata" :key="row.id"
-                        class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                    <TableRow v-for="row in metadata" :key="row.id">
                         <DataTableTd label="Key" class="font-medium">{{ row.key }}</DataTableTd>
                         <DataTableTd label="Value" class="text-muted-foreground">{{ row.value }}</DataTableTd>
-                        <DataTableTd v-if="can_manage_tags_metadata" label="Actions" class="text-right">
-                            <div class="flex justify-end gap-2">
+                        <DataTableTd v-if="can_manage_tags_metadata" label="Actions" class="text-left md:text-right">
+                            <div class="flex gap-2 justify-start md:justify-end">
                                 <Button variant="ghost" size="sm" type="button" @click="openMetadataEdit(row)">
                                     Edit
                                 </Button>
@@ -639,7 +639,7 @@ watch(timeEntryOpen, (open) => {
                                 </Button>
                             </div>
                         </DataTableTd>
-                    </tr>
+                    </TableRow>
                 </tbody>
             </DataTable>
             <p v-else class="text-sm text-muted-foreground">No metadata yet.</p>
@@ -668,8 +668,7 @@ watch(timeEntryOpen, (open) => {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="row in requirements" :key="row.id"
-                        class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                    <TableRow v-for="row in requirements" :key="row.id">
                         <DataTableTd label="Title" class="align-top">
                             <div class="font-medium">{{ row.title }}</div>
                             <p v-if="row.description_preview" class="mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -684,7 +683,7 @@ watch(timeEntryOpen, (open) => {
                             <span v-else-if="row.reviewed_at">Awaiting confirmation</span>
                             <span v-else>—</span>
                         </DataTableTd>
-                        <DataTableTd label="Actions" class="text-right">
+                        <DataTableTd label="Actions" class="text-left md:text-right">
                             <Button variant="ghost" size="sm" as-child>
                                 <Link :href="requirementsShow.url({
                                     project: project.id,
@@ -694,7 +693,7 @@ watch(timeEntryOpen, (open) => {
                                 </Link>
                             </Button>
                         </DataTableTd>
-                    </tr>
+                    </TableRow>
                 </tbody>
             </DataTable>
         </section>
@@ -722,8 +721,7 @@ watch(timeEntryOpen, (open) => {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="row in proposals" :key="row.id"
-                        class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                    <TableRow v-for="row in proposals" :key="row.id">
                         <DataTableTd label="Title" class="align-top">
                             <div class="font-medium">{{ row.title }}</div>
                             <p v-if="row.description_preview" class="mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -736,7 +734,7 @@ watch(timeEntryOpen, (open) => {
                         <DataTableTd label="Creator" class="text-muted-foreground">
                             {{ row.creator?.name ?? '—' }}
                         </DataTableTd>
-                        <DataTableTd label="Actions" class="text-right">
+                        <DataTableTd label="Actions" class="text-left md:text-right">
                             <Button variant="ghost" size="sm" as-child>
                                 <Link :href="proposalsShow.url({
                                     project: project.id,
@@ -747,7 +745,7 @@ watch(timeEntryOpen, (open) => {
                                 </Link>
                             </Button>
                         </DataTableTd>
-                    </tr>
+                    </TableRow>
                 </tbody>
             </DataTable>
         </section>
@@ -777,8 +775,7 @@ watch(timeEntryOpen, (open) => {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="row in tasks" :key="row.id"
-                        class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                    <TableRow v-for="row in tasks" :key="row.id">
                         <DataTableTd label="Title" class="align-top">
                             <div class="flex items-start gap-1 font-medium">
                                 <CornerDownRight v-if="row.tree_depth > 0"
@@ -797,7 +794,7 @@ watch(timeEntryOpen, (open) => {
                             {{ row.phase_label ?? '—' }}
                         </DataTableTd>
                         <DataTableTd label="Estimate">{{ formatTaskMinutes(row.estimated_minutes) }}</DataTableTd>
-                        <DataTableTd label="Actions" class="text-right">
+                        <DataTableTd label="Actions" class="text-left md:text-right">
                             <Button variant="ghost" size="sm" as-child>
                                 <Link :href="projectTasksShow.url({
                                     project: project.id,
@@ -807,7 +804,7 @@ watch(timeEntryOpen, (open) => {
                                 </Link>
                             </Button>
                         </DataTableTd>
-                    </tr>
+                    </TableRow>
                 </tbody>
             </DataTable>
         </section>
@@ -836,8 +833,7 @@ watch(timeEntryOpen, (open) => {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="row in time_entries" :key="row.id"
-                        class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                    <TableRow v-for="row in time_entries" :key="row.id">
                         <DataTableTd label="Task">{{ row.task_title ?? '—' }}</DataTableTd>
                         <DataTableTd label="User" class="text-muted-foreground">
                             {{ row.user?.name ?? '—' }}
@@ -846,8 +842,8 @@ watch(timeEntryOpen, (open) => {
                             {{ formatEntryRange(row) }}
                         </DataTableTd>
                         <DataTableTd label="Duration">{{ formatDuration(row.duration_seconds) }}</DataTableTd>
-                        <DataTableTd label="Actions" class="text-right">
-                            <div class="flex justify-end gap-2">
+                        <DataTableTd label="Actions" class="text-left md:text-right">
+                            <div class="flex gap-2 justify-start md:justify-end">
                                 <Button v-if="row.can_update" variant="ghost" size="sm" type="button"
                                     @click="openEditEntry(row)">
                                     Edit
@@ -858,7 +854,7 @@ watch(timeEntryOpen, (open) => {
                                 </Button>
                             </div>
                         </DataTableTd>
-                    </tr>
+                    </TableRow>
                 </tbody>
             </DataTable>
         </section>

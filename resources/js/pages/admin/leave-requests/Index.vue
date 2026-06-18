@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { index as leaveRequestsIndex } from '@/routes/admin/leave-requests/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type LeaveRow = {
     id: number;
@@ -263,8 +264,7 @@ const filteredLeaveRequests = computed(() => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="row in filteredLeaveRequests" :key="row.id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                        <TableRow v-for="row in filteredLeaveRequests" :key="row.id">
                             <DataTableTd label="Date">{{ row.date }}</DataTableTd>
                             <DataTableTd label="Type">{{ row.type_label }}</DataTableTd>
                             <DataTableTd label="Detail">
@@ -289,13 +289,13 @@ const filteredLeaveRequests = computed(() => {
                                 <span v-else class="text-muted-foreground">—</span>
                             </DataTableTd>
                             <DataTableTd label="Status">{{ row.status_label }}</DataTableTd>
-                            <DataTableTd label="Actions" class="text-right">
+                            <DataTableTd label="Actions" class="text-left md:text-right">
                                 <Button v-if="row.status === 'pending'" type="button" variant="outline" size="sm"
                                     @click="cancelRequest(row)">
                                     Cancel
                                 </Button>
                             </DataTableTd>
-                        </tr>
+                        </TableRow>
                         <tr v-if="filteredLeaveRequests.length === 0">
                             <DataTableTd label="" :colspan="5" class="py-8 text-center text-muted-foreground">
                                 {{
