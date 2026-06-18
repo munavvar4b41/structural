@@ -15,7 +15,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Input } from '@/components/ui/input';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 
@@ -67,12 +67,9 @@ const notesDialogOpen = ref(false);
         editableLine?.phase,
         readonlyLine?.phase,
         showPhaseColumn,
-    ]"
-        class="grid h-[72px] w-full items-center border-b border-border/60 text-sm"
-        :class="showPhaseColumn
-            ? 'grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,0.5fr)_minmax(0,0.6fr)_minmax(0,0.85fr)]'
-            : 'grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_minmax(0,0.6fr)_minmax(0,0.85fr)]'"
-        role="row">
+    ]" class="grid h-[72px] w-full items-center border-b border-border/60 text-sm" :class="showPhaseColumn
+        ? 'grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,0.5fr)_minmax(0,0.6fr)_minmax(0,0.85fr)]'
+        : 'grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)_minmax(0,0.6fr)_minmax(0,0.85fr)]'" role="row">
         <div role="cell" class="flex min-w-0 items-center gap-1 px-3"
             :style="{ paddingLeft: `calc(0.75rem + ${treeDepth} * 1rem)` }">
             <Button v-if="hasChildren" type="button" variant="ghost" size="icon-sm" class="shrink-0"
@@ -113,17 +110,10 @@ const notesDialogOpen = ref(false);
         </div>
 
         <div v-if="showPhaseColumn" role="cell" class="px-3">
-            <TaskFormSelect
-                v-if="isEditable && editableLine !== undefined"
-                :id="`estimation-phase-${editableLine.client_key}`"
-                :name="`lines.${editableLine.client_key}.phase`"
-                :model-value="String(editableLine.phase)"
-                :options="phaseSelectOptions ?? []"
-                placeholder="Phase"
-                exclude-from-submit
-                required
-                @update:model-value="editableLine.phase = Number($event)"
-            />
+            <FormSelect v-if="isEditable && editableLine !== undefined"
+                :id="`estimation-phase-${editableLine.client_key}`" :name="`lines.${editableLine.client_key}.phase`"
+                :model-value="String(editableLine.phase)" :options="phaseSelectOptions ?? []" placeholder="Phase"
+                exclude-from-submit required @update:model-value="editableLine.phase = Number($event)" />
             <span v-else-if="readonlyLine !== undefined" class="text-muted-foreground">
                 Phase {{ readonlyLine.phase }}
             </span>
@@ -145,14 +135,8 @@ const notesDialogOpen = ref(false);
 
         <div role="cell" class="px-3 text-right">
             <div v-if="isEditable && editableLine !== undefined" class="flex flex-wrap justify-end gap-1">
-                <Button
-                    v-if="showModuleSave"
-                    type="button"
-                    variant="default"
-                    size="sm"
-                    :disabled="savingModule"
-                    @click="emit('saveModule')"
-                >
+                <Button v-if="showModuleSave" type="button" variant="default" size="sm" :disabled="savingModule"
+                    @click="emit('saveModule')">
                     Save
                 </Button>
                 <Button type="button" variant="outline" size="sm" @click="emit('addSubtask')">

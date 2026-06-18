@@ -9,7 +9,7 @@ import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import {
@@ -137,7 +137,7 @@ const deleteDescription = computed(() => {
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
             <ListToolbar class="flex-1" :model-value="filters.search" placeholder="Search title, slug, location…"
                 @update:model-value="reloadSearch" />
-            <TaskFormSelect id="status" name="status" :model-value="filters.status"
+            <FormSelect id="status" name="status" :model-value="filters.status"
                 :options="[{ value: '', label: 'All statuses' }, ...status_options]" placeholder="Status"
                 @update:model-value="reloadStatus" />
         </div>

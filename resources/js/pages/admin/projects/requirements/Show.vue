@@ -14,7 +14,7 @@ import RequirementPhaseSettingsCard, {
 } from '@/components/requirements/RequirementPhaseSettingsCard.vue';
 import RichTextEditor from '@/components/RichTextEditor.vue';
 import RichTextViewer from '@/components/RichTextViewer.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -585,7 +585,7 @@ defineOptions({
                         <div class="flex flex-wrap items-end gap-3">
                             <div v-if="requirement_tasks.length > 0" class="grid gap-1">
                                 <Label class="text-xs text-muted-foreground" for="req-task-phase-filter">Phase</Label>
-                                <TaskFormSelect id="req-task-phase-filter" name="task_phase_filter"
+                                <FormSelect id="req-task-phase-filter" name="task_phase_filter"
                                     class="min-w-[10rem]" v-model="taskPhaseFilter" :options="taskPhaseFilterOptions"
                                     placeholder="Any phase" none-label="Any phase" exclude-from-submit />
                             </div>
@@ -621,26 +621,26 @@ defineOptions({
                                     </div>
                                     <div class="grid gap-2">
                                         <Label for="req-task-status">Status</Label>
-                                        <TaskFormSelect id="req-task-status" name="status" v-model="createTaskStatus"
+                                        <FormSelect id="req-task-status" name="status" v-model="createTaskStatus"
                                             required placeholder="Status" :options="taskStatusSelectOptions" />
                                         <InputError :message="errors.status" />
                                     </div>
                                     <div class="grid gap-2">
                                         <Label for="req-task-assignee">Assignee</Label>
-                                        <TaskFormSelect id="req-task-assignee" name="assignee_user_id"
+                                        <FormSelect id="req-task-assignee" name="assignee_user_id"
                                             v-model="createTaskAssignee" none-label="Unassigned"
                                             placeholder="Unassigned" :options="taskAssigneeSelectOptions" />
                                         <InputError :message="errors.assignee_user_id" />
                                     </div>
                                     <div v-if="showRequirementPhaseField" class="grid gap-2">
                                         <Label for="req-task-phase">Phase</Label>
-                                        <TaskFormSelect id="req-task-phase" name="phase" v-model="createTaskPhase"
+                                        <FormSelect id="req-task-phase" name="phase" v-model="createTaskPhase"
                                             required placeholder="Phase" :options="requirementPhaseSelectOptions" />
                                         <InputError :message="errors.phase" />
                                     </div>
                                     <div class="grid gap-2">
                                         <Label for="req-task-parent">Parent task (subtask)</Label>
-                                        <TaskFormSelect id="req-task-parent" name="parent_project_task_id"
+                                        <FormSelect id="req-task-parent" name="parent_project_task_id"
                                             v-model="createTaskParent" placeholder="None"
                                             :options="taskParentSelectOptions" />
                                         <InputError :message="errors.parent_project_task_id" />

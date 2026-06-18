@@ -6,7 +6,7 @@ import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import RichTextEditor from '@/components/RichTextEditor.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -91,7 +91,7 @@ defineOptions({
                 <div class="grid gap-4">
                     <div class="grid gap-2">
                         <Label for="project_requirement_id">Linked requirement (optional)</Label>
-                        <TaskFormSelect id="project_requirement_id" name="project_requirement_id"
+                        <FormSelect id="project_requirement_id" name="project_requirement_id"
                             v-model="projectRequirementId" :options="requirement_options.map((o) => ({
                                 value: String(o.value),
                                 label: o.label,

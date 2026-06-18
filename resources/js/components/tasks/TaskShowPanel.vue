@@ -10,7 +10,7 @@ import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue'
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -609,8 +609,8 @@ const checklistDeleteDescription = computed(() => {
                 <template v-if="manualTimeOnly">
                     <div class="grid gap-2">
                         <Label for="manual-duration">Duration (minutes)</Label>
-                        <Input id="manual-duration" name="duration_minutes" type="number" min="1" step="1"
-                            required v-model="manualDurationMinutes" />
+                        <Input id="manual-duration" name="duration_minutes" type="number" min="1" step="1" required
+                            v-model="manualDurationMinutes" />
                         <p class="text-xs text-muted-foreground">{{ durationOnlyHint }}</p>
                         <InputError :message="errors.duration_minutes" />
                     </div>
@@ -678,8 +678,7 @@ const checklistDeleteDescription = computed(() => {
                     </div>
                     <div class="grid gap-2">
                         <Label for="edit-entry-end">End</Label>
-                        <Input id="edit-entry-end" name="ended_at" type="datetime-local" required
-                            v-model="editEnd" />
+                        <Input id="edit-entry-end" name="ended_at" type="datetime-local" required v-model="editEnd" />
                         <InputError :message="errors.ended_at" />
                     </div>
                     <div class="grid gap-2">
@@ -721,21 +720,21 @@ const checklistDeleteDescription = computed(() => {
 
                 <div class="grid gap-2">
                     <Label for="show-task-rating">Task quality (1–5)</Label>
-                    <TaskFormSelect id="show-task-rating" v-model="confirmForm.task_rating" name="task_rating" required
+                    <FormSelect id="show-task-rating" v-model="confirmForm.task_rating" name="task_rating" required
                         :options="ratingOptions" />
                     <InputError :message="confirmForm.errors.task_rating" />
                 </div>
 
                 <div v-if="showAssigneeRatingOnConfirm" class="grid gap-2">
                     <Label for="show-assignee-rating">Assignee performance (1–5)</Label>
-                    <TaskFormSelect id="show-assignee-rating" v-model="confirmForm.assignee_rating"
-                        name="assignee_rating" required :options="ratingOptions" />
+                    <FormSelect id="show-assignee-rating" v-model="confirmForm.assignee_rating" name="assignee_rating"
+                        required :options="ratingOptions" />
                     <InputError :message="confirmForm.errors.assignee_rating" />
                 </div>
 
                 <div class="grid gap-2">
                     <Label for="show-creator-rating">Task owner / creator (1–5)</Label>
-                    <TaskFormSelect id="show-creator-rating" v-model="confirmForm.creator_rating" name="creator_rating"
+                    <FormSelect id="show-creator-rating" v-model="confirmForm.creator_rating" name="creator_rating"
                         required :options="ratingOptions" />
                     <InputError :message="confirmForm.errors.creator_rating" />
                 </div>

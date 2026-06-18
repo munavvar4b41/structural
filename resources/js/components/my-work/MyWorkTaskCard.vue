@@ -3,7 +3,7 @@ import { Link } from '@inertiajs/vue3';
 import { CheckCircle, Eye, List } from 'lucide-vue-next';
 import type { HTMLAttributes } from 'vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
@@ -85,7 +85,7 @@ function onDragStart(event: DragEvent): void {
             </p>
         </button>
         <div class="flex flex-col gap-2 p-3 pt-2" @click.stop>
-            <TaskFormSelect v-if="showStatusSelect" :id="`st-${task.id}`" :name="`status-${task.id}`" class="text-xs"
+            <FormSelect v-if="showStatusSelect" :id="`st-${task.id}`" :name="`status-${task.id}`" class="text-xs"
                 :model-value="task.status" required placeholder="Status" :options="statusOptions"
                 @update:model-value="emit('statusChange', task, $event)" />
             <div class="flex max-w-full flex-wrap justify-between gap-2">

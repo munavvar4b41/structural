@@ -8,7 +8,7 @@ import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { index as leaveRequestsIndex } from '@/routes/admin/leave-requests/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type LeaveRow = {
     id: number;
@@ -149,10 +150,8 @@ const filteredLeaveRequests = computed(() => {
     <Head title="Leave requests" />
 
     <div class="flex flex-col gap-6">
-        <PageHeader
-            title="Leave requests"
-            description="Request time off. Super admins and admins must approve before leave is authorized."
-        >
+        <PageHeader title="Leave requests"
+            description="Request time off. Super admins and admins must approve before leave is authorized.">
             <template #actions>
                 <Button variant="outline" size="sm" type="button" @click="leaveRequestOpen = true">
                     Add leave request
@@ -171,8 +170,7 @@ const filteredLeaveRequests = computed(() => {
                     @success="leaveRequestOpen = false" #default="{ errors, processing }">
                     <div class="grid gap-2">
                         <Label for="leave-type">Type</Label>
-                        <TaskFormSelect id="leave-type" v-model="leaveType" name="type" required
-                            :options="type_options" />
+                        <FormSelect id="leave-type" v-model="leaveType" name="type" required :options="type_options" />
                         <InputError :message="errors.type" />
                     </div>
 
@@ -184,7 +182,7 @@ const filteredLeaveRequests = computed(() => {
 
                     <div class="grid gap-2" v-if="leaveType === 'half_day'">
                         <Label for="half-day-period">Half day period</Label>
-                        <TaskFormSelect id="half-day-period" v-model="halfDayPeriod" name="half_day_period"
+                        <FormSelect id="half-day-period" v-model="halfDayPeriod" name="half_day_period"
                             :required="leaveType === 'half_day'" :disabled="leaveType !== 'half_day'"
                             :exclude-from-submit="leaveType !== 'half_day'" :options="half_day_period_options" />
                         <InputError :message="errors.half_day_period" />
@@ -239,14 +237,14 @@ const filteredLeaveRequests = computed(() => {
                             <div class="flex flex-wrap items-end gap-3">
                                 <div class="grid gap-1">
                                     <Label class="text-xs text-muted-foreground" for="lr-status">Status</Label>
-                                    <TaskFormSelect id="lr-status" name="lr_filter_status" class="w-[11rem]"
+                                    <FormSelect id="lr-status" name="lr_filter_status" class="w-[11rem]"
                                         :model-value="statusFilter" :options="statusFilterOptions"
                                         placeholder="All statuses" none-label="All statuses" exclude-from-submit
                                         @update:model-value="setStatusFilter" />
                                 </div>
                                 <div class="grid gap-1">
                                     <Label class="text-xs text-muted-foreground" for="lr-type">Type</Label>
-                                    <TaskFormSelect id="lr-type" name="lr_filter_type" class="w-[12rem]"
+                                    <FormSelect id="lr-type" name="lr_filter_type" class="w-[12rem]"
                                         :model-value="typeFilter" :options="type_options" placeholder="All types"
                                         none-label="All types" exclude-from-submit
                                         @update:model-value="setTypeFilter" />
@@ -266,17 +264,13 @@ const filteredLeaveRequests = computed(() => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr
-                            v-for="row in filteredLeaveRequests"
-                            :key="row.id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30"
-                        >
+                        <TableRow v-for="row in filteredLeaveRequests" :key="row.id">
                             <DataTableTd label="Date">{{ row.date }}</DataTableTd>
                             <DataTableTd label="Type">{{ row.type_label }}</DataTableTd>
                             <DataTableTd label="Detail">
                                 <span v-if="row.type === 'half_day'">{{
                                     row.half_day_period_label
-                                    }}</span>
+                                }}</span>
                                 <span v-else-if="row.type === 'break' && row.break_starts_at">
                                     {{
                                         new Date(row.break_starts_at).toLocaleTimeString(undefined, {
@@ -295,13 +289,13 @@ const filteredLeaveRequests = computed(() => {
                                 <span v-else class="text-muted-foreground">—</span>
                             </DataTableTd>
                             <DataTableTd label="Status">{{ row.status_label }}</DataTableTd>
-                            <DataTableTd label="Actions" class="text-right">
+                            <DataTableTd label="Actions" class="text-left md:text-right">
                                 <Button v-if="row.status === 'pending'" type="button" variant="outline" size="sm"
                                     @click="cancelRequest(row)">
                                     Cancel
                                 </Button>
                             </DataTableTd>
-                        </tr>
+                        </TableRow>
                         <tr v-if="filteredLeaveRequests.length === 0">
                             <DataTableTd label="" :colspan="5" class="py-8 text-center text-muted-foreground">
                                 {{

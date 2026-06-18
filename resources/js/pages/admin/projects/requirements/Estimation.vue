@@ -10,7 +10,7 @@ import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue'
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -564,16 +564,9 @@ const statusBadgeClass = computed(() => {
                     <div class="flex flex-wrap items-end gap-2">
                         <div v-if="displayLines.length > 0" class="grid gap-1">
                             <Label class="text-xs text-muted-foreground" for="estimation-phase-filter">Phase</Label>
-                            <TaskFormSelect
-                                id="estimation-phase-filter"
-                                name="estimation_phase_filter"
-                                class="min-w-[10rem]"
-                                v-model="phaseFilter"
-                                :options="phaseFilterOptions"
-                                placeholder="Any phase"
-                                none-label="Any phase"
-                                exclude-from-submit
-                            />
+                            <FormSelect id="estimation-phase-filter" name="estimation_phase_filter"
+                                class="min-w-[10rem]" v-model="phaseFilter" :options="phaseFilterOptions"
+                                placeholder="Any phase" none-label="Any phase" exclude-from-submit />
                         </div>
                         <Button v-if="can_submit" type="button" @click="openSubmitDialog">
                             <Send class="size-4" aria-hidden="true" />
@@ -601,29 +594,15 @@ const statusBadgeClass = computed(() => {
                     </div>
                 </div>
 
-                <EstimationLinesTable
-                    ref="linesTableRef"
-                    :is-editable="isEditable"
-                    :visible-lines="visibleLines"
-                    :total-line-count="phaseFilteredDisplayLines.length"
-                    :has-children-by-key="hasChildrenByKey"
-                    :effective-minutes-by-key="effectiveMinutesByKey"
-                    :has-children-by-id="hasChildrenById"
-                    :effective-minutes-by-id="effectiveMinutesById"
-                    :direct-child-count-by-key="directChildCountByKey"
-                    :is-collapsed="isCollapsed"
-                    :any-collapsed="anyCollapsed"
-                    :can-remove-line="editableLines.length > 1"
-                    :show-phase-column="show_phase_column"
-                    :phase-select-options="phaseSelectOptions"
-                    :saving-module-key="savingModuleKey"
-                    @add-subtask="addSubRow"
-                    @remove="removeRow"
-                    @save-module="saveModule"
-                    @toggle-collapse="toggleCollapsed"
-                    @expand-all="expandAll"
-                    @collapse-all="collapseAllParents"
-                />
+                <EstimationLinesTable ref="linesTableRef" :is-editable="isEditable" :visible-lines="visibleLines"
+                    :total-line-count="phaseFilteredDisplayLines.length" :has-children-by-key="hasChildrenByKey"
+                    :effective-minutes-by-key="effectiveMinutesByKey" :has-children-by-id="hasChildrenById"
+                    :effective-minutes-by-id="effectiveMinutesById" :direct-child-count-by-key="directChildCountByKey"
+                    :is-collapsed="isCollapsed" :any-collapsed="anyCollapsed"
+                    :can-remove-line="editableLines.length > 1" :show-phase-column="show_phase_column"
+                    :phase-select-options="phaseSelectOptions" :saving-module-key="savingModuleKey"
+                    @add-subtask="addSubRow" @remove="removeRow" @save-module="saveModule"
+                    @toggle-collapse="toggleCollapsed" @expand-all="expandAll" @collapse-all="collapseAllParents" />
 
                 <InputError class="mt-2" :message="saveErrors.lines" />
 
@@ -664,7 +643,7 @@ const statusBadgeClass = computed(() => {
             <div class="grid gap-4 py-2">
                 <div class="grid gap-2">
                     <Label for="submit-approver">Approver</Label>
-                    <TaskFormSelect id="submit-approver" name="submitted_to_user_id" exclude-from-submit
+                    <FormSelect id="submit-approver" name="submitted_to_user_id" exclude-from-submit
                         v-model="submitForm.submitted_to_user_id" required placeholder="Select approver" :options="approver_options.map((o) => ({
                             value: String(o.value),
                             label: o.label,
@@ -678,7 +657,7 @@ const statusBadgeClass = computed(() => {
                         class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs" />
                     <InputError :message="submitForm.errors.submission_notes" />
                 </div>
-                <InputError :message="submitForm.errors.lines" />
+                <InputError :message="submitForm.errors.submission_notes" />
             </div>
             <DialogFooter class="gap-2">
                 <DialogClose as-child>

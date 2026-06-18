@@ -8,7 +8,7 @@ import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import StatCard from '@/components/dashboard/StatCard.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { colorsForProjectIds } from '@/lib/charts';
 import { formatSeconds } from '@/lib/formatSeconds';
 import { index as timeReportIndex } from '@/routes/admin/time-report/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type SelectOption = { value: number; label: string };
 
@@ -281,12 +282,12 @@ const projectChartOptions = computed(() => ({
                     </div>
                     <div v-if="can_view_other_users" class="grid gap-2">
                         <Label for="filter-user">User</Label>
-                        <TaskFormSelect id="filter-user" name="user_id" v-model="userValue" required placeholder="User"
+                        <FormSelect id="filter-user" name="user_id" v-model="userValue" required placeholder="User"
                             :options="userSelectOptions" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="filter-project">Project</Label>
-                        <TaskFormSelect id="filter-project" name="project_id" v-model="projectValue"
+                        <FormSelect id="filter-project" name="project_id" v-model="projectValue"
                             none-label="All projects" placeholder="All projects" :options="projectSelectOptions" />
                     </div>
                 </div>
@@ -336,8 +337,7 @@ const projectChartOptions = computed(() => ({
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="row in per_day" :key="row.date"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                        <TableRow v-for="row in per_day" :key="row.date">
                             <DataTableTd label="Date" class="align-top">{{ formatDateLabel(row.date) }}</DataTableTd>
                             <DataTableTd label="Total" class="align-top font-medium tabular-nums">
                                 {{ formatSeconds(row.total_seconds) }}
@@ -354,7 +354,7 @@ const projectChartOptions = computed(() => ({
                                     </li>
                                 </ul>
                             </DataTableTd>
-                        </tr>
+                        </TableRow>
                         <tr v-if="per_day.length === 0">
                             <DataTableTd label="" :colspan="3" class="py-8 text-center text-muted-foreground">
                                 No time tracked in this range.
@@ -380,8 +380,7 @@ const projectChartOptions = computed(() => ({
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="row in per_project" :key="row.project_id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                        <TableRow v-for="row in per_project" :key="row.project_id">
                             <DataTableTd label="Project">
                                 {{ row.project_name ?? `Project #${row.project_id}` }}
                                 <span v-if="row.project_code" class="ml-1 text-xs text-muted-foreground">
@@ -394,7 +393,7 @@ const projectChartOptions = computed(() => ({
                             <DataTableTd label="Total" class="font-medium tabular-nums">
                                 {{ formatSeconds(row.total_seconds) }}
                             </DataTableTd>
-                        </tr>
+                        </TableRow>
                         <tr v-if="per_project.length === 0">
                             <DataTableTd label="" :colspan="3" class="py-8 text-center text-muted-foreground">
                                 No project totals.
@@ -420,8 +419,7 @@ const projectChartOptions = computed(() => ({
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="row in per_task" :key="row.task_id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                        <TableRow v-for="row in per_task" :key="row.task_id">
                             <DataTableTd label="Task">{{ row.task_title ?? `Task #${row.task_id}` }}</DataTableTd>
                             <DataTableTd label="Project" class="text-muted-foreground">
                                 {{ row.project_name ?? `Project #${row.project_id}` }}
@@ -429,7 +427,7 @@ const projectChartOptions = computed(() => ({
                             <DataTableTd label="Total" class="font-medium tabular-nums">
                                 {{ formatSeconds(row.total_seconds) }}
                             </DataTableTd>
-                        </tr>
+                        </TableRow>
                         <tr v-if="per_task.length === 0">
                             <DataTableTd label="" :colspan="3" class="py-8 text-center text-muted-foreground">
                                 No task totals.
@@ -465,8 +463,7 @@ const projectChartOptions = computed(() => ({
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="entry in filteredEntries" :key="entry.id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                        <TableRow v-for="entry in filteredEntries" :key="entry.id">
                             <DataTableTd label="When" class="text-muted-foreground">
                                 {{ formatEntryWhen(entry) }}
                             </DataTableTd>
@@ -485,7 +482,7 @@ const projectChartOptions = computed(() => ({
                             <DataTableTd label="Notes" class="line-clamp-2 break-words text-muted-foreground">
                                 {{ entry.notes ?? '—' }}
                             </DataTableTd>
-                        </tr>
+                        </TableRow>
                         <tr v-if="filteredEntries.length === 0">
                             <DataTableTd label="" :colspan="6" class="py-8 text-center text-muted-foreground">
                                 {{

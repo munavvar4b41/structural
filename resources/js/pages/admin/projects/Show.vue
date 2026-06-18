@@ -15,7 +15,7 @@ import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import RichTextEditor from '@/components/RichTextEditor.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import TypeaheadInput from '@/components/TypeaheadInput.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,14 +27,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-    DropdownMenuRadioGroup,
-    DropdownMenuRadioItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -52,6 +44,7 @@ import {
     show as proposalsShow,
 } from '@/routes/admin/projects/proposals/index';
 import { index as projectTasksIndex, show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserBrief = {
     id: number;
@@ -632,12 +625,11 @@ watch(timeEntryOpen, (open) => {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="row in metadata" :key="row.id"
-                        class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                    <TableRow v-for="row in metadata" :key="row.id">
                         <DataTableTd label="Key" class="font-medium">{{ row.key }}</DataTableTd>
                         <DataTableTd label="Value" class="text-muted-foreground">{{ row.value }}</DataTableTd>
-                        <DataTableTd v-if="can_manage_tags_metadata" label="Actions" class="text-right">
-                            <div class="flex justify-end gap-2">
+                        <DataTableTd v-if="can_manage_tags_metadata" label="Actions" class="text-left md:text-right">
+                            <div class="flex gap-2 justify-start md:justify-end">
                                 <Button variant="ghost" size="sm" type="button" @click="openMetadataEdit(row)">
                                     Edit
                                 </Button>
@@ -647,7 +639,7 @@ watch(timeEntryOpen, (open) => {
                                 </Button>
                             </div>
                         </DataTableTd>
-                    </tr>
+                    </TableRow>
                 </tbody>
             </DataTable>
             <p v-else class="text-sm text-muted-foreground">No metadata yet.</p>
@@ -676,8 +668,7 @@ watch(timeEntryOpen, (open) => {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="row in requirements" :key="row.id"
-                        class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                    <TableRow v-for="row in requirements" :key="row.id">
                         <DataTableTd label="Title" class="align-top">
                             <div class="font-medium">{{ row.title }}</div>
                             <p v-if="row.description_preview" class="mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -692,7 +683,7 @@ watch(timeEntryOpen, (open) => {
                             <span v-else-if="row.reviewed_at">Awaiting confirmation</span>
                             <span v-else>—</span>
                         </DataTableTd>
-                        <DataTableTd label="Actions" class="text-right">
+                        <DataTableTd label="Actions" class="text-left md:text-right">
                             <Button variant="ghost" size="sm" as-child>
                                 <Link :href="requirementsShow.url({
                                     project: project.id,
@@ -702,7 +693,7 @@ watch(timeEntryOpen, (open) => {
                                 </Link>
                             </Button>
                         </DataTableTd>
-                    </tr>
+                    </TableRow>
                 </tbody>
             </DataTable>
         </section>
@@ -730,8 +721,7 @@ watch(timeEntryOpen, (open) => {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="row in proposals" :key="row.id"
-                        class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                    <TableRow v-for="row in proposals" :key="row.id">
                         <DataTableTd label="Title" class="align-top">
                             <div class="font-medium">{{ row.title }}</div>
                             <p v-if="row.description_preview" class="mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -744,7 +734,7 @@ watch(timeEntryOpen, (open) => {
                         <DataTableTd label="Creator" class="text-muted-foreground">
                             {{ row.creator?.name ?? '—' }}
                         </DataTableTd>
-                        <DataTableTd label="Actions" class="text-right">
+                        <DataTableTd label="Actions" class="text-left md:text-right">
                             <Button variant="ghost" size="sm" as-child>
                                 <Link :href="proposalsShow.url({
                                     project: project.id,
@@ -755,7 +745,7 @@ watch(timeEntryOpen, (open) => {
                                 </Link>
                             </Button>
                         </DataTableTd>
-                    </tr>
+                    </TableRow>
                 </tbody>
             </DataTable>
         </section>
@@ -785,8 +775,7 @@ watch(timeEntryOpen, (open) => {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="row in tasks" :key="row.id"
-                        class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                    <TableRow v-for="row in tasks" :key="row.id">
                         <DataTableTd label="Title" class="align-top">
                             <div class="flex items-start gap-1 font-medium">
                                 <CornerDownRight v-if="row.tree_depth > 0"
@@ -805,7 +794,7 @@ watch(timeEntryOpen, (open) => {
                             {{ row.phase_label ?? '—' }}
                         </DataTableTd>
                         <DataTableTd label="Estimate">{{ formatTaskMinutes(row.estimated_minutes) }}</DataTableTd>
-                        <DataTableTd label="Actions" class="text-right">
+                        <DataTableTd label="Actions" class="text-left md:text-right">
                             <Button variant="ghost" size="sm" as-child>
                                 <Link :href="projectTasksShow.url({
                                     project: project.id,
@@ -815,7 +804,7 @@ watch(timeEntryOpen, (open) => {
                                 </Link>
                             </Button>
                         </DataTableTd>
-                    </tr>
+                    </TableRow>
                 </tbody>
             </DataTable>
         </section>
@@ -844,8 +833,7 @@ watch(timeEntryOpen, (open) => {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="row in time_entries" :key="row.id"
-                        class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                    <TableRow v-for="row in time_entries" :key="row.id">
                         <DataTableTd label="Task">{{ row.task_title ?? '—' }}</DataTableTd>
                         <DataTableTd label="User" class="text-muted-foreground">
                             {{ row.user?.name ?? '—' }}
@@ -854,8 +842,8 @@ watch(timeEntryOpen, (open) => {
                             {{ formatEntryRange(row) }}
                         </DataTableTd>
                         <DataTableTd label="Duration">{{ formatDuration(row.duration_seconds) }}</DataTableTd>
-                        <DataTableTd label="Actions" class="text-right">
-                            <div class="flex justify-end gap-2">
+                        <DataTableTd label="Actions" class="text-left md:text-right">
+                            <div class="flex gap-2 justify-start md:justify-end">
                                 <Button v-if="row.can_update" variant="ghost" size="sm" type="button"
                                     @click="openEditEntry(row)">
                                     Edit
@@ -866,7 +854,7 @@ watch(timeEntryOpen, (open) => {
                                 </Button>
                             </div>
                         </DataTableTd>
-                    </tr>
+                    </TableRow>
                 </tbody>
             </DataTable>
         </section>
@@ -979,25 +967,11 @@ watch(timeEntryOpen, (open) => {
                 </div>
                 <div class="grid gap-2">
                     <Label>Responsible</Label>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger as-child>
-                            <Button variant="outline" type="button" class="justify-between">
-                                {{ responsibleLabel }}
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" class="max-h-72 overflow-y-auto">
-                            <DropdownMenuLabel>Responsible user</DropdownMenuLabel>
-                            <DropdownMenuRadioGroup v-model="responsibleUserId">
-                                <DropdownMenuRadioItem value="">
-                                    Use default (project lead / first team head)
-                                </DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem v-for="user in assignable_responsibles" :key="user.id"
-                                    :value="String(user.id)">
-                                    {{ user.name }} ({{ user.email }})
-                                </DropdownMenuRadioItem>
-                            </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <FormSelect id="requirement-responsible" name="responsible_user_id" v-model="responsibleUserId"
+                        noneLabel="Use default (project lead / first team head)" :options="assignable_responsibles.map(u => ({
+                            value: String(u.id),
+                            label: `${u.name} (${u.email})`,
+                        }))" />
                     <InputError :message="errors.responsible_user_id" />
                 </div>
                 <DialogFooter class="gap-3">
@@ -1032,31 +1006,31 @@ watch(timeEntryOpen, (open) => {
                 </div>
                 <div class="grid gap-2">
                     <Label for="create-status">Status</Label>
-                    <TaskFormSelect id="create-status" name="status" v-model="createStatus" required
-                        placeholder="Status" :options="statusSelectOptions" />
+                    <FormSelect id="create-status" name="status" v-model="createStatus" required placeholder="Status"
+                        :options="statusSelectOptions" />
                     <InputError :message="errors.status" />
                 </div>
                 <div class="grid gap-2">
                     <Label for="create-assignee">Assignee</Label>
-                    <TaskFormSelect id="create-assignee" name="assignee_user_id" v-model="createAssignee"
+                    <FormSelect id="create-assignee" name="assignee_user_id" v-model="createAssignee"
                         none-label="Unassigned" placeholder="Unassigned" :options="assigneeSelectOptions" />
                     <InputError :message="errors.assignee_user_id" />
                 </div>
                 <div class="grid gap-2">
                     <Label for="create-requirement">Requirement</Label>
-                    <TaskFormSelect id="create-requirement" name="project_requirement_id" v-model="createRequirement"
+                    <FormSelect id="create-requirement" name="project_requirement_id" v-model="createRequirement"
                         placeholder="None" :options="requirementSelectOptions" />
                     <InputError :message="errors.project_requirement_id" />
                 </div>
                 <div v-if="showCreatePhaseField" class="grid gap-2">
                     <Label for="create-phase">Phase</Label>
-                    <TaskFormSelect id="create-phase" name="phase" v-model="createPhase" required placeholder="Phase"
+                    <FormSelect id="create-phase" name="phase" v-model="createPhase" required placeholder="Phase"
                         :options="createPhaseSelectOptions" />
                     <InputError :message="errors.phase" />
                 </div>
                 <div class="grid gap-2">
                     <Label for="create-parent">Parent task (subtask)</Label>
-                    <TaskFormSelect id="create-parent" name="parent_project_task_id" v-model="createParent"
+                    <FormSelect id="create-parent" name="parent_project_task_id" v-model="createParent"
                         placeholder="None" :options="parentSelectOptions" />
                     <InputError :message="errors.parent_project_task_id" />
                 </div>
@@ -1096,7 +1070,7 @@ watch(timeEntryOpen, (open) => {
             <div class="grid gap-4">
                 <div class="grid gap-2">
                     <Label for="time-entry-task">Task</Label>
-                    <TaskFormSelect id="time-entry-task" v-model="timeEntryTaskId" name="task_id" required
+                    <FormSelect id="time-entry-task" v-model="timeEntryTaskId" name="task_id" required
                         placeholder="Select task" :options="taskSelectOptions" />
                 </div>
                 <Form v-if="timeEntryFormBinding !== null" v-bind="timeEntryFormBinding" class="grid gap-4"

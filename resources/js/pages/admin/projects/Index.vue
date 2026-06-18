@@ -9,7 +9,7 @@ import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
@@ -21,6 +21,7 @@ import {
 } from '@/routes/admin/projects/index';
 import { index as projectRequirementsIndex } from '@/routes/admin/projects/requirements/index';
 import { index as projectTasksIndex } from '@/routes/admin/projects/tasks/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type ClientUserSummary = {
     id: number;
@@ -177,15 +178,15 @@ const deleteProjectDescription = computed(() => {
                 <div class="flex flex-wrap items-end gap-3">
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-team">Team</Label>
-                        <TaskFormSelect id="filter-team" name="team_id" class="w-[12rem]" :model-value="teamFilter"
+                        <FormSelect id="filter-team" name="team_id" class="w-[12rem]" :model-value="teamFilter"
                             :options="teamSelectOptions" placeholder="All teams" none-label="All teams"
                             exclude-from-submit @update:model-value="onTeam" />
                     </div>
                     <div v-if="show_lead_filter" class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-lead">Lead</Label>
-                        <TaskFormSelect id="filter-lead" name="lead_user_id" class="min-w-[14rem]"
-                            :model-value="leadFilter" :options="leadSelectOptions" placeholder="All leads"
-                            none-label="All leads" exclude-from-submit @update:model-value="onLead" />
+                        <FormSelect id="filter-lead" name="lead_user_id" class="min-w-[14rem]" :model-value="leadFilter"
+                            :options="leadSelectOptions" placeholder="All leads" none-label="All leads"
+                            exclude-from-submit @update:model-value="onLead" />
                     </div>
                 </div>
             </template>
@@ -204,38 +205,39 @@ const deleteProjectDescription = computed(() => {
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="project in projects.data" :key="project.id"
-                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                <TableRow v-for="project in projects.data" :key="project.id">
                     <DataTableTd label="Name" class="font-medium">
-                        <Button variant="link" class="h-auto p-0 font-medium" as-child>
+                        <Button variant="link" class="h-auto p-0 font-medium justify-start" as-child>
                             <Link :href="projectsShow.url(project.id)">{{ project.name }}</Link>
                         </Button>
                     </DataTableTd>
-                    <DataTableTd label="Code" class="text-muted-foreground">
+                    <DataTableTd label="Code">
                         {{ project.code ?? '-' }}
                     </DataTableTd>
-                    <DataTableTd label="Client" class="text-muted-foreground">
-                        <template v-if="project.client_user">
-                            {{ project.client_user.name }}
-                            <span class="text-xs">({{ project.client_user.email }})</span>
-                        </template>
-                        <template v-else>—</template>
+                    <DataTableTd label="Client">
+                        <span>
+                            <template v-if="project.client_user">
+                                {{ project.client_user.name }} <br/>
+                                <span class="text-xs">({{ project.client_user.email }})</span>
+                            </template>
+                            <template v-else>—</template>
+                        </span>
                     </DataTableTd>
-                    <DataTableTd label="Teams" class="text-muted-foreground">
+                    <DataTableTd label="Teams">
                         {{ project.teams_count }}
                     </DataTableTd>
                     <DataTableTd label="Requirements">
-                        <Button variant="link" class="h-auto p-0" as-child>
+                        <Button variant="link" class="h-auto p-0 w-fit md:w-full" as-child>
                             <Link :href="projectRequirementsIndex.url(project.id)">View</Link>
                         </Button>
                     </DataTableTd>
                     <DataTableTd label="Tasks">
-                        <Button variant="link" class="h-auto p-0" as-child>
+                        <Button variant="link" class="h-auto p-0 w-fit md:w-full" as-child>
                             <Link :href="projectTasksIndex.url(project.id)">View</Link>
                         </Button>
                     </DataTableTd>
-                    <DataTableTd v-if="canManageProjects" label="Actions" class="text-right">
-                        <div class="flex justify-end gap-2">
+                    <DataTableTd v-if="canManageProjects" label="Actions" class="text-left md:text-right">
+                        <div class="flex gap-2 justify-start md:justify-end">
                             <Button variant="outline" size="sm" as-child>
                                 <Link :href="projectsEdit(project.id)">Edit</Link>
                             </Button>
@@ -245,7 +247,7 @@ const deleteProjectDescription = computed(() => {
                             </Button>
                         </div>
                     </DataTableTd>
-                </tr>
+                </TableRow>
             </tbody>
         </DataTable>
 

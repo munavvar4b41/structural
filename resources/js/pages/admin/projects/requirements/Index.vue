@@ -9,7 +9,7 @@ import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
@@ -20,7 +20,7 @@ import {
     index as requirementsIndex,
     show as requirementsShow,
 } from '@/routes/admin/projects/requirements/index';
-import { index as projectTasksIndex } from '@/routes/admin/projects/tasks/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserBrief = {
     id: number;
@@ -91,7 +91,7 @@ watch(
 
 const reviewStatusSelectOptions = computed(() =>
     props.filter_options.review_status.map((o) => ({
-        value: o.value,
+        value: String(o.value),
         label: o.label,
     })),
 );
@@ -212,14 +212,14 @@ const deleteRequirementDescription = computed(() => {
                 <div class="flex flex-wrap items-end gap-3">
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-review-status">Stage</Label>
-                        <TaskFormSelect id="filter-review-status" name="review_status" class="w-[14rem]"
+                        <FormSelect id="filter-review-status" name="review_status" class="w-[14rem]"
                             :model-value="reviewStatusFilter" :options="reviewStatusSelectOptions"
                             placeholder="All stages" none-label="All stages" exclude-from-submit
                             @update:model-value="onReviewStatus" />
                     </div>
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-responsible">Responsible</Label>
-                        <TaskFormSelect id="filter-responsible" name="responsible_user_id" class="min-w-[14rem]"
+                        <FormSelect id="filter-responsible" name="responsible_user_id" class="min-w-[14rem]"
                             :model-value="responsibleFilter" :options="responsibleSelectOptions" placeholder="Anyone"
                             none-label="Anyone" exclude-from-submit @update:model-value="onResponsible" />
                     </div>
@@ -238,8 +238,7 @@ const deleteRequirementDescription = computed(() => {
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="row in requirements.data" :key="row.id"
-                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                <TableRow v-for="row in requirements.data" :key="row.id">
                     <DataTableTd label="Title" class="align-top">
                         <div class="font-medium">{{ row.title }}</div>
                         <p v-if="row.description_preview" class="mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -268,8 +267,8 @@ const deleteRequirementDescription = computed(() => {
                             </span>
                         </div>
                     </DataTableTd>
-                    <DataTableTd label="Actions" class="text-right">
-                        <div class="flex justify-end gap-2">
+                    <DataTableTd label="Actions" class="text-left md:text-right">
+                        <div class="flex gap-2 justify-start md:justify-end">
                             <Button variant="ghost" size="sm" as-child>
                                 <Link :href="requirementsShow.url({
                                     project: project.id,
@@ -294,7 +293,7 @@ const deleteRequirementDescription = computed(() => {
                             </Button>
                         </div>
                     </DataTableTd>
-                </tr>
+                </TableRow>
                 <tr v-if="requirements.data.length === 0">
                     <DataTableTd label="" :colspan="5" class="py-8 text-center text-muted-foreground">
                         No requirements yet.

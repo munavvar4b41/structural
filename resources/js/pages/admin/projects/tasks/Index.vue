@@ -10,7 +10,7 @@ import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import MultiSelectDropdown from '@/components/MultiSelectDropdown.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -220,7 +220,7 @@ function toDatetimeLocalValue(value: string | null): string {
     }
 
     const asDate = new Date(value);
-   
+
     if (Number.isNaN(asDate.getTime())) {
         return '';
     }
@@ -518,7 +518,7 @@ onMounted(() => {
                         <div class="flex flex-wrap items-center gap-4">
                             <div class="grid gap-1">
                                 <Label class="text-xs text-muted-foreground" for="filter-assignee">Assignee</Label>
-                                <TaskFormSelect id="filter-assignee" name="assignee_id" class="min-w-[12rem]"
+                                <FormSelect id="filter-assignee" name="assignee_id" class="min-w-[12rem]"
                                     :model-value="assigneeFilter" :options="assigneeSelectOptions" placeholder="Anyone"
                                     none-label="Anyone" exclude-from-submit @update:model-value="onAssignee" />
                             </div>
@@ -529,31 +529,18 @@ onMounted(() => {
                                     @update:model-value="onStatusFilter" />
                             </div>
                             <div v-if="can_filter_estimation_source" class="grid gap-1">
-                                <Label class="text-xs text-muted-foreground" for="filter-estimation-source">Estimation source</Label>
-                                <TaskFormSelect
-                                    id="filter-estimation-source"
-                                    name="estimation_source"
-                                    :model-value="estimationSourceFilter"
-                                    :options="estimation_source_options"
-                                    placeholder="Any"
-                                    none-label="Any"
-                                    exclude-from-submit
-                                    @update:model-value="onEstimationSource"
-                                />
+                                <Label class="text-xs text-muted-foreground" for="filter-estimation-source">Estimation
+                                    source</Label>
+                                <FormSelect id="filter-estimation-source" name="estimation_source"
+                                    :model-value="estimationSourceFilter" :options="estimation_source_options"
+                                    placeholder="Any" none-label="Any" exclude-from-submit
+                                    @update:model-value="onEstimationSource" />
                             </div>
                             <div v-if="show_phase_filter" class="grid gap-1">
                                 <Label class="text-xs text-muted-foreground" for="filter-phase">Phase</Label>
-                                <TaskFormSelect
-                                    id="filter-phase"
-                                    name="phase"
-                                    class="min-w-[10rem]"
-                                    :model-value="phaseFilter"
-                                    :options="phase_filter_options"
-                                    placeholder="Any phase"
-                                    none-label="Any phase"
-                                    exclude-from-submit
-                                    @update:model-value="onPhase"
-                                />
+                                <FormSelect id="filter-phase" name="phase" class="min-w-[10rem]"
+                                    :model-value="phaseFilter" :options="phase_filter_options" placeholder="Any phase"
+                                    none-label="Any phase" exclude-from-submit @update:model-value="onPhase" />
                             </div>
                         </div>
                     </div>
@@ -585,37 +572,31 @@ onMounted(() => {
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-status">Status</Label>
-                        <TaskFormSelect id="create-status" name="status" v-model="createStatus" required
+                        <FormSelect id="create-status" name="status" v-model="createStatus" required
                             placeholder="Status" :options="statusSelectOptions" />
                         <InputError :message="errors.status" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-assignee">Assignee</Label>
-                        <TaskFormSelect id="create-assignee" name="assignee_user_id" v-model="createAssignee"
+                        <FormSelect id="create-assignee" name="assignee_user_id" v-model="createAssignee"
                             none-label="Unassigned" placeholder="Unassigned" :options="assigneeSelectOptions" />
                         <InputError :message="errors.assignee_user_id" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-requirement">Requirement</Label>
-                        <TaskFormSelect id="create-requirement" name="project_requirement_id"
-                            v-model="createRequirement" placeholder="None" :options="requirementSelectOptions" />
+                        <FormSelect id="create-requirement" name="project_requirement_id" v-model="createRequirement"
+                            placeholder="None" :options="requirementSelectOptions" />
                         <InputError :message="errors.project_requirement_id" />
                     </div>
                     <div v-if="showCreatePhaseField" class="grid gap-2">
                         <Label for="create-phase">Phase</Label>
-                        <TaskFormSelect
-                            id="create-phase"
-                            name="phase"
-                            v-model="createPhase"
-                            required
-                            placeholder="Phase"
-                            :options="createPhaseSelectOptions"
-                        />
+                        <FormSelect id="create-phase" name="phase" v-model="createPhase" required placeholder="Phase"
+                            :options="createPhaseSelectOptions" />
                         <InputError :message="errors.phase" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-parent">Parent task (subtask)</Label>
-                        <TaskFormSelect id="create-parent" name="parent_project_task_id" v-model="createParent"
+                        <FormSelect id="create-parent" name="parent_project_task_id" v-model="createParent"
                             placeholder="None" :options="parentSelectOptions" />
                         <InputError :message="errors.parent_project_task_id" />
                     </div>
@@ -670,37 +651,31 @@ onMounted(() => {
                     </div>
                     <div class="grid gap-2">
                         <Label for="edit-status">Status</Label>
-                        <TaskFormSelect id="edit-status" name="status" v-model="editStatus" required
-                            placeholder="Status" :options="editStatusSelectOptions" />
+                        <FormSelect id="edit-status" name="status" v-model="editStatus" required placeholder="Status"
+                            :options="editStatusSelectOptions" />
                         <InputError :message="errors.status" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="edit-assignee">Assignee</Label>
-                        <TaskFormSelect id="edit-assignee" name="assignee_user_id" v-model="editAssignee"
+                        <FormSelect id="edit-assignee" name="assignee_user_id" v-model="editAssignee"
                             none-label="Unassigned" placeholder="Unassigned" :options="assigneeSelectOptions" />
                         <InputError :message="errors.assignee_user_id" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="edit-requirement">Requirement</Label>
-                        <TaskFormSelect id="edit-requirement" name="project_requirement_id" v-model="editRequirement"
+                        <FormSelect id="edit-requirement" name="project_requirement_id" v-model="editRequirement"
                             placeholder="None" :options="requirementSelectOptions" />
                         <InputError :message="errors.project_requirement_id" />
                     </div>
                     <div v-if="showEditPhaseField" class="grid gap-2">
                         <Label for="edit-phase">Phase</Label>
-                        <TaskFormSelect
-                            id="edit-phase"
-                            name="phase"
-                            v-model="editPhase"
-                            required
-                            placeholder="Phase"
-                            :options="editPhaseSelectOptions"
-                        />
+                        <FormSelect id="edit-phase" name="phase" v-model="editPhase" required placeholder="Phase"
+                            :options="editPhaseSelectOptions" />
                         <InputError :message="errors.phase" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="edit-parent">Parent task</Label>
-                        <TaskFormSelect id="edit-parent" name="parent_project_task_id" v-model="editParent"
+                        <FormSelect id="edit-parent" name="parent_project_task_id" v-model="editParent"
                             placeholder="None" :options="parentSelectOptionsForEdit" />
                         <InputError :message="errors.parent_project_task_id" />
                     </div>
@@ -765,16 +740,12 @@ onMounted(() => {
                                     <CornerDownRight v-if="task.tree_depth > 0"
                                         class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                                     <div class="min-w-0 flex-1 flex flex-col justify-center">
-                                        <span
-                                            v-if="task.estimation_source === 'transferred'"
-                                            class="mb-0.5 w-fit rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200"
-                                        >
+                                        <span v-if="task.estimation_source === 'transferred'"
+                                            class="mb-0.5 w-fit rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200">
                                             From estimation
                                         </span>
-                                        <span
-                                            v-else-if="task.estimation_source === 'ad_hoc'"
-                                            class="mb-0.5 w-fit rounded bg-sky-500/15 px-1.5 py-0.5 text-xs font-medium text-sky-800 dark:text-sky-200"
-                                        >
+                                        <span v-else-if="task.estimation_source === 'ad_hoc'"
+                                            class="mb-0.5 w-fit rounded bg-sky-500/15 px-1.5 py-0.5 text-xs font-medium text-sky-800 dark:text-sky-200">
                                             New task
                                         </span>
                                         <Button variant="link"

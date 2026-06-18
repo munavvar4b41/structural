@@ -9,7 +9,7 @@ import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,7 @@ import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilt
 import { index as projectsIndex } from '@/routes/admin/projects/index';
 import { create as proposalsCreate, edit as proposalsEdit, show as proposalsShow } from '@/routes/admin/projects/proposals/index';
 import { index as globalProposalsIndex } from '@/routes/admin/proposals/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserBrief = {
     id: number;
@@ -87,9 +88,10 @@ defineOptions({
 
 const statusFilter = ref(props.filters.status);
 
+
 const statusSelectOptions = computed(() =>
     props.status_options.map((o) => ({
-        value: o.value,
+        value: String(o.value),
         label: o.label,
     })),
 );
@@ -215,13 +217,13 @@ function statusBadgeVariant(status: string): 'default' | 'secondary' | 'destruct
                 <div class="flex flex-wrap items-end gap-4">
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-project">Project</Label>
-                        <TaskFormSelect id="filter-project" name="project_id" class="min-w-[16rem]"
+                        <FormSelect id="filter-project" name="project_id" class="min-w-[16rem]"
                             :model-value="filters.project_id" :options="projectSelectOptions" placeholder="All projects"
                             none-label="All projects" exclude-from-submit @update:model-value="onProject" />
                     </div>
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-status">Status</Label>
-                        <TaskFormSelect id="filter-status" name="status" class="w-[14rem]" :model-value="statusFilter"
+                        <FormSelect id="filter-status" name="status" class="w-[14rem]" :model-value="statusFilter"
                             :options="statusSelectOptions" placeholder="All statuses" none-label="All statuses"
                             exclude-from-submit @update:model-value="onStatus" />
                     </div>
@@ -242,8 +244,7 @@ function statusBadgeVariant(status: string): 'default' | 'secondary' | 'destruct
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="row in proposals.data" :key="row.id"
-                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                <TableRow v-for="row in proposals.data" :key="row.id">
                     <DataTableTd label="Title" class="align-top">
                         <div class="font-medium">{{ row.title }}</div>
                         <p v-if="row.description_preview" class="mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -265,8 +266,8 @@ function statusBadgeVariant(status: string): 'default' | 'secondary' | 'destruct
                     <DataTableTd label="Created" class="text-muted-foreground">
                         {{ row.created_at ? new Date(row.created_at).toLocaleString() : '—' }}
                     </DataTableTd>
-                    <DataTableTd label="Actions" class="text-right">
-                        <div class="flex justify-end gap-2">
+                    <DataTableTd label="Actions" class="text-left md:text-right">
+                        <div class="flex gap-2 justify-start md:justify-end">
                             <Button variant="ghost" size="sm" as-child>
                                 <Link :href="proposalsShow.url({
                                     project: row.project.id,
@@ -291,7 +292,7 @@ function statusBadgeVariant(status: string): 'default' | 'secondary' | 'destruct
                             </Button>
                         </div>
                     </DataTableTd>
-                </tr>
+                </TableRow>
                 <tr v-if="proposals.data.length === 0">
                     <DataTableTd label="" :colspan="7" class="py-8 text-center text-muted-foreground">
                         No proposals match this filter.

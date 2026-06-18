@@ -8,7 +8,7 @@ import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import MultiSelectDropdown from '@/components/MultiSelectDropdown.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -81,7 +81,7 @@ const props = defineProps<{
         assignee_id: string;
         status: string[];
     };
-    status_options: Option[];
+    status_options: { value: string; label: string }[];
     assignable_users: Option[];
     requirements: Option[];
     parent_tasks: Option[];
@@ -235,13 +235,13 @@ function onCreateSuccess(): void {
                 <div class="flex flex-wrap items-end gap-4">
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-project">Project</Label>
-                        <TaskFormSelect id="filter-project" name="project_id" class="min-w-[16rem]"
+                        <FormSelect id="filter-project" name="project_id" class="min-w-[16rem]"
                             :model-value="filters.project_id" :options="projectSelectOptions" placeholder="All projects"
                             none-label="All projects" exclude-from-submit @update:model-value="onProject" />
                     </div>
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-assignee">Assignee</Label>
-                        <TaskFormSelect id="filter-assignee" name="assignee_id" class="min-w-[12rem]"
+                        <FormSelect id="filter-assignee" name="assignee_id" class="min-w-[12rem]"
                             :model-value="filters.assignee_id" :options="assigneeSelectOptions" placeholder="Anyone"
                             none-label="Anyone" exclude-from-submit @update:model-value="onAssignee" />
                     </div>
@@ -282,25 +282,25 @@ function onCreateSuccess(): void {
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-status">Status</Label>
-                        <TaskFormSelect id="create-status" name="status" v-model="createStatus" required
+                        <FormSelect id="create-status" name="status" v-model="createStatus" required
                             placeholder="Status" :options="statusSelectOptions" />
                         <InputError :message="errors.status" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-assignee">Assignee</Label>
-                        <TaskFormSelect id="create-assignee" name="assignee_user_id" v-model="createAssignee"
+                        <FormSelect id="create-assignee" name="assignee_user_id" v-model="createAssignee"
                             none-label="Unassigned" placeholder="Unassigned" :options="assigneeSelectOptions" />
                         <InputError :message="errors.assignee_user_id" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-requirement">Requirement</Label>
-                        <TaskFormSelect id="create-requirement" name="project_requirement_id"
+                        <FormSelect id="create-requirement" name="project_requirement_id"
                             v-model="createRequirement" placeholder="None" :options="requirementSelectOptions" />
                         <InputError :message="errors.project_requirement_id" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-parent">Parent task (subtask)</Label>
-                        <TaskFormSelect id="create-parent" name="parent_project_task_id" v-model="createParent"
+                        <FormSelect id="create-parent" name="parent_project_task_id" v-model="createParent"
                             placeholder="None" :options="parentSelectOptions" />
                         <InputError :message="errors.parent_project_task_id" />
                     </div>
