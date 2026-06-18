@@ -9,7 +9,7 @@ import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
@@ -91,7 +91,7 @@ watch(
 
 const reviewStatusSelectOptions = computed(() =>
     props.filter_options.review_status.map((o) => ({
-        value: o.value,
+        value: String(o.value),
         label: o.label,
     })),
 );
@@ -212,14 +212,14 @@ const deleteRequirementDescription = computed(() => {
                 <div class="flex flex-wrap items-end gap-3">
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-review-status">Stage</Label>
-                        <TaskFormSelect id="filter-review-status" name="review_status" class="w-[14rem]"
+                        <FormSelect id="filter-review-status" name="review_status" class="w-[14rem]"
                             :model-value="reviewStatusFilter" :options="reviewStatusSelectOptions"
                             placeholder="All stages" none-label="All stages" exclude-from-submit
                             @update:model-value="onReviewStatus" />
                     </div>
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-responsible">Responsible</Label>
-                        <TaskFormSelect id="filter-responsible" name="responsible_user_id" class="min-w-[14rem]"
+                        <FormSelect id="filter-responsible" name="responsible_user_id" class="min-w-[14rem]"
                             :model-value="responsibleFilter" :options="responsibleSelectOptions" placeholder="Anyone"
                             none-label="Anyone" exclude-from-submit @update:model-value="onResponsible" />
                     </div>

@@ -8,7 +8,7 @@ import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import StatCard from '@/components/dashboard/StatCard.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -281,12 +281,12 @@ const projectChartOptions = computed(() => ({
                     </div>
                     <div v-if="can_view_other_users" class="grid gap-2">
                         <Label for="filter-user">User</Label>
-                        <TaskFormSelect id="filter-user" name="user_id" v-model="userValue" required placeholder="User"
+                        <FormSelect id="filter-user" name="user_id" v-model="userValue" required placeholder="User"
                             :options="userSelectOptions" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="filter-project">Project</Label>
-                        <TaskFormSelect id="filter-project" name="project_id" v-model="projectValue"
+                        <FormSelect id="filter-project" name="project_id" v-model="projectValue"
                             none-label="All projects" placeholder="All projects" :options="projectSelectOptions" />
                     </div>
                 </div>

@@ -9,7 +9,7 @@ import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -183,7 +183,7 @@ function submittedLabel(at: string | null): string {
             <template #filters>
                 <div class="grid gap-1">
                     <Label class="text-xs text-muted-foreground" for="tr-stage">Stage</Label>
-                    <TaskFormSelect id="tr-stage" name="task_review_stage" class="w-[14rem]" :model-value="stageFilter"
+                    <FormSelect id="tr-stage" name="task_review_stage" class="w-[14rem]" :model-value="stageFilter"
                         :options="stageFilterOptions" placeholder="All stages" none-label="All stages"
                         exclude-from-submit @update:model-value="setStageFilter" />
                 </div>
@@ -279,21 +279,21 @@ function submittedLabel(at: string | null): string {
 
                 <div class="grid gap-2">
                     <Label for="task-rating">Task quality (1–5)</Label>
-                    <TaskFormSelect id="task-rating" v-model="form.task_rating" name="task_rating" required
+                    <FormSelect id="task-rating" v-model="form.task_rating" name="task_rating" required
                         :options="ratingOptions" />
                     <InputError :message="form.errors.task_rating" />
                 </div>
 
                 <div v-if="showAssigneeRating" class="grid gap-2">
                     <Label for="assignee-rating">Assignee performance (1–5)</Label>
-                    <TaskFormSelect id="assignee-rating" v-model="form.assignee_rating" name="assignee_rating" required
+                    <FormSelect id="assignee-rating" v-model="form.assignee_rating" name="assignee_rating" required
                         :options="ratingOptions" />
                     <InputError :message="form.errors.assignee_rating" />
                 </div>
 
                 <div class="grid gap-2">
                     <Label for="creator-rating">Task owner / creator (1–5)</Label>
-                    <TaskFormSelect id="creator-rating" v-model="form.creator_rating" name="creator_rating" required
+                    <FormSelect id="creator-rating" v-model="form.creator_rating" name="creator_rating" required
                         :options="ratingOptions" />
                     <InputError :message="form.errors.creator_rating" />
                 </div>

@@ -9,7 +9,7 @@ import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -87,9 +87,10 @@ defineOptions({
 
 const statusFilter = ref(props.filters.status);
 
+
 const statusSelectOptions = computed(() =>
     props.status_options.map((o) => ({
-        value: o.value,
+        value: String(o.value),
         label: o.label,
     })),
 );
@@ -215,13 +216,13 @@ function statusBadgeVariant(status: string): 'default' | 'secondary' | 'destruct
                 <div class="flex flex-wrap items-end gap-4">
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-project">Project</Label>
-                        <TaskFormSelect id="filter-project" name="project_id" class="min-w-[16rem]"
+                        <FormSelect id="filter-project" name="project_id" class="min-w-[16rem]"
                             :model-value="filters.project_id" :options="projectSelectOptions" placeholder="All projects"
                             none-label="All projects" exclude-from-submit @update:model-value="onProject" />
                     </div>
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-status">Status</Label>
-                        <TaskFormSelect id="filter-status" name="status" class="w-[14rem]" :model-value="statusFilter"
+                        <FormSelect id="filter-status" name="status" class="w-[14rem]" :model-value="statusFilter"
                             :options="statusSelectOptions" placeholder="All statuses" none-label="All statuses"
                             exclude-from-submit @update:model-value="onStatus" />
                     </div>

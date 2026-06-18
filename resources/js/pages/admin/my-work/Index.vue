@@ -12,7 +12,7 @@ import PageHeader from '@/components/dashboard/PageHeader.vue';
 import MyWorkSectionHeader from '@/components/my-work/MyWorkSectionHeader.vue';
 import MyWorkTaskCard from '@/components/my-work/MyWorkTaskCard.vue';
 import type { MyWorkTaskCardData } from '@/components/my-work/MyWorkTaskCard.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import TaskShowPanel from '@/components/tasks/TaskShowPanel.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
@@ -486,7 +486,7 @@ onMounted(() => {
                 <Label class="text-xs text-muted-foreground" for="my-work-project-filter">
                     Project
                 </Label>
-                <TaskFormSelect id="my-work-project-filter" name="project_id" class="min-w-[12rem] sm:min-w-[16rem]"
+                <FormSelect id="my-work-project-filter" name="project_id" class="min-w-[12rem] sm:min-w-[16rem]"
                     :model-value="projectValue" :options="projectSelectOptions" placeholder="All projects"
                     none-label="All projects" exclude-from-submit @update:model-value="applyProjectFilter" />
             </div>
@@ -568,7 +568,7 @@ onMounted(() => {
                                     {{ formatTaskMinutes(task.estimated_minutes) }}
                                 </DataTableTd>
                                 <DataTableTd label="Status" class="align-top">
-                                    <TaskFormSelect :id="`list-st-${task.id}`" :name="`list-status-${task.id}`"
+                                    <FormSelect :id="`list-st-${task.id}`" :name="`list-status-${task.id}`"
                                         class="min-w-[9rem] text-xs" :model-value="task.status" required
                                         placeholder="Status" :options="statusSelectOptionsForTask(task)"
                                         exclude-from-submit @update:model-value="patchTaskStatus(task, $event)" />

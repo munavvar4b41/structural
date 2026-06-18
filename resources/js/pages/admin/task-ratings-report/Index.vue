@@ -7,7 +7,7 @@ import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -195,12 +195,12 @@ const ratingsChartOptions = computed(() => ({
                 </div>
                 <div class="grid min-w-[200px] flex-1 gap-2">
                     <Label for="tr-project">Project</Label>
-                    <TaskFormSelect id="tr-project" v-model="projectValue" name="project_id" none-label="All projects"
+                    <FormSelect id="tr-project" v-model="projectValue" name="project_id" none-label="All projects"
                         placeholder="All projects" :options="projectSelectOptions" />
                 </div>
                 <div class="grid min-w-[200px] flex-1 gap-2">
                     <Label for="tr-user">Staff involved</Label>
-                    <TaskFormSelect id="tr-user" v-model="userValue" name="user_id" none-label="Everyone"
+                    <FormSelect id="tr-user" v-model="userValue" name="user_id" none-label="Everyone"
                         placeholder="Everyone" :options="userSelectOptions" />
                 </div>
                 <Button type="button" class="w-full sm:w-auto" @click="applyFilters">Apply</Button>

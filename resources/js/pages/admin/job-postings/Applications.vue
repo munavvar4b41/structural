@@ -4,7 +4,7 @@ import DataTable from '@/components/dashboard/DataTable.vue';
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import {
@@ -86,7 +86,7 @@ function formatDate(iso: string): string {
             </template>
         </PageHeader>
 
-        <TaskFormSelect id="filter-status" name="status" class="max-w-xs" :model-value="filters.status"
+        <FormSelect id="filter-status" name="status" class="max-w-xs" :model-value="filters.status"
             :options="[{ value: '', label: 'All statuses' }, ...status_options]" placeholder="Filter by status"
             @update:model-value="reloadStatus" />
 

@@ -7,7 +7,7 @@ import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -208,21 +208,21 @@ const filteredLeaveRequests = computed(() => {
                             <div class="flex flex-wrap items-end gap-3">
                                 <div class="grid gap-1">
                                     <Label class="text-xs text-muted-foreground" for="lm-status">Status</Label>
-                                    <TaskFormSelect id="lm-status" name="lm_filter_status" class="w-[11rem]"
+                                    <FormSelect id="lm-status" name="lm_filter_status" class="w-[11rem]"
                                         :model-value="statusFilter" :options="statusFilterOptions"
                                         placeholder="All statuses" none-label="All statuses" exclude-from-submit
                                         @update:model-value="setStatusFilter" />
                                 </div>
                                 <div class="grid gap-1">
                                     <Label class="text-xs text-muted-foreground" for="lm-type">Type</Label>
-                                    <TaskFormSelect id="lm-type" name="lm_filter_type" class="w-[12rem]"
+                                    <FormSelect id="lm-type" name="lm_filter_type" class="w-[12rem]"
                                         :model-value="typeFilter" :options="typeFilterOptions" placeholder="All types"
                                         none-label="All types" exclude-from-submit
                                         @update:model-value="setTypeFilter" />
                                 </div>
                                 <div class="grid gap-1">
                                     <Label class="text-xs text-muted-foreground" for="lm-user">Requester</Label>
-                                    <TaskFormSelect id="lm-user" name="lm_filter_user" class="min-w-[12rem]"
+                                    <FormSelect id="lm-user" name="lm_filter_user" class="min-w-[12rem]"
                                         :model-value="userFilter" :options="userFilterOptions" placeholder="Everyone"
                                         none-label="Everyone" exclude-from-submit @update:model-value="setUserFilter" />
                                 </div>

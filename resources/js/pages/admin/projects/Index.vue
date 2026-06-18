@@ -9,7 +9,7 @@ import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
@@ -177,15 +177,15 @@ const deleteProjectDescription = computed(() => {
                 <div class="flex flex-wrap items-end gap-3">
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-team">Team</Label>
-                        <TaskFormSelect id="filter-team" name="team_id" class="w-[12rem]" :model-value="teamFilter"
+                        <FormSelect id="filter-team" name="team_id" class="w-[12rem]" :model-value="teamFilter"
                             :options="teamSelectOptions" placeholder="All teams" none-label="All teams"
                             exclude-from-submit @update:model-value="onTeam" />
                     </div>
                     <div v-if="show_lead_filter" class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-lead">Lead</Label>
-                        <TaskFormSelect id="filter-lead" name="lead_user_id" class="min-w-[14rem]"
-                            :model-value="leadFilter" :options="leadSelectOptions" placeholder="All leads"
-                            none-label="All leads" exclude-from-submit @update:model-value="onLead" />
+                        <FormSelect id="filter-lead" name="lead_user_id" class="min-w-[14rem]" :model-value="leadFilter"
+                            :options="leadSelectOptions" placeholder="All leads" none-label="All leads"
+                            exclude-from-submit @update:model-value="onLead" />
                     </div>
                 </div>
             </template>

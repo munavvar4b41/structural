@@ -15,7 +15,7 @@ import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import RichTextEditor from '@/components/RichTextEditor.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import TypeaheadInput from '@/components/TypeaheadInput.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,14 +27,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-    DropdownMenuRadioGroup,
-    DropdownMenuRadioItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -979,25 +971,11 @@ watch(timeEntryOpen, (open) => {
                 </div>
                 <div class="grid gap-2">
                     <Label>Responsible</Label>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger as-child>
-                            <Button variant="outline" type="button" class="justify-between">
-                                {{ responsibleLabel }}
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" class="max-h-72 overflow-y-auto">
-                            <DropdownMenuLabel>Responsible user</DropdownMenuLabel>
-                            <DropdownMenuRadioGroup v-model="responsibleUserId">
-                                <DropdownMenuRadioItem value="">
-                                    Use default (project lead / first team head)
-                                </DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem v-for="user in assignable_responsibles" :key="user.id"
-                                    :value="String(user.id)">
-                                    {{ user.name }} ({{ user.email }})
-                                </DropdownMenuRadioItem>
-                            </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <FormSelect id="requirement-responsible" name="responsible_user_id" v-model="responsibleUserId"
+                        noneLabel="Use default (project lead / first team head)" :options="assignable_responsibles.map(u => ({
+                            value: String(u.id),
+                            label: `${u.name} (${u.email})`,
+                        }))" />
                     <InputError :message="errors.responsible_user_id" />
                 </div>
                 <DialogFooter class="gap-3">
@@ -1032,31 +1010,31 @@ watch(timeEntryOpen, (open) => {
                 </div>
                 <div class="grid gap-2">
                     <Label for="create-status">Status</Label>
-                    <TaskFormSelect id="create-status" name="status" v-model="createStatus" required
-                        placeholder="Status" :options="statusSelectOptions" />
+                    <FormSelect id="create-status" name="status" v-model="createStatus" required placeholder="Status"
+                        :options="statusSelectOptions" />
                     <InputError :message="errors.status" />
                 </div>
                 <div class="grid gap-2">
                     <Label for="create-assignee">Assignee</Label>
-                    <TaskFormSelect id="create-assignee" name="assignee_user_id" v-model="createAssignee"
+                    <FormSelect id="create-assignee" name="assignee_user_id" v-model="createAssignee"
                         none-label="Unassigned" placeholder="Unassigned" :options="assigneeSelectOptions" />
                     <InputError :message="errors.assignee_user_id" />
                 </div>
                 <div class="grid gap-2">
                     <Label for="create-requirement">Requirement</Label>
-                    <TaskFormSelect id="create-requirement" name="project_requirement_id" v-model="createRequirement"
+                    <FormSelect id="create-requirement" name="project_requirement_id" v-model="createRequirement"
                         placeholder="None" :options="requirementSelectOptions" />
                     <InputError :message="errors.project_requirement_id" />
                 </div>
                 <div v-if="showCreatePhaseField" class="grid gap-2">
                     <Label for="create-phase">Phase</Label>
-                    <TaskFormSelect id="create-phase" name="phase" v-model="createPhase" required placeholder="Phase"
+                    <FormSelect id="create-phase" name="phase" v-model="createPhase" required placeholder="Phase"
                         :options="createPhaseSelectOptions" />
                     <InputError :message="errors.phase" />
                 </div>
                 <div class="grid gap-2">
                     <Label for="create-parent">Parent task (subtask)</Label>
-                    <TaskFormSelect id="create-parent" name="parent_project_task_id" v-model="createParent"
+                    <FormSelect id="create-parent" name="parent_project_task_id" v-model="createParent"
                         placeholder="None" :options="parentSelectOptions" />
                     <InputError :message="errors.parent_project_task_id" />
                 </div>
@@ -1096,7 +1074,7 @@ watch(timeEntryOpen, (open) => {
             <div class="grid gap-4">
                 <div class="grid gap-2">
                     <Label for="time-entry-task">Task</Label>
-                    <TaskFormSelect id="time-entry-task" v-model="timeEntryTaskId" name="task_id" required
+                    <FormSelect id="time-entry-task" v-model="timeEntryTaskId" name="task_id" required
                         placeholder="Select task" :options="taskSelectOptions" />
                 </div>
                 <Form v-if="timeEntryFormBinding !== null" v-bind="timeEntryFormBinding" class="grid gap-4"
