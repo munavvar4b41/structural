@@ -10,7 +10,7 @@ import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue'
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { formatSeconds } from '@/lib/formatSeconds';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { show as requirementsShow } from '@/routes/admin/projects/requirements/index';
@@ -295,37 +296,81 @@ function entryDurationSeconds(entry: TimeEntryRow): number {
 }
 
 const manualOpen = ref(false);
+const manualTimeOnly = ref(false);
 const manualStart = ref('');
 const manualEnd = ref('');
 const manualNotes = ref('');
-
-function openManualDialog(): void {
-    const nowDate = new Date();
-    const startDate = new Date(nowDate.getTime() - 30 * 60 * 1000);
-    manualStart.value = toLocalInputValue(startDate.toISOString());
-    manualEnd.value = toLocalInputValue(nowDate.toISOString());
-    manualNotes.value = '';
-    manualOpen.value = true;
-}
+const manualDurationMinutes = ref('30');
 
 const editEntryOpen = ref(false);
+const editTimeOnly = ref(false);
 const editingEntry = ref<TimeEntryRow | null>(null);
 const editStart = ref('');
 const editEnd = ref('');
 const editNotes = ref('');
+const editDurationMinutes = ref('');
+
+const durationOnlyHint = computed(
+    () => 'Duration is counted back from the current time. Start and end times are not required.',
+);
+
+function resetManualTimeForm(): void {
+    manualTimeOnly.value = false;
+    manualStart.value = '';
+    manualEnd.value = '';
+    manualNotes.value = '';
+    manualDurationMinutes.value = '30';
+}
+
+function openManualDialog(): void {
+    const nowDate = new Date();
+    const startDate = new Date(nowDate.getTime() - 30 * 60 * 1000);
+    manualTimeOnly.value = false;
+    manualStart.value = toLocalInputValue(startDate.toISOString());
+    manualEnd.value = toLocalInputValue(nowDate.toISOString());
+    manualNotes.value = '';
+    manualDurationMinutes.value = '30';
+    manualOpen.value = true;
+}
+
+function entryDurationMinutes(row: TimeEntryRow): number {
+    if (row.duration_seconds !== null && row.duration_seconds > 0) {
+        return Math.max(1, Math.round(row.duration_seconds / 60));
+    }
+
+    if (row.started_at !== null && row.ended_at !== null) {
+        const start = new Date(row.started_at).getTime();
+        const end = new Date(row.ended_at).getTime();
+
+        if (!Number.isNaN(start) && !Number.isNaN(end) && end > start) {
+            return Math.max(1, Math.round((end - start) / 60_000));
+        }
+    }
+
+    return 30;
+}
 
 function openEditEntry(row: TimeEntryRow): void {
     editingEntry.value = row;
+    editTimeOnly.value = false;
     editStart.value = toLocalInputValue(row.started_at);
     editEnd.value = toLocalInputValue(row.ended_at);
     editNotes.value = row.notes ?? '';
+    editDurationMinutes.value = String(entryDurationMinutes(row));
     editEntryOpen.value = true;
 }
 
 function closeEditEntry(): void {
     editEntryOpen.value = false;
     editingEntry.value = null;
+    editTimeOnly.value = false;
 }
+
+watch(manualOpen, (open) => {
+    if (!open) {
+        resetManualTimeForm();
+    }
+});
 
 const entryDeleteOpen = ref(false);
 const entryPendingDelete = ref<TimeEntryRow | null>(null);
@@ -557,21 +602,37 @@ const checklistDeleteDescription = computed(() => {
             })
                 " class="grid gap-4" @success="() => { manualOpen = false; reloadAfterMutation(); }"
                 v-slot="{ errors, processing }">
-                <div class="grid gap-2">
-                    <Label for="manual-start">Start</Label>
-                    <Input id="manual-start" name="started_at" type="datetime-local" required v-model="manualStart" />
-                    <InputError :message="errors.started_at" />
+                <div class="flex items-center justify-between gap-4">
+                    <Label for="manual-time-only" class="cursor-pointer">Time only</Label>
+                    <Switch id="manual-time-only" v-model="manualTimeOnly" />
                 </div>
-                <div class="grid gap-2">
-                    <Label for="manual-end">End</Label>
-                    <Input id="manual-end" name="ended_at" type="datetime-local" required v-model="manualEnd" />
-                    <InputError :message="errors.ended_at" />
-                </div>
-                <div class="grid gap-2">
-                    <Label for="manual-notes">Notes</Label>
-                    <Input id="manual-notes" name="notes" type="text" maxlength="500" v-model="manualNotes" />
-                    <InputError :message="errors.notes" />
-                </div>
+                <template v-if="manualTimeOnly">
+                    <div class="grid gap-2">
+                        <Label for="manual-duration">Duration (minutes)</Label>
+                        <Input id="manual-duration" name="duration_minutes" type="number" min="1" step="1" required
+                            v-model="manualDurationMinutes" />
+                        <p class="text-xs text-muted-foreground">{{ durationOnlyHint }}</p>
+                        <InputError :message="errors.duration_minutes" />
+                    </div>
+                </template>
+                <template v-else>
+                    <div class="grid gap-2">
+                        <Label for="manual-start">Start</Label>
+                        <Input id="manual-start" name="started_at" type="datetime-local" required
+                            v-model="manualStart" />
+                        <InputError :message="errors.started_at" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="manual-end">End</Label>
+                        <Input id="manual-end" name="ended_at" type="datetime-local" required v-model="manualEnd" />
+                        <InputError :message="errors.ended_at" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="manual-notes">Notes</Label>
+                        <Input id="manual-notes" name="notes" type="text" maxlength="500" v-model="manualNotes" />
+                        <InputError :message="errors.notes" />
+                    </div>
+                </template>
                 <DialogFooter class="gap-3">
                     <Button type="button" variant="outline" @click="manualOpen = false">
                         Cancel
@@ -595,21 +656,37 @@ const checklistDeleteDescription = computed(() => {
             })
                 " class="grid gap-4" @success="() => { closeEditEntry(); reloadAfterMutation(); }"
                 v-slot="{ errors, processing }">
-                <div class="grid gap-2">
-                    <Label for="edit-entry-start">Start</Label>
-                    <Input id="edit-entry-start" name="started_at" type="datetime-local" required v-model="editStart" />
-                    <InputError :message="errors.started_at" />
+                <div class="flex items-center justify-between gap-4">
+                    <Label for="edit-time-only" class="cursor-pointer">Time only</Label>
+                    <Switch id="edit-time-only" v-model="editTimeOnly" />
                 </div>
-                <div class="grid gap-2">
-                    <Label for="edit-entry-end">End</Label>
-                    <Input id="edit-entry-end" name="ended_at" type="datetime-local" required v-model="editEnd" />
-                    <InputError :message="errors.ended_at" />
-                </div>
-                <div class="grid gap-2">
-                    <Label for="edit-entry-notes">Notes</Label>
-                    <Input id="edit-entry-notes" name="notes" type="text" maxlength="500" v-model="editNotes" />
-                    <InputError :message="errors.notes" />
-                </div>
+                <template v-if="editTimeOnly">
+                    <div class="grid gap-2">
+                        <Label for="edit-duration">Duration (minutes)</Label>
+                        <Input id="edit-duration" name="duration_minutes" type="number" min="1" step="1" required
+                            v-model="editDurationMinutes" />
+                        <p class="text-xs text-muted-foreground">{{ durationOnlyHint }}</p>
+                        <InputError :message="errors.duration_minutes" />
+                    </div>
+                </template>
+                <template v-else>
+                    <div class="grid gap-2">
+                        <Label for="edit-entry-start">Start</Label>
+                        <Input id="edit-entry-start" name="started_at" type="datetime-local" required
+                            v-model="editStart" />
+                        <InputError :message="errors.started_at" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="edit-entry-end">End</Label>
+                        <Input id="edit-entry-end" name="ended_at" type="datetime-local" required v-model="editEnd" />
+                        <InputError :message="errors.ended_at" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="edit-entry-notes">Notes</Label>
+                        <Input id="edit-entry-notes" name="notes" type="text" maxlength="500" v-model="editNotes" />
+                        <InputError :message="errors.notes" />
+                    </div>
+                </template>
                 <DialogFooter class="gap-3">
                     <Button type="button" variant="outline" @click="closeEditEntry()">
                         Cancel
@@ -643,21 +720,21 @@ const checklistDeleteDescription = computed(() => {
 
                 <div class="grid gap-2">
                     <Label for="show-task-rating">Task quality (1–5)</Label>
-                    <TaskFormSelect id="show-task-rating" v-model="confirmForm.task_rating" name="task_rating" required
+                    <FormSelect id="show-task-rating" v-model="confirmForm.task_rating" name="task_rating" required
                         :options="ratingOptions" />
                     <InputError :message="confirmForm.errors.task_rating" />
                 </div>
 
                 <div v-if="showAssigneeRatingOnConfirm" class="grid gap-2">
                     <Label for="show-assignee-rating">Assignee performance (1–5)</Label>
-                    <TaskFormSelect id="show-assignee-rating" v-model="confirmForm.assignee_rating"
-                        name="assignee_rating" required :options="ratingOptions" />
+                    <FormSelect id="show-assignee-rating" v-model="confirmForm.assignee_rating" name="assignee_rating"
+                        required :options="ratingOptions" />
                     <InputError :message="confirmForm.errors.assignee_rating" />
                 </div>
 
                 <div class="grid gap-2">
                     <Label for="show-creator-rating">Task owner / creator (1–5)</Label>
-                    <TaskFormSelect id="show-creator-rating" v-model="confirmForm.creator_rating" name="creator_rating"
+                    <FormSelect id="show-creator-rating" v-model="confirmForm.creator_rating" name="creator_rating"
                         required :options="ratingOptions" />
                     <InputError :message="confirmForm.errors.creator_rating" />
                 </div>
@@ -813,7 +890,7 @@ const checklistDeleteDescription = computed(() => {
             </div>
             <ul v-if="checklist.items.length > 0" class="space-y-2">
                 <li v-for="item in checklist.items" :key="item.id"
-                    class="flex items-start gap-3 rounded-lg border border-border/60 px-3 py-2">
+                    class="flex gap-3 rounded-lg border border-border/60 px-3 py-2 items-center">
                     <Checkbox :id="`checklist-${item.id}`" :model-value="item.is_completed"
                         :disabled="!checklist.can_manage" class="mt-0.5"
                         @update:model-value="(v) => toggleChecklistItem(item, v)" />
@@ -853,11 +930,11 @@ const checklistDeleteDescription = computed(() => {
             <p v-else class="text-sm text-muted-foreground">
                 No checklist items yet.
             </p>
-            <Form v-if="checklist.can_manage" v-bind="ProjectTaskChecklistItemController.store.form({
+            <Form v-if="checklist.can_manage" :action="ProjectTaskChecklistItemController.store.url({
                 project: project.id,
                 task: task.id,
             })
-                " class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end"
+                " method="post" class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end"
                 @success="() => { newChecklistTitle = ''; reloadAfterMutation(); }" v-slot="{ errors, processing }">
                 <div class="grid flex-1 gap-2">
                     <Label for="new-checklist-title" class="sr-only">New item</Label>
@@ -924,7 +1001,7 @@ const checklistDeleteDescription = computed(() => {
                                 </td>
                                 <td data-label="When" class="px-3 py-2 align-top text-muted-foreground">
                                     {{ formatEntryRange(entry.started_at, entry.ended_at, entry.is_running,
-                                    entry.is_paused) }}
+                                        entry.is_paused) }}
                                 </td>
                                 <td data-label="Duration" class="px-3 py-2 align-top tabular-nums">
                                     <span v-if="entry.is_running" :class="entry.is_paused
@@ -981,10 +1058,10 @@ const checklistDeleteDescription = computed(() => {
                     style="--data-table-min-width: 720px">
                     <thead class="border-b bg-muted/40">
                         <tr>
-                            <th class="w-[38%] px-4 py-3 font-medium">Title</th>
+                            <th class="w-[30%] px-4 py-3 font-medium">Title</th>
                             <th class="px-4 py-3 font-medium">Status</th>
                             <th class="px-4 py-3 font-medium">Assignee</th>
-                            <th class="px-4 py-3 font-medium">Requirement</th>
+                            <th class="min-w-[25%] px-4 py-3 font-medium">Requirement</th>
                             <th class="px-4 py-3 font-medium">Estimate</th>
                             <th class="px-4 py-3 font-medium text-right">Actions</th>
                         </tr>

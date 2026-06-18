@@ -118,15 +118,7 @@ class ProjectRequirementPolicy
             return false;
         }
 
-        if ($requirement->created_by_user_id === $actor->id) {
-            return true;
-        }
-
-        if ($requirement->responsible_user_id !== null && $requirement->responsible_user_id === $actor->id) {
-            return true;
-        }
-
-        return false;
+        return $requirement->created_by_user_id === $actor->id;
     }
 
     public function delete(User $actor, ProjectRequirement $requirement): bool

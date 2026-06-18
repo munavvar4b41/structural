@@ -247,4 +247,61 @@ class TimeReportTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    public function test_per_task_rolls_up_child_entries_to_parent(): void
+    {
+        ['staff' => $staff, 'head' => $head, 'project' => $project] = $this->setupProjectWithTask();
+
+        $parent = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+                'title' => 'Parent work',
+            ]);
+
+        $childOne = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+            ]);
+
+        $childTwo = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+            ]);
+
+        TaskTimeEntry::factory()
+            ->forTask($childOne)
+            ->forUser($staff)
+            ->between(
+                Carbon::parse('2026-05-07 09:00:00'),
+                Carbon::parse('2026-05-07 09:20:00'),
+            )
+            ->create();
+
+        TaskTimeEntry::factory()
+            ->forTask($childTwo)
+            ->forUser($staff)
+            ->between(
+                Carbon::parse('2026-05-07 10:00:00'),
+                Carbon::parse('2026-05-07 10:40:00'),
+            )
+            ->create();
+
+        $this->actingAs($staff)
+            ->get(route('admin.time-report.index', ['from' => '2026-05-07', 'to' => '2026-05-07']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('per_task', 1)
+                ->where('per_task.0.task_id', $parent->id)
+                ->where('per_task.0.task_title', 'Parent work')
+                ->where('per_task.0.total_seconds', 20 * 60 + 40 * 60)
+                ->where('per_project.0.task_count', 1));
+    }
 }

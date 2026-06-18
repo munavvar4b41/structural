@@ -31,6 +31,11 @@ enum UserRole: string
         return $this === self::SuperAdmin || $this === self::Admin;
     }
 
+    public function canManageCareers(): bool
+    {
+        return $this->canManageCompanySettings();
+    }
+
     /**
      * Super Admin and Admin may approve or reject leave requests.
      */
@@ -66,6 +71,14 @@ enum UserRole: string
     public function canAssignRequirementReviewersByRole(): bool
     {
         return in_array($this, [self::SuperAdmin, self::Admin, self::TeamHead], true);
+    }
+
+    /**
+     * Whether this role may confirm, reject, or reopen project proposals.
+     */
+    public function canReviewProjectProposals(): bool
+    {
+        return in_array($this, [self::SuperAdmin, self::Admin, self::TeamHead, self::Client], true);
     }
 
     /**

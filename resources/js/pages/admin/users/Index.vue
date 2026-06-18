@@ -9,7 +9,7 @@ import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
@@ -18,6 +18,7 @@ import {
     edit as usersEdit,
     index as usersIndex,
 } from '@/routes/admin/users/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserRow = {
     id: number;
@@ -184,19 +185,19 @@ function roleLabel(role: string): string {
                 <div class="flex flex-wrap items-end gap-3">
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-role">Role</Label>
-                        <TaskFormSelect id="filter-role" name="role" class="w-[10rem]" :model-value="roleFilter"
+                        <FormSelect id="filter-role" name="role" class="w-[10rem]" :model-value="roleFilter"
                             :options="roleSelectOptions" placeholder="All roles" none-label="All roles"
                             exclude-from-submit @update:model-value="onRole" />
                     </div>
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-team">Team</Label>
-                        <TaskFormSelect id="filter-team" name="team_id" class="w-[12rem]" :model-value="teamFilter"
+                        <FormSelect id="filter-team" name="team_id" class="w-[12rem]" :model-value="teamFilter"
                             :options="teamSelectOptions" placeholder="All teams" none-label="All teams"
                             exclude-from-submit @update:model-value="onTeam" />
                     </div>
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-verified">Email</Label>
-                        <TaskFormSelect id="filter-verified" name="verified" class="w-[11rem]"
+                        <FormSelect id="filter-verified" name="verified" class="w-[11rem]"
                             :model-value="verifiedFilter" :options="filter_options.verified" placeholder="All"
                             none-label="All" exclude-from-submit @update:model-value="onVerified" />
                     </div>
@@ -214,8 +215,7 @@ function roleLabel(role: string): string {
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="row in users.data" :key="row.id"
-                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                <TableRow v-for="row in users.data" :key="row.id">
                     <DataTableTd label="Name" class="font-medium">{{ row.name }}</DataTableTd>
                     <DataTableTd label="Email" class="text-muted-foreground">
                         {{ row.email }}
@@ -223,8 +223,8 @@ function roleLabel(role: string): string {
                     <DataTableTd label="Role" class="text-muted-foreground">
                         {{ roleLabel(row.role) }}
                     </DataTableTd>
-                    <DataTableTd label="Actions" class="text-right">
-                        <div class="flex justify-end gap-2">
+                    <DataTableTd label="Actions" class="text-left md:text-right">
+                        <div class="flex gap-2 justify-start md:justify-end">
                             <Button variant="outline" size="sm" as-child>
                                 <Link :href="usersEdit(row.id)">Edit</Link>
                             </Button>
@@ -234,7 +234,7 @@ function roleLabel(role: string): string {
                             </Button>
                         </div>
                     </DataTableTd>
-                </tr>
+                </TableRow>
             </tbody>
         </DataTable>
 

@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import {
+    Briefcase,
     Building2,
     CalendarDays,
+    Calculator,
     ClipboardCheck,
     ClipboardList,
     FolderKanban,
     LayoutGrid,
+    FileCheck,
     Star,
     Timer,
     Users,
@@ -25,13 +28,18 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { edit as adminCareersSettingsEdit } from '@/routes/admin/careers-settings/index';
 import { edit as adminCompanyEdit } from '@/routes/admin/company/index';
+import { index as adminJobPostingsIndex } from '@/routes/admin/job-postings/index';
 import { index as leaveRequestsIndex, manage as leaveRequestsManage } from '@/routes/admin/leave-requests/index';
 import { edit as adminLeaveSettingsEdit } from '@/routes/admin/leave-settings/index';
 import { index as adminMyWorkIndex } from '@/routes/admin/my-work/index';
 import { index as adminProjectsIndex } from '@/routes/admin/projects/index';
+import { index as adminProposalsIndex } from '@/routes/admin/proposals/index';
 import { index as adminTaskRatingsReportIndex } from '@/routes/admin/task-ratings-report/index';
+import { index as adminEstimationReviewsIndex } from '@/routes/admin/estimation-reviews/index';
 import { index as adminTaskReviewsIndex } from '@/routes/admin/task-reviews/index';
+import { index as adminTasksIndex } from '@/routes/admin/tasks/index';
 import { index as adminTeamsIndex } from '@/routes/admin/teams/index';
 import { index as adminTimeReportIndex } from '@/routes/admin/time-report/index';
 import { index as adminUsersIndex } from '@/routes/admin/users/index';
@@ -71,6 +79,18 @@ const mainNavItems = computed((): NavItem[] => {
             activeMatch: 'prefix',
         });
         items.push({
+            title: 'Tasks',
+            href: adminTasksIndex(),
+            icon: ClipboardList,
+            activeMatch: 'prefix',
+        });
+        items.push({
+            title: 'Proposals',
+            href: adminProposalsIndex(),
+            icon: FileCheck,
+            activeMatch: 'prefix',
+        });
+        items.push({
             title: 'My work',
             href: adminMyWorkIndex(),
             icon: ClipboardList,
@@ -89,6 +109,14 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Task reviews',
             href: adminTaskReviewsIndex(),
             icon: ClipboardCheck,
+        });
+    }
+
+    if (page.props.auth.user?.role !== 'client') {
+        items.push({
+            title: 'Estimation reviews',
+            href: adminEstimationReviewsIndex(),
+            icon: Calculator,
         });
     }
 
@@ -118,6 +146,15 @@ const mainNavItems = computed((): NavItem[] => {
         });
     }
 
+    if (page.props.auth.user?.can_manage_careers) {
+        items.push({
+            title: 'Careers',
+            href: adminJobPostingsIndex(),
+            icon: Briefcase,
+            activeMatch: 'prefix',
+        });
+    }
+
     if (page.props.auth.user?.can_manage_company_settings) {
         items.push({
             title: 'Company settings',
@@ -129,6 +166,12 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Leave emails',
             href: adminLeaveSettingsEdit(),
             icon: CalendarDays,
+            activeMatch: 'prefix',
+        });
+        items.push({
+            title: 'Careers emails',
+            href: adminCareersSettingsEdit(),
+            icon: Briefcase,
             activeMatch: 'prefix',
         });
     }

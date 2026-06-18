@@ -3,7 +3,7 @@ import { Link } from '@inertiajs/vue3';
 import { CheckCircle, Eye, List } from 'lucide-vue-next';
 import type { HTMLAttributes } from 'vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
@@ -25,6 +25,7 @@ export type MyWorkTaskCardData = {
     can_submit_task_completion: boolean;
     timer_today_seconds: number;
     timer_state: 'running' | 'paused' | 'idle';
+    children_count?: number;
 };
 
 const props = withDefaults(
@@ -78,10 +79,13 @@ function onDragStart(event: DragEvent): void {
             </p>
             <p class="mt-2 text-xs text-muted-foreground">
                 Est.: {{ formatTaskMinutes(task.estimated_minutes) }}
+                <span v-if="task.children_count && task.children_count > 0" class="ml-2">
+                    · {{ task.children_count }} subtasks
+                </span>
             </p>
         </button>
         <div class="flex flex-col gap-2 p-3 pt-2" @click.stop>
-            <TaskFormSelect v-if="showStatusSelect" :id="`st-${task.id}`" :name="`status-${task.id}`" class="text-xs"
+            <FormSelect v-if="showStatusSelect" :id="`st-${task.id}`" :name="`status-${task.id}`" class="text-xs"
                 :model-value="task.status" required placeholder="Status" :options="statusOptions"
                 @update:model-value="emit('statusChange', task, $event)" />
             <div class="flex max-w-full flex-wrap justify-between gap-2">

@@ -17,6 +17,7 @@ import {
     edit as teamsEdit,
     index as teamsIndex,
 } from '@/routes/admin/teams/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type TeamRow = {
     id: number;
@@ -128,8 +129,7 @@ const deleteTeamDescription = computed(() => {
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="team in teams.data" :key="team.id"
-                    class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                <TableRow v-for="team in teams.data" :key="team.id">
                     <DataTableTd label="Name" class="font-medium">{{ team.name }}</DataTableTd>
                     <DataTableTd label="Code" class="text-muted-foreground">
                         {{ team.code ?? '-' }}
@@ -137,8 +137,8 @@ const deleteTeamDescription = computed(() => {
                     <DataTableTd label="Members" class="text-muted-foreground">
                         {{ team.users_count }}
                     </DataTableTd>
-                    <DataTableTd label="Actions" class="text-right">
-                        <div class="flex justify-end gap-2">
+                    <DataTableTd label="Actions" class="text-left md:text-right">
+                        <div class="flex gap-2 justify-start md:justify-end">
                             <Button variant="outline" size="sm" as-child>
                                 <Link :href="teamsEdit(team.id)">Edit</Link>
                             </Button>
@@ -148,7 +148,7 @@ const deleteTeamDescription = computed(() => {
                             </Button>
                         </div>
                     </DataTableTd>
-                </tr>
+                </TableRow>
             </tbody>
         </DataTable>
 

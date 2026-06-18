@@ -10,6 +10,7 @@ export type User = {
     can_approve_leave_requests: boolean;
     can_review_task_completions: boolean;
     can_view_task_rating_report: boolean;
+    can_manage_careers: boolean;
     avatar?: string;
     email_verified_at: string | null;
     created_at: string;

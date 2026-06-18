@@ -7,7 +7,7 @@ import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -21,6 +21,7 @@ import {
     index as leaveRequestsIndex,
     manage as leaveRequestsManage,
 } from '@/routes/admin/leave-requests/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type LeaveRow = {
     id: number;
@@ -208,21 +209,21 @@ const filteredLeaveRequests = computed(() => {
                             <div class="flex flex-wrap items-end gap-3">
                                 <div class="grid gap-1">
                                     <Label class="text-xs text-muted-foreground" for="lm-status">Status</Label>
-                                    <TaskFormSelect id="lm-status" name="lm_filter_status" class="w-[11rem]"
+                                    <FormSelect id="lm-status" name="lm_filter_status" class="w-[11rem]"
                                         :model-value="statusFilter" :options="statusFilterOptions"
                                         placeholder="All statuses" none-label="All statuses" exclude-from-submit
                                         @update:model-value="setStatusFilter" />
                                 </div>
                                 <div class="grid gap-1">
                                     <Label class="text-xs text-muted-foreground" for="lm-type">Type</Label>
-                                    <TaskFormSelect id="lm-type" name="lm_filter_type" class="w-[12rem]"
+                                    <FormSelect id="lm-type" name="lm_filter_type" class="w-[12rem]"
                                         :model-value="typeFilter" :options="typeFilterOptions" placeholder="All types"
                                         none-label="All types" exclude-from-submit
                                         @update:model-value="setTypeFilter" />
                                 </div>
                                 <div class="grid gap-1">
                                     <Label class="text-xs text-muted-foreground" for="lm-user">Requester</Label>
-                                    <TaskFormSelect id="lm-user" name="lm_filter_user" class="min-w-[12rem]"
+                                    <FormSelect id="lm-user" name="lm_filter_user" class="min-w-[12rem]"
                                         :model-value="userFilter" :options="userFilterOptions" placeholder="Everyone"
                                         none-label="Everyone" exclude-from-submit @update:model-value="setUserFilter" />
                                 </div>
@@ -243,19 +244,20 @@ const filteredLeaveRequests = computed(() => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="row in filteredLeaveRequests" :key="row.id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                        <TableRow v-for="row in filteredLeaveRequests" :key="row.id">
                             <DataTableTd label="Requester">
-                                <div class="font-medium">{{ row.user?.name ?? '—' }}</div>
-                                <div class="text-xs text-muted-foreground">
-                                    {{ row.user?.email }}
+                                <div>
+                                    <div class="font-medium">{{ row.user?.name ?? '—' }}</div>
+                                    <div class="text-xs text-muted-foreground">
+                                        {{ row.user?.email }}
+                                    </div>
                                 </div>
                             </DataTableTd>
                             <DataTableTd label="Date">{{ row.date }}</DataTableTd>
                             <DataTableTd label="Type">{{ row.type_label }}</DataTableTd>
                             <DataTableTd label="Detail">{{ detailLabel(row) }}</DataTableTd>
                             <DataTableTd label="Status">{{ row.status_label }}</DataTableTd>
-                            <DataTableTd label="Actions" class="text-right whitespace-nowrap">
+                            <DataTableTd label="Actions" class="text-left md:text-right whitespace-nowrap">
                                 <template v-if="row.status === 'pending'">
                                     <Button type="button" size="sm" class="mr-2" @click="approve(row)">
                                         Approve
@@ -270,7 +272,7 @@ const filteredLeaveRequests = computed(() => {
                                     </template>
                                 </span>
                             </DataTableTd>
-                        </tr>
+                        </TableRow>
                         <tr v-if="filteredLeaveRequests.length === 0">
                             <DataTableTd label="" :colspan="6" class="py-8 text-center text-muted-foreground">
                                 {{

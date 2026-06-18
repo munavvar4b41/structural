@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
 use App\Support\TaskTimeTracker;
+use App\Support\WorkTimeEntryWindowResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -18,17 +19,18 @@ class TaskTimeEntryController extends Controller
 {
     use AuthorizesRequests;
 
-    public function __construct(private readonly TaskTimeTracker $tracker) {}
+    public function __construct(
+        private readonly TaskTimeTracker $tracker,
+        private readonly WorkTimeEntryWindowResolver $workTimeWindowResolver,
+    ) {}
 
     public function store(StoreTaskTimeEntryRequest $request, Project $project, ProjectTask $task): RedirectResponse
     {
         abort_if($task->project_id !== $project->id, 404);
 
-        $data = $request->validated();
-        $start = CarbonImmutable::parse($data['started_at']);
-        $end = CarbonImmutable::parse($data['ended_at']);
+        [$start, $end, $notes] = $this->resolveManualRange($request->validated());
 
-        $this->tracker->addManual($request->user(), $task, $start, $end, $data['notes'] ?? null);
+        $this->tracker->addManual($request->user(), $task, $start, $end, $notes);
 
         return back()->with('toast', __('Time entry added.'));
     }
@@ -41,11 +43,9 @@ class TaskTimeEntryController extends Controller
     ): RedirectResponse {
         $this->ensureEntryBelongs($project, $task, $timeEntry);
 
-        $data = $request->validated();
-        $start = CarbonImmutable::parse($data['started_at']);
-        $end = CarbonImmutable::parse($data['ended_at']);
+        [$start, $end, $notes] = $this->resolveManualRange($request->validated());
 
-        $this->tracker->updateManual($timeEntry, $start, $end, $data['notes'] ?? null);
+        $this->tracker->updateManual($timeEntry, $start, $end, $notes);
 
         return back()->with('toast', __('Time entry updated.'));
     }
@@ -68,5 +68,24 @@ class TaskTimeEntryController extends Controller
     {
         abort_if($task->project_id !== $project->id, 404);
         abort_if($entry->project_task_id !== $task->id, 404);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{0: CarbonImmutable, 1: CarbonImmutable, 2: string|null}
+     */
+    private function resolveManualRange(array $data): array
+    {
+        if (array_key_exists('duration_minutes', $data)) {
+            $window = $this->workTimeWindowResolver->resolve((int) $data['duration_minutes']);
+
+            return [$window['start'], $window['end'], null];
+        }
+
+        return [
+            CarbonImmutable::parse($data['started_at']),
+            CarbonImmutable::parse($data['ended_at']),
+            isset($data['notes']) ? (string) $data['notes'] : null,
+        ];
     }
 }

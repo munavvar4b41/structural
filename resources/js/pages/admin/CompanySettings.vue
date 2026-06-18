@@ -21,6 +21,8 @@ type CompanySettingsPayload = {
     postal_code: string | null;
     country: string | null;
     email_domain: string;
+    work_day_start_time: string;
+    work_day_end_time: string;
 };
 
 type Props = {
@@ -191,6 +193,46 @@ function dv(value: string | null | undefined): string {
                                 :message="errors.country"
                             />
                         </div>
+                    </div>
+                </div>
+            </GlassCard>
+
+            <GlassCard class="p-6">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Working hours</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Reference window for reports and displays. Duration-only time logs
+                        are counted back from the current time and do not use these bounds.
+                    </p>
+                </div>
+                <div class="grid max-w-xl gap-6 sm:grid-cols-2">
+                    <div class="grid gap-2">
+                        <Label for="work_day_start_time">Work day starts</Label>
+                        <Input
+                            id="work_day_start_time"
+                            name="work_day_start_time"
+                            type="time"
+                            required
+                            :default-value="props.company.work_day_start_time"
+                        />
+                        <InputError
+                            class="mt-1"
+                            :message="errors.work_day_start_time"
+                        />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="work_day_end_time">Work day ends</Label>
+                        <Input
+                            id="work_day_end_time"
+                            name="work_day_end_time"
+                            type="time"
+                            required
+                            :default-value="props.company.work_day_end_time"
+                        />
+                        <InputError
+                            class="mt-1"
+                            :message="errors.work_day_end_time"
+                        />
                     </div>
                 </div>
             </GlassCard>

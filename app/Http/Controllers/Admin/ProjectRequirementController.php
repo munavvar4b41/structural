@@ -9,13 +9,19 @@ use App\Http\Requests\Admin\ConfirmProjectRequirementUnderstandingRequest;
 use App\Http\Requests\Admin\MarkProjectRequirementReviewedRequest;
 use App\Http\Requests\Admin\StoreProjectRequirementRequest;
 use App\Http\Requests\Admin\UpdateProjectRequirementRequest;
+use App\Http\Requests\Admin\UpdateRequirementPhaseSettingsRequest;
 use App\Models\Project;
+use App\Models\ProjectProposal;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectRequirementMessage;
 use App\Models\ProjectTask;
 use App\Models\User;
+use App\Support\AssignmentNotificationDispatcher;
 use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\ProjectTaskDisplayOrder;
+use App\Support\RequirementEstimationSummaryPayload;
+use App\Support\RequirementEstimationTaskSource;
+use App\Support\RequirementPhaseRegistry;
 use App\Support\TipTapDocument;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -29,6 +35,11 @@ use Inertia\Response;
 class ProjectRequirementController extends Controller
 {
     use AuthorizesRequests;
+
+    public function __construct(
+        private readonly AssignmentNotificationDispatcher $assignmentNotificationDispatcher,
+        private readonly RequirementPhaseRegistry $requirementPhaseRegistry,
+    ) {}
 
     public function index(Request $request, Project $project): Response
     {
@@ -118,20 +129,42 @@ class ProjectRequirementController extends Controller
 
         $requirement->loadMissing(['creator', 'responsibleUser', 'reviewer', 'project', 'understandingConfirmedBy']);
 
-        return Inertia::render('admin/projects/requirements/Show', [
-            'project' => $this->projectSummary($project),
-            'requirement' => $this->requirementDetailPayload($requirement),
-            'requirement_chat_messages' => $this->requirementChatMessagesPayload($request, $requirement),
-            'requirement_tasks' => $this->requirementTaskSummaries($requirement, $actor),
-            'task_status_options' => $this->taskStatusOptions(),
-            'task_assignable_users' => $this->taskAssignableUserOptions($project),
-            'can_post_requirement_chat' => $actor->can('create', [ProjectRequirementMessage::class, $requirement]),
-            'can_update' => $actor->can('update', $requirement),
-            'can_mark_reviewed' => $actor->can('markReviewed', $requirement),
-            'can_confirm_understanding' => $actor->can('confirmUnderstanding', $requirement),
-            'can_manage_project' => $actor->can('update', $project),
-            'can_create_tasks' => $actor->can('create', [ProjectTask::class, $project]),
-        ]);
+        return Inertia::render('admin/projects/requirements/Show', array_merge(
+            [
+                'project' => $this->projectSummary($project),
+                'requirement' => $this->requirementDetailPayload($requirement),
+                'requirement_chat_messages' => $this->requirementChatMessagesPayload($request, $requirement),
+                'requirement_tasks' => $this->requirementTaskSummaries($requirement, $actor),
+                'task_status_options' => $this->taskStatusOptions(),
+                'task_assignable_users' => $this->taskAssignableUserOptions($project),
+                'can_post_requirement_chat' => $actor->can('create', [ProjectRequirementMessage::class, $requirement]),
+                'can_update' => $actor->can('update', $requirement),
+                'can_mark_reviewed' => $actor->can('markReviewed', $requirement),
+                'can_confirm_understanding' => $actor->can('confirmUnderstanding', $requirement),
+                'can_manage_project' => $actor->can('update', $project),
+                'can_create_tasks' => $actor->can('create', [ProjectTask::class, $project]),
+                'phase_settings' => $this->requirementPhaseRegistry->settingsPayload($requirement),
+                'can_update_phase_settings' => $actor->can('update', $requirement),
+                'linked_proposals' => $this->linkedProposalsPayload($project, $requirement),
+            ],
+            RequirementEstimationSummaryPayload::forRequirementShow($requirement, $project, $actor),
+        ));
+    }
+
+    public function updatePhaseSettings(
+        UpdateRequirementPhaseSettingsRequest $request,
+        Project $project,
+        ProjectRequirement $requirement,
+    ): RedirectResponse {
+        $this->ensureRequirementBelongsToProject($project, $requirement);
+
+        $this->requirementPhaseRegistry->setMaxGeneratedPhase(
+            $requirement,
+            (int) $request->validated('max_generated_phase'),
+        );
+
+        return to_route('admin.projects.requirements.show', [$project, $requirement])
+            ->with('toast', __('Phase settings updated.'));
     }
 
     public function markReviewed(
@@ -141,6 +174,9 @@ class ProjectRequirementController extends Controller
     ): RedirectResponse {
         $this->ensureRequirementBelongsToProject($project, $requirement);
 
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
         $validated = $request->validated();
 
         $requirement->update([
@@ -149,6 +185,8 @@ class ProjectRequirementController extends Controller
             'understanding_confirmed_at' => null,
             'understanding_confirmed_by_user_id' => null,
         ]);
+
+        $this->assignmentNotificationDispatcher->sendRequirementReviewUnderstandingSubmitted($requirement, $actor);
 
         return to_route('admin.projects.requirements.show', [$project, $requirement]);
     }
@@ -193,6 +231,9 @@ class ProjectRequirementController extends Controller
 
     public function store(StoreProjectRequirementRequest $request, Project $project): RedirectResponse
     {
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
         $project->loadMissing('teams');
 
         $responsibleId = $request->validated('responsible_user_id');
@@ -200,13 +241,16 @@ class ProjectRequirementController extends Controller
             $responsibleId = $project->defaultResponsibleUser()?->id;
         }
 
-        ProjectRequirement::query()->create([
+        $requirement = ProjectRequirement::query()->create([
             'project_id' => $project->id,
-            'created_by_user_id' => $request->user()->id,
+            'created_by_user_id' => $actor->id,
             'responsible_user_id' => $responsibleId,
             'title' => $request->validated('title'),
             'description' => $request->validated('description'),
+            'max_generated_phase' => (int) $request->validated('max_generated_phase'),
         ]);
+
+        $this->assignmentNotificationDispatcher->sendRequirementAssigned($requirement, $actor);
 
         return to_route('admin.projects.requirements.index', $project)->with('toast', 'Requirement created.');
     }
@@ -244,6 +288,11 @@ class ProjectRequirementController extends Controller
     {
         $this->ensureRequirementBelongsToProject($project, $requirement);
 
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
+        $originalResponsibleId = $requirement->responsible_user_id;
+        $originalReviewerId = $requirement->reviewer_user_id;
         $validated = $request->validated();
 
         $requirement->update([
@@ -252,6 +301,22 @@ class ProjectRequirementController extends Controller
             'reviewer_user_id' => $validated['reviewer_user_id'] ?? null,
             'responsible_user_id' => $validated['responsible_user_id'] ?? null,
         ]);
+
+        $responsibleChanged = $requirement->wasChanged('responsible_user_id')
+            && $originalResponsibleId !== $requirement->responsible_user_id;
+        $reviewerChanged = $requirement->wasChanged('reviewer_user_id')
+            && $originalReviewerId !== $requirement->reviewer_user_id;
+
+        if ($responsibleChanged || $reviewerChanged) {
+            $changedRecipientIds = array_values(array_filter([
+                $responsibleChanged ? $requirement->responsible_user_id : null,
+                $reviewerChanged ? $requirement->reviewer_user_id : null,
+            ], static fn (?int $id): bool => $id !== null));
+
+            $this->assignmentNotificationDispatcher->sendRequirementAssigned($requirement, $actor, $changedRecipientIds);
+        } elseif ($requirement->wasChanged()) {
+            $this->assignmentNotificationDispatcher->sendRequirementUpdated($requirement, $actor);
+        }
 
         return to_route('admin.projects.requirements.index', $project)->with('toast', 'Requirement updated.');
     }
@@ -303,10 +368,13 @@ class ProjectRequirementController extends Controller
                 'requirement_title' => $requirement->title,
                 'parent_project_task_id' => $task->parent_project_task_id,
                 'estimated_minutes' => $task->estimated_minutes,
+                'phase' => $task->phase,
+                'phase_label' => $task->phase !== null ? $this->requirementPhaseRegistry->phaseLabel((int) $task->phase) : null,
                 'children_count' => $task->children_count,
                 'tree_depth' => $depth,
                 'can_update' => $actor->can('update', $task),
                 'can_delete' => $actor->can('delete', $task),
+                'estimation_source' => RequirementEstimationTaskSource::forTask($task, $requirement),
             ];
         }
 
@@ -445,6 +513,25 @@ class ProjectRequirementController extends Controller
         });
 
         return $paginator;
+    }
+
+    /**
+     * @return list<array{id: int, title: string, status: string, status_label: string, show_url: string}>
+     */
+    private function linkedProposalsPayload(Project $project, ProjectRequirement $requirement): array
+    {
+        return ProjectProposal::query()
+            ->where('project_requirement_id', $requirement->id)
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(static fn (ProjectProposal $proposal): array => [
+                'id' => $proposal->id,
+                'title' => $proposal->title,
+                'status' => $proposal->status->value,
+                'status_label' => $proposal->status->label(),
+                'show_url' => route('admin.projects.proposals.show', [$project, $proposal]),
+            ])
+            ->all();
     }
 
     private function ensureRequirementBelongsToProject(Project $project, ProjectRequirement $requirement): void

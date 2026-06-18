@@ -25,6 +25,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /** @use HasFactory<UserFactory> */
     use HasFactory;
+
     use Notifiable;
     use TwoFactorAuthenticatable;
 
@@ -39,6 +40,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'can_approve_leave_requests',
         'can_review_task_completions',
         'can_view_task_rating_report',
+        'can_manage_careers',
     ];
 
     /**
@@ -86,6 +88,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->role->canApproveLeaveRequests();
     }
 
+    public function canManageCareers(): bool
+    {
+        return $this->role->canManageCareers();
+    }
+
     public function getCanManageCompanySettingsAttribute(): bool
     {
         return $this->canManageCompanySettings();
@@ -109,6 +116,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function getCanApproveLeaveRequestsAttribute(): bool
     {
         return $this->canApproveLeaveRequests();
+    }
+
+    public function getCanManageCareersAttribute(): bool
+    {
+        return $this->canManageCareers();
     }
 
     public function getCanReviewTaskCompletionsAttribute(): bool

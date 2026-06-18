@@ -14,6 +14,8 @@ class MyWorkBoardBuilder
 {
     private const PER_COLUMN = 20;
 
+    public function __construct(private readonly ProjectTaskHierarchy $hierarchy) {}
+
     /**
      * @return array{
      *     columns: list<array{status: string, label: string, tasks: list<array<string, mixed>>, meta: array{total: int, current_page: int, last_page: int, per_page: int}}>,
@@ -32,6 +34,11 @@ class MyWorkBoardBuilder
 
         $baseQuery = ProjectTask::query()
             ->where('assignee_user_id', $actor->id)
+            ->whereNull('parent_project_task_id')
+            ->where(static function ($query): void {
+                $query->whereNull('display_after_at')
+                    ->orWhere('display_after_at', '<=', now());
+            })
             ->whereIn('project_id', (clone $visibleProjectsQuery)->select('projects.id'));
 
         if ($projectId !== null) {
@@ -61,6 +68,7 @@ class MyWorkBoardBuilder
 
             $tasks = (clone $baseQuery)
                 ->where('status', $status)
+                ->withCount('children')
                 ->with(['project:id,name,code,lead_user_id', 'requirement:id,title'])
                 ->orderByDesc('updated_at')
                 ->limit($limit)
@@ -78,12 +86,21 @@ class MyWorkBoardBuilder
             ];
         }
 
+        $boardTasks = collect($columnData)
+            ->flatMap(static fn (array $column): Collection => $column['tasks']);
+
+        $familyIdsByParent = [];
+        $allFamilyIds = [];
+
+        foreach ($boardTasks as $task) {
+            $familyIds = $this->hierarchy->familyIds($task);
+            $familyIdsByParent[$task->id] = $familyIds;
+            array_push($allFamilyIds, ...$familyIds);
+        }
+
         $todaySecondsByTask = TaskTimeEntry::todayElapsedSecondsForUserOnTasks(
             $actor->id,
-            collect($columnData)
-                ->flatMap(static fn (array $column): Collection => $column['tasks'])
-                ->pluck('id')
-                ->all(),
+            array_values(array_unique($allFamilyIds)),
         );
 
         $columns = [];
@@ -99,6 +116,7 @@ class MyWorkBoardBuilder
                         $actor,
                         $activeEntry,
                         $todaySecondsByTask,
+                        $familyIdsByParent[$task->id] ?? [$task->id],
                     ))
                     ->all(),
                 'meta' => $column['meta'],
@@ -131,6 +149,7 @@ class MyWorkBoardBuilder
 
     /**
      * @param  array<int, int>  $todaySecondsByTask
+     * @param  list<int>  $familyIds
      * @return array<string, mixed>
      */
     private function taskCard(
@@ -138,6 +157,7 @@ class MyWorkBoardBuilder
         User $actor,
         ?TaskTimeEntry $activeEntry,
         array $todaySecondsByTask,
+        array $familyIds,
     ): array {
         $project = $task->project;
         $timerState = 'idle';
@@ -146,12 +166,18 @@ class MyWorkBoardBuilder
             $timerState = $activeEntry->isPaused() ? 'paused' : 'running';
         }
 
+        $timerTodaySeconds = 0;
+        foreach ($familyIds as $familyId) {
+            $timerTodaySeconds += $todaySecondsByTask[$familyId] ?? 0;
+        }
+
         return [
             'id' => $task->id,
             'project_id' => $project->id,
             'title' => $task->title,
             'status' => $task->status->value,
             'estimated_minutes' => $task->estimated_minutes,
+            'children_count' => (int) ($task->children_count ?? 0),
             'project' => [
                 'id' => $project->id,
                 'name' => $project->name,
@@ -165,7 +191,7 @@ class MyWorkBoardBuilder
             'task_show_url' => route('admin.projects.tasks.show', [$project, $task]),
             'is_assignee_only_limited' => ProjectTaskAssigneeCapabilities::isAssigneeOnlyLimited($actor, $task),
             'can_submit_task_completion' => $this->canSubmitTaskCompletion($actor, $task),
-            'timer_today_seconds' => $todaySecondsByTask[$task->id] ?? 0,
+            'timer_today_seconds' => $timerTodaySeconds,
             'timer_state' => $timerState,
         ];
     }

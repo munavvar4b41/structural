@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\Team;
 use App\Models\User;
+use App\Notifications\RequirementClarificationDiscussionNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -62,6 +63,53 @@ class ProjectRequirementMessageTest extends TestCase
             'project_requirement_id' => $requirement->id,
             'user_id' => $client->id,
             'body' => 'We need CSV with headers.',
+        ]);
+    }
+
+    public function test_posting_clarification_message_sends_notification_to_other_requirement_stakeholders(): void
+    {
+        $team = Team::factory()->create();
+        $staffSender = User::factory()->withPrimaryTeam($team)->create();
+        $staffResponsible = User::factory()->withPrimaryTeam($team)->create();
+        $staffReviewer = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'responsible_user_id' => $staffResponsible->id,
+            'reviewer_user_id' => $staffReviewer->id,
+        ]);
+
+        $this->actingAs($staffSender)
+            ->post(route('admin.projects.requirements.messages.store', [$project, $requirement]), [
+                'body' => 'Please clarify the acceptance criteria.',
+            ])
+            ->assertRedirect(route('admin.projects.requirements.show', [$project, $requirement]));
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => RequirementClarificationDiscussionNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $client->id,
+        ]);
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => RequirementClarificationDiscussionNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $staffResponsible->id,
+        ]);
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => RequirementClarificationDiscussionNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $staffReviewer->id,
+        ]);
+
+        $this->assertDatabaseMissing('notifications', [
+            'type' => RequirementClarificationDiscussionNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $staffSender->id,
         ]);
     }
 

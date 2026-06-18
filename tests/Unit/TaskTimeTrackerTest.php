@@ -3,6 +3,8 @@
 namespace Tests\Unit;
 
 use App\Enums\ProjectTaskStatus;
+use App\Enums\TimerPauseReason;
+use App\Enums\TimerResumedBy;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
@@ -82,6 +84,34 @@ class TaskTimeTrackerTest extends TestCase
         $this->assertSame($entryA->id, $resumed->id);
         $this->assertNull($resumed->paused_at);
         $this->assertSame(20 * 60, $resumed->elapsedSeconds());
+
+        Carbon::setTestNow();
+    }
+
+    public function test_inactivity_resume_rejected_after_manual_pause(): void
+    {
+        $team = Team::factory()->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $project = Project::factory()->create(['client_user_id' => User::factory()->client()->create()->id]);
+        $project->teams()->sync([$team->id]);
+
+        $task = ProjectTask::factory()->forProject($project)->create([
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+        ]);
+
+        $tracker = app(TaskTimeTracker::class);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 11:00:00'));
+        $tracker->start($staff, $task);
+        $tracker->pause($staff, TimerPauseReason::Manual);
+
+        Carbon::setTestNow(Carbon::parse('2026-05-07 11:15:00'));
+        $result = $tracker->resume($staff, TimerResumedBy::Inactivity);
+
+        $this->assertNull($result);
+        $entry = TaskTimeEntry::query()->where('project_task_id', $task->id)->firstOrFail();
+        $this->assertNotNull($entry->paused_at);
 
         Carbon::setTestNow();
     }

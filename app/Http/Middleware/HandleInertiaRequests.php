@@ -2,8 +2,12 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
+use App\Models\User;
 use App\Settings\CompanySettings;
+use App\Support\NotificationFeedBuilder;
+use App\Support\ProjectTaskHierarchy;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -62,7 +66,31 @@ class HandleInertiaRequests extends Middleware
                 'toast' => $request->session()->get('toast'),
             ],
             'active_time_entry' => fn () => $this->activeTimeEntryProps($request),
+            'notifications' => fn () => $this->notificationProps($request),
         ];
+    }
+
+    /**
+     * @return array{
+     *     unread_count: int,
+     *     read_count: int,
+     *     unread_items: list<array{id: string, type: string, read_at: string|null, created_at: string|null, title: string|null, project_name: string|null, task_show_url: string|null}>,
+     *     read_items: list<array{id: string, type: string, read_at: string|null, created_at: string|null, title: string|null, project_name: string|null, task_show_url: string|null}>
+     * }
+     */
+    protected function notificationProps(Request $request): array
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return [
+                'unread_count' => 0,
+                'read_count' => 0,
+                'unread_items' => [],
+                'read_items' => [],
+            ];
+        }
+
+        return app(NotificationFeedBuilder::class)->buildForUser($user);
     }
 
     /**
@@ -82,6 +110,8 @@ class HandleInertiaRequests extends Middleware
 
         $entry->loadMissing(['task:id,title', 'project:id,name,code']);
 
+        $taskTodaySeconds = $this->todaySecondsForActiveEntry($user->id, $entry);
+
         return [
             'id' => $entry->id,
             'task_id' => $entry->project_task_id,
@@ -92,14 +122,25 @@ class HandleInertiaRequests extends Middleware
             'started_at' => $entry->started_at->toIso8601String(),
             'is_paused' => $entry->isPaused(),
             'elapsed_seconds' => $entry->elapsedSeconds(),
-            'task_today_seconds' => TaskTimeEntry::todayElapsedSecondsForUserOnTask(
-                $user->id,
-                $entry->project_task_id,
-            ),
+            'task_today_seconds' => $taskTodaySeconds,
             'my_all_time_seconds' => TaskTimeEntry::elapsedSecondsForUserOnTask(
                 $user->id,
                 $entry->project_task_id,
             ),
         ];
+    }
+
+    private function todaySecondsForActiveEntry(int $userId, TaskTimeEntry $entry): int
+    {
+        $task = ProjectTask::query()->find($entry->project_task_id);
+
+        if ($task === null) {
+            return TaskTimeEntry::todayElapsedSecondsForUserOnTask($userId, $entry->project_task_id);
+        }
+
+        $hierarchy = app(ProjectTaskHierarchy::class);
+        $familyIds = $hierarchy->familyIds($task);
+
+        return TaskTimeEntry::todayElapsedSecondsForUserOnTaskFamily($userId, $familyIds);
     }
 }

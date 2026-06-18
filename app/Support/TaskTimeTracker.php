@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Enums\ProjectTaskStatus;
 use App\Enums\TimeEntrySource;
+use App\Enums\TimerPauseReason;
+use App\Enums\TimerResumedBy;
 use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
 use App\Models\User;
@@ -21,6 +23,8 @@ use Illuminate\Validation\ValidationException;
  */
 class TaskTimeTracker
 {
+    public function __construct(private readonly ProjectTaskHierarchy $hierarchy) {}
+
     /**
      * Start or resume a timer on $task for today. Pauses any other running entry
      * instead of closing it. Reuses today's open paused entry when switching back.
@@ -51,7 +55,7 @@ class TaskTimeTracker
 
             if ($todayOpen !== null && $todayOpen->isPaused()) {
                 if ($running !== null && $running->id !== $todayOpen->id) {
-                    $this->pauseEntry($running, $now);
+                    $this->pauseEntry($running, $now, TimerPauseReason::Switch);
                 }
 
                 $this->resumeEntry($todayOpen, $now);
@@ -60,7 +64,7 @@ class TaskTimeTracker
             }
 
             if ($running !== null) {
-                $this->pauseEntry($running, $now);
+                $this->pauseEntry($running, $now, TimerPauseReason::Switch);
             }
 
             return $this->createTimerEntry($user, $task, $notes, $now);
@@ -70,9 +74,12 @@ class TaskTimeTracker
     /**
      * Pause the user's currently running (non-paused) entry, if any.
      */
-    public function pause(User $user): ?TaskTimeEntry
-    {
-        return DB::transaction(function () use ($user): ?TaskTimeEntry {
+    public function pause(
+        User $user,
+        ?TimerPauseReason $pauseReason = null,
+        ?CarbonInterface $clientEventAt = null,
+    ): ?TaskTimeEntry {
+        return DB::transaction(function () use ($user, $pauseReason, $clientEventAt): ?TaskTimeEntry {
             $now = now();
             $this->closeStaleOpenEntriesForUser($user, $now);
 
@@ -86,7 +93,7 @@ class TaskTimeTracker
                 return null;
             }
 
-            $this->pauseEntry($running, $now);
+            $this->pauseEntry($running, $now, $pauseReason, $clientEventAt);
 
             return $running->refresh();
         });
@@ -95,9 +102,12 @@ class TaskTimeTracker
     /**
      * Resume the user's most recently paused open entry, if any.
      */
-    public function resume(User $user): ?TaskTimeEntry
-    {
-        return DB::transaction(function () use ($user): ?TaskTimeEntry {
+    public function resume(
+        User $user,
+        ?TimerResumedBy $resumedBy = null,
+        ?CarbonInterface $clientEventAt = null,
+    ): ?TaskTimeEntry {
+        return DB::transaction(function () use ($user, $resumedBy, $clientEventAt): ?TaskTimeEntry {
             $now = now();
             $this->closeStaleOpenEntriesForUser($user, $now);
 
@@ -108,7 +118,7 @@ class TaskTimeTracker
                 ->first();
 
             if ($running !== null) {
-                $this->pauseEntry($running, $now);
+                $this->pauseEntry($running, $now, TimerPauseReason::Switch);
             }
 
             $paused = TaskTimeEntry::query()
@@ -123,7 +133,12 @@ class TaskTimeTracker
                 return null;
             }
 
-            $this->resumeEntry($paused, $now);
+            if ($resumedBy === TimerResumedBy::Inactivity
+                && $paused->pause_reason !== TimerPauseReason::Inactivity) {
+                return null;
+            }
+
+            $this->resumeEntry($paused, $now, $resumedBy, $clientEventAt);
 
             return $paused->refresh();
         });
@@ -212,6 +227,7 @@ class TaskTimeTracker
     ): TaskTimeEntry {
         $task->refresh();
         $previousStatus = $this->statusShouldAutoTransition($task->status) ? $task->status : null;
+        $statusSnapshots = $this->buildStatusSnapshots($task);
 
         $entry = TaskTimeEntry::query()->create([
             'project_task_id' => $task->id,
@@ -222,12 +238,11 @@ class TaskTimeTracker
             'duration_seconds' => null,
             'source' => TimeEntrySource::Timer,
             'previous_task_status' => $previousStatus?->value,
+            'status_snapshots' => $statusSnapshots === [] ? null : $statusSnapshots,
             'notes' => $notes,
         ]);
 
-        if ($previousStatus !== null) {
-            $task->forceFill(['status' => ProjectTaskStatus::InProgress])->save();
-        }
+        $this->applyInProgressFromEntry($entry);
 
         return $entry;
     }
@@ -270,19 +285,31 @@ class TaskTimeTracker
         }
     }
 
-    private function pauseEntry(TaskTimeEntry $entry, CarbonInterface $at): void
-    {
+    private function pauseEntry(
+        TaskTimeEntry $entry,
+        CarbonInterface $at,
+        ?TimerPauseReason $pauseReason = null,
+        ?CarbonInterface $clientEventAt = null,
+    ): void {
         if ($entry->paused_at !== null) {
             return;
         }
 
-        $entry->forceFill(['paused_at' => $at])->save();
+        $entry->forceFill([
+            'paused_at' => $at,
+            'pause_reason' => $pauseReason ?? TimerPauseReason::Manual,
+            'last_client_event_at' => $clientEventAt,
+        ])->save();
 
         $this->revertTaskStatusFromEntry($entry);
     }
 
-    private function resumeEntry(TaskTimeEntry $entry, CarbonInterface $at): void
-    {
+    private function resumeEntry(
+        TaskTimeEntry $entry,
+        CarbonInterface $at,
+        ?TimerResumedBy $resumedBy = null,
+        ?CarbonInterface $clientEventAt = null,
+    ): void {
         if ($entry->paused_at === null) {
             return;
         }
@@ -292,6 +319,9 @@ class TaskTimeTracker
         $entry->forceFill([
             'accumulated_pause_seconds' => (int) ($entry->accumulated_pause_seconds ?? 0) + $pauseDuration,
             'paused_at' => null,
+            'pause_reason' => null,
+            'resumed_by' => $resumedBy ?? TimerResumedBy::Manual,
+            'last_client_event_at' => $clientEventAt,
         ])->save();
 
         $this->applyInProgressFromEntry($entry);
@@ -309,16 +339,81 @@ class TaskTimeTracker
             $entry->paused_at = null;
         }
 
+        $task = $entry->task()->first();
+
+        if ($task !== null && $this->hierarchy->hasDirectChildren($task)) {
+            $this->splitParentTimerEntry($entry, $task, $endedAt);
+            $this->revertTaskStatusFromEntry($entry);
+
+            return;
+        }
+
         $entry->forceFill([
             'ended_at' => $endedAt,
             'duration_seconds' => $entry->elapsedSeconds($endedAt),
+            'status_snapshots' => null,
         ])->save();
 
         $this->revertTaskStatusFromEntry($entry);
     }
 
+    private function splitParentTimerEntry(
+        TaskTimeEntry $entry,
+        ProjectTask $parent,
+        CarbonInterface $endedAt,
+    ): void {
+        $totalSeconds = $entry->elapsedSeconds($endedAt);
+        $children = $this->hierarchy->directChildren($parent)->all();
+        $durations = $this->hierarchy->distributeSecondsByEstimates($totalSeconds, $children);
+
+        foreach ($children as $index => $child) {
+            $duration = $durations[$index] ?? 0;
+
+            if ($duration <= 0) {
+                continue;
+            }
+
+            TaskTimeEntry::query()->create([
+                'project_task_id' => $child->id,
+                'project_id' => $parent->project_id,
+                'user_id' => $entry->user_id,
+                'started_at' => $entry->started_at,
+                'ended_at' => $endedAt,
+                'duration_seconds' => $duration,
+                'source' => TimeEntrySource::Timer,
+                'notes' => $entry->notes,
+            ]);
+        }
+
+        $entry->delete();
+    }
+
     private function revertTaskStatusFromEntry(TaskTimeEntry $entry): void
     {
+        $snapshots = $entry->status_snapshots;
+
+        if (is_array($snapshots) && $snapshots !== []) {
+            foreach ($snapshots as $taskId => $statusValue) {
+                $task = ProjectTask::query()->find((int) $taskId);
+
+                if ($task === null) {
+                    continue;
+                }
+
+                $status = ProjectTaskStatus::tryFrom((string) $statusValue);
+
+                if ($status === null) {
+                    continue;
+                }
+
+                if ($task->status === ProjectTaskStatus::InProgress) {
+                    $task->forceFill(['status' => $status])->save();
+                }
+            }
+
+            return;
+        }
+
         $previousStatus = $entry->previous_task_status;
         if ($previousStatus === null) {
             return;
@@ -336,6 +431,34 @@ class TaskTimeTracker
 
     private function applyInProgressFromEntry(TaskTimeEntry $entry): void
     {
+        $snapshots = $entry->status_snapshots;
+
+        if (is_array($snapshots) && $snapshots !== []) {
+            foreach ($snapshots as $taskId => $statusValue) {
+                $task = ProjectTask::query()->find((int) $taskId);
+
+                if ($task === null) {
+                    continue;
+                }
+
+                $previousStatus = ProjectTaskStatus::tryFrom((string) $statusValue);
+
+                if ($previousStatus === null) {
+                    continue;
+                }
+
+                if (! $this->statusShouldAutoTransition($task->status)) {
+                    continue;
+                }
+
+                if ($task->status === $previousStatus) {
+                    $task->forceFill(['status' => ProjectTaskStatus::InProgress])->save();
+                }
+            }
+
+            return;
+        }
+
         $previousStatus = $entry->previous_task_status;
         if ($previousStatus === null) {
             return;
@@ -349,6 +472,38 @@ class TaskTimeTracker
         if ($task->status === $previousStatus) {
             $task->forceFill(['status' => ProjectTaskStatus::InProgress])->save();
         }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function buildStatusSnapshots(ProjectTask $task): array
+    {
+        if (! $this->hierarchy->hasDirectChildren($task)) {
+            return [];
+        }
+
+        $snapshots = [];
+
+        if ($this->statusShouldAutoTransition($task->status)) {
+            $snapshots[(string) $task->id] = $task->status->value;
+        }
+
+        $descendantIds = $this->hierarchy->descendantIds($task);
+
+        if ($descendantIds === []) {
+            return $snapshots;
+        }
+
+        $descendants = ProjectTask::query()->whereIn('id', $descendantIds)->get();
+
+        foreach ($descendants as $descendant) {
+            if ($this->statusShouldAutoTransition($descendant->status)) {
+                $snapshots[(string) $descendant->id] = $descendant->status->value;
+            }
+        }
+
+        return $snapshots;
     }
 
     private function statusShouldAutoTransition(ProjectTaskStatus $status): bool

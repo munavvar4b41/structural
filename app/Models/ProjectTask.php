@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'project_id',
     'project_requirement_id',
+    'project_requirement_estimation_item_id',
     'parent_project_task_id',
     'title',
     'description',
@@ -20,6 +21,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'assignee_user_id',
     'created_by_user_id',
     'estimated_minutes',
+    'phase',
+    'display_after_at',
+    'notify_at',
+    'notified_at',
     'completion_submitted_at',
     'completion_submitted_by_user_id',
 ])]
@@ -35,6 +40,9 @@ class ProjectTask extends Model
     {
         return [
             'status' => ProjectTaskStatus::class,
+            'display_after_at' => 'datetime',
+            'notify_at' => 'datetime',
+            'notified_at' => 'datetime',
             'completion_submitted_at' => 'datetime',
         ];
     }
@@ -47,6 +55,11 @@ class ProjectTask extends Model
     public function requirement(): BelongsTo
     {
         return $this->belongsTo(ProjectRequirement::class, 'project_requirement_id');
+    }
+
+    public function estimationItem(): BelongsTo
+    {
+        return $this->belongsTo(ProjectRequirementEstimationItem::class, 'project_requirement_estimation_item_id');
     }
 
     public function parent(): BelongsTo

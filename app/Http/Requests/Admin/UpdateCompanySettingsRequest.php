@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Validator;
 
 class UpdateCompanySettingsRequest extends FormRequest
 {
@@ -22,6 +23,53 @@ class UpdateCompanySettingsRequest extends FormRequest
                 'email_domain' => $domain,
             ]);
         }
+
+        foreach (['work_day_start_time', 'work_day_end_time'] as $key) {
+            if ($this->has($key)) {
+                $this->merge([
+                    $key => $this->normalizeTimeInput((string) $this->input($key)),
+                ]);
+            }
+        }
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $start = $this->input('work_day_start_time');
+            $end = $this->input('work_day_end_time');
+
+            if (! is_string($start) || ! is_string($end)) {
+                return;
+            }
+
+            if ($this->timeToMinutes($start) >= $this->timeToMinutes($end)) {
+                $validator->errors()->add(
+                    'work_day_end_time',
+                    __('The work day end time must be after the start time.'),
+                );
+            }
+        });
+    }
+
+    private function normalizeTimeInput(string $value): string
+    {
+        $value = trim($value);
+
+        if (preg_match('/^(\d{1,2}):(\d{2})(?::\d{2})?$/', $value, $matches) === 1) {
+            return sprintf('%02d:%02d', (int) $matches[1], (int) $matches[2]);
+        }
+
+        return $value;
+    }
+
+    private function timeToMinutes(string $time): int
+    {
+        if (preg_match('/^(\d{1,2}):(\d{2})$/', $time, $matches) !== 1) {
+            return 0;
+        }
+
+        return ((int) $matches[1] * 60) + (int) $matches[2];
     }
 
     /**
@@ -43,6 +91,8 @@ class UpdateCompanySettingsRequest extends FormRequest
             'postal_code' => ['nullable', 'string', 'max:32'],
             'country' => ['nullable', 'string', 'max:120'],
             'email_domain' => ['required', 'string', 'max:255', 'regex:'.$domainRegex],
+            'work_day_start_time' => ['required', 'string', 'regex:/^\d{2}:\d{2}$/'],
+            'work_day_end_time' => ['required', 'string', 'regex:/^\d{2}:\d{2}$/'],
         ];
     }
 }

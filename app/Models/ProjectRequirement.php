@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\RequirementEstimationStatus;
 use Database\Factories\ProjectRequirementFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'review_understanding',
     'understanding_confirmed_at',
     'understanding_confirmed_by_user_id',
+    'max_generated_phase',
 ])]
 class ProjectRequirement extends Model
 {
@@ -71,10 +73,49 @@ class ProjectRequirement extends Model
     }
 
     /**
+     * @return HasMany<ProjectProposal, $this>
+     */
+    public function proposals(): HasMany
+    {
+        return $this->hasMany(ProjectProposal::class, 'project_requirement_id');
+    }
+
+    /**
      * @return HasMany<ProjectTask, $this>
      */
     public function tasks(): HasMany
     {
         return $this->hasMany(ProjectTask::class, 'project_requirement_id');
+    }
+
+    /**
+     * @return HasMany<ProjectRequirementEstimation, $this>
+     */
+    public function estimations(): HasMany
+    {
+        return $this->hasMany(ProjectRequirementEstimation::class);
+    }
+
+    public function activeEstimation(): ?ProjectRequirementEstimation
+    {
+        return $this->estimations()
+            ->whereIn('status', [
+                RequirementEstimationStatus::Draft,
+                RequirementEstimationStatus::PendingApproval,
+                RequirementEstimationStatus::ChangesRequested,
+            ])
+            ->orderByDesc('version')
+            ->first();
+    }
+
+    public function latestApprovedOrTransferredEstimation(): ?ProjectRequirementEstimation
+    {
+        return $this->estimations()
+            ->whereIn('status', [
+                RequirementEstimationStatus::Approved,
+                RequirementEstimationStatus::Transferred,
+            ])
+            ->orderByDesc('version')
+            ->first();
     }
 }

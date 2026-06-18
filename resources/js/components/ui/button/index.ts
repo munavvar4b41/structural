@@ -18,7 +18,7 @@ export const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost:
           "shadow-none hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "shadow-none text-primary underline-offset-4 hover:underline",
+        link: "shadow-none text-primary underline-offset-4 hover:underline !whitespace-normal",
         glass:
           "glass-panel border-0 text-foreground shadow-lg hover:shadow-xl hover:-translate-y-0.5",
       },

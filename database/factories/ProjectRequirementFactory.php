@@ -40,6 +40,7 @@ class ProjectRequirementFactory extends Factory
             'review_understanding' => null,
             'understanding_confirmed_at' => null,
             'understanding_confirmed_by_user_id' => null,
+            'max_generated_phase' => 1,
         ];
     }
 }

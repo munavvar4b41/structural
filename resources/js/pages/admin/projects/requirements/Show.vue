@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head, Link, router } from '@inertiajs/vue3';
+import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
 import { CornerDownRight } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementController';
@@ -9,9 +9,13 @@ import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue'
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
-import RequirementRichTextEditor from '@/components/RequirementRichTextEditor.vue';
-import RequirementRichTextViewer from '@/components/RequirementRichTextViewer.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import RequirementPhaseSettingsCard, {
+    type RequirementPhaseSettings,
+} from '@/components/requirements/RequirementPhaseSettingsCard.vue';
+import RichTextEditor from '@/components/RichTextEditor.vue';
+import RichTextViewer from '@/components/RichTextViewer.vue';
+import FormSelect from '@/components/FormSelect.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -24,15 +28,17 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { buildPhaseSelectOptions } from '@/lib/requirementPhaseOptions';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
 import { cn, isCurrentUser } from '@/lib/utils';
-import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
+import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import {
     edit as requirementsEdit,
     index as requirementsIndex,
     show as requirementsShow,
 } from '@/routes/admin/projects/requirements/index';
+import { show as estimationShow } from '@/routes/admin/projects/requirements/estimation/index';
 import {
     index as projectTasksIndex,
     show as projectTasksShow,
@@ -63,10 +69,21 @@ type RequirementTaskRow = {
     requirement_title: string | null | undefined;
     parent_project_task_id: number | null;
     estimated_minutes: number | null;
+    phase: number | null;
+    phase_label: string | null;
     children_count: number;
     tree_depth: number;
     can_update: boolean;
     can_delete: boolean;
+    estimation_source: 'transferred' | 'ad_hoc' | null;
+};
+
+type EstimationSummary = {
+    id: number;
+    version: number;
+    status: string;
+    status_label: string;
+    total_minutes: number;
 };
 
 type TaskStatusOption = { value: string; label: string };
@@ -116,10 +133,40 @@ const props = defineProps<{
     can_confirm_understanding: boolean;
     can_manage_project: boolean;
     can_create_tasks: boolean;
+    understanding_confirmed: boolean;
+    can_open_estimation: boolean;
+    can_create_estimation: boolean;
+    estimation_summary: EstimationSummary | null;
+    phase_settings: RequirementPhaseSettings;
+    can_update_phase_settings: boolean;
+    linked_proposals: {
+        id: number;
+        title: string;
+        status: string;
+        status_label: string;
+        show_url: string;
+    }[];
 }>();
+
+const page = usePage();
 
 const createTaskOpen = ref(false);
 const reviewDialogOpen = ref(false);
+
+function openCreateTaskDialog(): void {
+    if (!props.can_create_tasks) {
+        return;
+    }
+
+    createTaskOpen.value = true;
+}
+
+function onEmptyTasksKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openCreateTaskDialog();
+    }
+}
 
 const taskDeleteOpen = ref(false);
 const taskPendingDelete = ref<RequirementTaskRow | null>(null);
@@ -135,12 +182,59 @@ function formatParentTaskLabel(task: RequirementTaskRow): string {
 const createTaskStatus = ref('to_do');
 const createTaskAssignee = ref('');
 const createTaskParent = ref('');
+const createTaskPhase = ref('1');
+
+const requirementPhaseSelectOptions = computed(() =>
+    buildPhaseSelectOptions(props.phase_settings.max_generated_phase),
+);
+
+const showRequirementPhaseField = computed(
+    () => props.phase_settings.requires_phase_selection,
+);
+
+const taskPhaseFilter = ref('');
+
+const taskPhaseFilterOptions = computed(() =>
+    buildPhaseSelectOptions(props.phase_settings.max_generated_phase),
+);
+
+const filteredRequirementTasks = computed(() => {
+    if (taskPhaseFilter.value === '') {
+        return props.requirement_tasks;
+    }
+
+    const phase = Number(taskPhaseFilter.value);
+    const matchingIds = new Set(
+        props.requirement_tasks
+            .filter((task) => task.phase === phase)
+            .map((task) => task.id),
+    );
+
+    if (matchingIds.size === 0) {
+        return [];
+    }
+
+    const byId = new Map(props.requirement_tasks.map((task) => [task.id, task]));
+    const visibleIds = new Set(matchingIds);
+
+    for (const id of matchingIds) {
+        let cursor = byId.get(id);
+
+        while (cursor?.parent_project_task_id !== null && cursor?.parent_project_task_id !== undefined) {
+            visibleIds.add(cursor.parent_project_task_id);
+            cursor = byId.get(cursor.parent_project_task_id);
+        }
+    }
+
+    return props.requirement_tasks.filter((task) => visibleIds.has(task.id));
+});
 
 watch(createTaskOpen, (open) => {
     if (open) {
         createTaskStatus.value = 'to_do';
         createTaskAssignee.value = '';
         createTaskParent.value = '';
+        createTaskPhase.value = '1';
     }
 });
 
@@ -225,6 +319,14 @@ onMounted(() => {
     chatPollTimer = window.setInterval(() => {
         reloadChatMessages();
     }, 30_000);
+
+    const rawUrl = page.url;
+    const queryPart = rawUrl.includes('?') ? rawUrl.slice(rawUrl.indexOf('?') + 1) : '';
+    const params = new URLSearchParams(queryPart);
+
+    if (params.get('add_task') === '1' && props.can_create_tasks) {
+        openCreateTaskDialog();
+    }
 });
 
 onUnmounted(() => {
@@ -275,9 +377,7 @@ defineOptions({
             { title: 'Projects', href: projectsIndex.url() },
             {
                 title: pageProps.project.name,
-                href: pageProps.can_manage_project
-                    ? projectsEdit.url(pageProps.project.id)
-                    : requirementsIndex.url(pageProps.project.id),
+                href: projectsShow.url(pageProps.project.id),
             },
             { title: 'Requirements', href: requirementsIndex.url(pageProps.project.id) },
             {
@@ -321,6 +421,22 @@ defineOptions({
                 </Button>
             </div>
         </div>
+
+        <GlassCard v-if="linked_proposals.length > 0" class="p-6">
+            <div class="mb-4 space-y-1">
+                <h2 class="text-lg font-semibold">Linked proposals</h2>
+                <p class="text-sm text-muted-foreground">Proposals associated with this requirement.</p>
+            </div>
+            <ul class="space-y-2">
+                <li v-for="proposal in linked_proposals" :key="proposal.id"
+                    class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 px-3 py-2">
+                    <Link class="font-medium underline-offset-4 hover:underline" :href="proposal.show_url">
+                        {{ proposal.title }}
+                    </Link>
+                    <Badge variant="outline">{{ proposal.status_label }}</Badge>
+                </li>
+            </ul>
+        </GlassCard>
 
         <div class="mx-auto flex w-full flex-col gap-8">
             <div class="grid min-w-0 gap-6 lg:grid-cols-12 lg:items-stretch">
@@ -397,7 +513,7 @@ defineOptions({
                                     <span class="font-medium text-foreground">{{ row.user?.name ?? 'Unknown' }}</span>
                                     <span>{{
                                         row.created_at ? new Date(row.created_at).toLocaleString() : '—'
-                                    }}</span>
+                                        }}</span>
                                 </div>
                                 <p class="mt-1 whitespace-pre-wrap break-words">{{ row.body }}</p>
                             </div>
@@ -426,13 +542,58 @@ defineOptions({
                     </div>
                 </GlassCard>
 
+                <GlassCard v-if="understanding_confirmed" class="lg:col-span-12">
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="space-y-1">
+                            <h2 class="text-lg font-semibold">Estimation</h2>
+                            <p v-if="estimation_summary" class="text-sm text-muted-foreground">
+                                {{ estimation_summary.status_label }} · v{{ estimation_summary.version }}
+                                · {{ formatTaskMinutes(estimation_summary.total_minutes) }}
+                            </p>
+                            <p v-else class="text-sm text-muted-foreground">
+                                Plan work for this requirement before creating tasks.
+                            </p>
+                        </div>
+                        <Button v-if="can_open_estimation" as-child>
+                            <Link :href="estimationShow.url({
+                                project: project.id,
+                                requirement: requirement.id,
+                            })
+                                ">
+                                {{
+                                    can_create_estimation
+                                        ? 'Start estimation'
+                                        : 'Manage estimation'
+                                }}
+                            </Link>
+                        </Button>
+                    </div>
+                </GlassCard>
+
+                <RequirementPhaseSettingsCard :project-id="project.id" :requirement-id="requirement.id"
+                    :phase-settings="phase_settings" :can-update="can_update_phase_settings" />
+
                 <GlassCard class="lg:col-span-12">
-                    <div class="mb-6 space-y-1">
-                        <h2 class="text-lg font-semibold">Tasks</h2>
-                        <p class="text-sm text-muted-foreground">
-                            Work linked to this requirement. Estimates:
-                            {{ project.estimation_required ? 'required on this project.' : 'optional.' }}
-                        </p>
+                    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="space-y-1">
+                            <h2 class="text-lg font-semibold">Tasks</h2>
+                            <p class="text-sm text-muted-foreground">
+                                Work linked to this requirement. Estimates:
+                                {{ project.estimation_required ? 'required on this project.' : 'optional.' }}
+                            </p>
+                        </div>
+                        <div class="flex flex-wrap items-end gap-3">
+                            <div v-if="requirement_tasks.length > 0" class="grid gap-1">
+                                <Label class="text-xs text-muted-foreground" for="req-task-phase-filter">Phase</Label>
+                                <FormSelect id="req-task-phase-filter" name="task_phase_filter"
+                                    class="min-w-[10rem]" v-model="taskPhaseFilter" :options="taskPhaseFilterOptions"
+                                    placeholder="Any phase" none-label="Any phase" exclude-from-submit />
+                            </div>
+                            <Button v-if="can_create_tasks" type="button" class="shrink-0"
+                                @click="openCreateTaskDialog">
+                                Add task
+                            </Button>
+                        </div>
                     </div>
                     <div class="md:overflow-x-auto">
                         <Dialog v-model:open="createTaskOpen">
@@ -460,20 +621,26 @@ defineOptions({
                                     </div>
                                     <div class="grid gap-2">
                                         <Label for="req-task-status">Status</Label>
-                                        <TaskFormSelect id="req-task-status" name="status" v-model="createTaskStatus"
+                                        <FormSelect id="req-task-status" name="status" v-model="createTaskStatus"
                                             required placeholder="Status" :options="taskStatusSelectOptions" />
                                         <InputError :message="errors.status" />
                                     </div>
                                     <div class="grid gap-2">
                                         <Label for="req-task-assignee">Assignee</Label>
-                                        <TaskFormSelect id="req-task-assignee" name="assignee_user_id"
+                                        <FormSelect id="req-task-assignee" name="assignee_user_id"
                                             v-model="createTaskAssignee" none-label="Unassigned"
                                             placeholder="Unassigned" :options="taskAssigneeSelectOptions" />
                                         <InputError :message="errors.assignee_user_id" />
                                     </div>
+                                    <div v-if="showRequirementPhaseField" class="grid gap-2">
+                                        <Label for="req-task-phase">Phase</Label>
+                                        <FormSelect id="req-task-phase" name="phase" v-model="createTaskPhase"
+                                            required placeholder="Phase" :options="requirementPhaseSelectOptions" />
+                                        <InputError :message="errors.phase" />
+                                    </div>
                                     <div class="grid gap-2">
                                         <Label for="req-task-parent">Parent task (subtask)</Label>
-                                        <TaskFormSelect id="req-task-parent" name="parent_project_task_id"
+                                        <FormSelect id="req-task-parent" name="parent_project_task_id"
                                             v-model="createTaskParent" placeholder="None"
                                             :options="taskParentSelectOptions" />
                                         <InputError :message="errors.parent_project_task_id" />
@@ -499,15 +666,16 @@ defineOptions({
                             style="--data-table-min-width: 640px">
                             <thead class="border-b bg-muted/40">
                                 <tr>
-                                    <th class="w-[38%] px-4 py-3 font-medium">Title</th>
+                                    <th class="w-[30%] px-4 py-3 font-medium">Title</th>
                                     <th class="px-4 py-3 font-medium">Status</th>
                                     <th class="px-4 py-3 font-medium">Assignee</th>
+                                    <th v-if="showRequirementPhaseField" class="px-4 py-3 font-medium">Phase</th>
                                     <th class="px-4 py-3 font-medium">Estimate</th>
                                     <th class="px-4 py-3 text-right font-medium">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="task in requirement_tasks" :key="task.id"
+                                <tr v-for="task in filteredRequirementTasks" :key="task.id"
                                     class="border-b border-border/60 last:border-0">
                                     <td data-label="Title" class="max-w-0 px-4 py-3 align-top" :style="{
                                         paddingLeft: `calc(0.75rem + ${task.tree_depth} * 1.25rem)`,
@@ -517,6 +685,14 @@ defineOptions({
                                                 class="mt-0.5 size-4 shrink-0 text-muted-foreground"
                                                 aria-hidden="true" />
                                             <div class="min-w-0 flex-1">
+                                                <span v-if="task.estimation_source === 'transferred'"
+                                                    class="mb-0.5 inline-block rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200">
+                                                    From estimation
+                                                </span>
+                                                <span v-else-if="task.estimation_source === 'ad_hoc'"
+                                                    class="mb-0.5 inline-block rounded bg-sky-500/15 px-1.5 py-0.5 text-xs font-medium text-sky-800 dark:text-sky-200">
+                                                    New task
+                                                </span>
                                                 <Button variant="link"
                                                     class="h-auto w-full min-w-0 justify-start p-0 font-medium text-foreground"
                                                     as-child>
@@ -538,7 +714,11 @@ defineOptions({
                                         </div>
                                     </td>
                                     <td data-label="Status" class="px-4 py-3 text-muted-foreground">{{ task.status_label
-                                        }}</td>
+                                    }}</td>
+                                    <td v-if="showRequirementPhaseField" data-label="Phase"
+                                        class="px-4 py-3 text-muted-foreground">
+                                        {{ task.phase_label ?? '—' }}
+                                    </td>
                                     <td data-label="Assignee" class="px-4 py-3 text-muted-foreground">
                                         {{ task.assignee?.name ?? '—' }}
                                     </td>
@@ -564,8 +744,17 @@ defineOptions({
                                     </td>
                                 </tr>
                                 <tr v-if="requirement_tasks.length === 0">
-                                    <td data-label="" colspan="5" class="px-4 py-8 text-center text-muted-foreground">
-                                        No tasks yet for this requirement.
+                                    <td data-label="" colspan="5" class="px-4 py-8 text-center text-muted-foreground"
+                                        :class="can_create_tasks ? 'cursor-pointer hover:bg-muted/30' : ''"
+                                        :role="can_create_tasks ? 'button' : undefined"
+                                        :tabindex="can_create_tasks ? 0 : undefined" @click="openCreateTaskDialog"
+                                        @keydown="onEmptyTasksKeydown">
+                                        <template v-if="can_create_tasks">
+                                            No tasks yet. Click here or use Add task to create one.
+                                        </template>
+                                        <template v-else>
+                                            No tasks yet for this requirement.
+                                        </template>
                                     </td>
                                 </tr>
                             </tbody>
@@ -581,7 +770,7 @@ defineOptions({
                         </p>
                     </div>
                     <div>
-                        <RequirementRichTextViewer :json="requirement.review_understanding" />
+                        <RichTextViewer :json="requirement.review_understanding" />
                     </div>
                 </GlassCard>
 
@@ -589,7 +778,7 @@ defineOptions({
                     <div class="mb-6 space-y-1">
                         <h2 class="text-lg font-semibold">Confirm understanding</h2>
                         <p class="text-sm text-muted-foreground">
-                            Confirm that this matches your intent as creator or responsible person.
+                            Confirm that this matches your intent as the person who created this requirement.
                         </p>
                     </div>
                     <div>
@@ -608,7 +797,7 @@ defineOptions({
                         <h2 class="text-lg font-semibold">Description</h2>
                     </div>
                     <div>
-                        <RequirementRichTextViewer v-if="requirement.description" :json="requirement.description" />
+                        <RichTextViewer v-if="requirement.description" :json="requirement.description" />
                         <p v-else class="text-sm text-muted-foreground">No description.</p>
                     </div>
                 </GlassCard>
@@ -631,7 +820,7 @@ defineOptions({
                     " class="grid gap-4" @success="reviewDialogOpen = false" v-slot="{ errors, processing }">
                     <div class="grid gap-2">
                         <Label for="review-understanding-editor">Your understanding</Label>
-                        <RequirementRichTextEditor id="review-understanding-editor" v-model="reviewUnderstandingJson"
+                        <RichTextEditor id="review-understanding-editor" v-model="reviewUnderstandingJson"
                             input-name="review_understanding" />
                         <InputError :message="errors.review_understanding" />
                     </div>

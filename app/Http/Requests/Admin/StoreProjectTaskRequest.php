@@ -6,6 +6,7 @@ use App\Enums\ProjectTaskStatus;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Support\ProjectRequirementAssignableUsers;
+use App\Support\ValidatesLinkedTaskPhase;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -13,9 +14,11 @@ use Illuminate\Validation\Validator;
 
 class StoreProjectTaskRequest extends FormRequest
 {
+    use ValidatesLinkedTaskPhase;
+
     protected function prepareForValidation(): void
     {
-        foreach (['assignee_user_id', 'project_requirement_id', 'parent_project_task_id', 'estimated_minutes'] as $key) {
+        foreach (['assignee_user_id', 'project_requirement_id', 'parent_project_task_id', 'estimated_minutes', 'display_after_at', 'notify_at', 'phase'] as $key) {
             if ($this->has($key) && $this->input($key) === '') {
                 $this->merge([$key => null]);
             }
@@ -67,7 +70,33 @@ class StoreProjectTaskRequest extends FormRequest
                 Rule::exists('project_tasks', 'id')->where('project_id', $project->id),
             ],
             'estimated_minutes' => $estimationRules,
+            'display_after_at' => ['nullable', 'date'],
+            'notify_at' => ['nullable', 'date'],
+            'phase' => ['nullable', 'integer', 'min:1'],
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function validated($key = null, $default = null): mixed
+    {
+        $validated = parent::validated($key, $default);
+
+        if ($key !== null) {
+            return $validated;
+        }
+
+        /** @var Project $project */
+        $project = $this->route('project');
+
+        $validated['phase'] = $this->resolveValidatedTaskPhase(
+            $project,
+            $validated['project_requirement_id'] ?? null,
+            $validated['phase'] ?? null,
+        );
+
+        return $validated;
     }
 
     /**
@@ -106,6 +135,21 @@ class StoreProjectTaskRequest extends FormRequest
                     $validator->errors()->add(
                         'project_requirement_id',
                         __('Subtasks must use the same requirement link as their parent task.'),
+                    );
+                }
+
+                if ($this->input('notify_at') === null) {
+                    return;
+                }
+
+                $normalizedAssigneeId = $this->input('assignee_user_id');
+                $hasAssignee = $normalizedAssigneeId !== null && $normalizedAssigneeId !== '';
+                $hasProjectLead = $project->lead_user_id !== null;
+
+                if (! $hasAssignee && ! $hasProjectLead) {
+                    $validator->errors()->add(
+                        'notify_at',
+                        __('A reminder needs at least one recipient. Assign a task owner or set a project lead.'),
                     );
                 }
             },

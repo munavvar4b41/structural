@@ -53,6 +53,14 @@ class Project extends Model
     }
 
     /**
+     * @return HasMany<ProjectProposal, $this>
+     */
+    public function proposals(): HasMany
+    {
+        return $this->hasMany(ProjectProposal::class);
+    }
+
+    /**
      * @return HasMany<ProjectTask, $this>
      */
     public function tasks(): HasMany
@@ -66,6 +74,22 @@ class Project extends Model
     public function timeEntries(): HasMany
     {
         return $this->hasMany(TaskTimeEntry::class);
+    }
+
+    /**
+     * @return HasMany<ProjectTag, $this>
+     */
+    public function tags(): HasMany
+    {
+        return $this->hasMany(ProjectTag::class);
+    }
+
+    /**
+     * @return HasMany<ProjectMetadata, $this>
+     */
+    public function metadata(): HasMany
+    {
+        return $this->hasMany(ProjectMetadata::class);
     }
 
     /**

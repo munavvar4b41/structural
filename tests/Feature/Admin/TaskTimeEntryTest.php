@@ -190,6 +190,95 @@ class TaskTimeEntryTest extends TestCase
         $this->assertNotNull($entry->fresh());
     }
 
+    public function test_staff_can_create_entry_with_duration_minutes(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+        Carbon::setTestNow(Carbon::parse('2026-05-07 12:00:00'));
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.tasks.time-entries.store', [$project, $task]), [
+                'duration_minutes' => 40,
+            ])
+            ->assertRedirect();
+
+        $entry = TaskTimeEntry::query()->firstOrFail();
+        $this->assertSame(40 * 60, $entry->duration_seconds);
+        $this->assertSame('2026-05-07 11:20:00', $entry->started_at?->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-05-07 12:00:00', $entry->ended_at?->format('Y-m-d H:i:s'));
+        $this->assertNull($entry->notes);
+
+        Carbon::setTestNow(null);
+    }
+
+    public function test_duration_entry_ignores_start_and_end_when_duration_provided(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+        Carbon::setTestNow(Carbon::parse('2026-05-07 12:00:00'));
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.tasks.time-entries.store', [$project, $task]), [
+                'duration_minutes' => 40,
+                'started_at' => '2026-05-07 09:00:00',
+                'ended_at' => '2026-05-07 10:00:00',
+            ])
+            ->assertRedirect();
+
+        $entry = TaskTimeEntry::query()->firstOrFail();
+        $this->assertSame(40 * 60, $entry->duration_seconds);
+        $this->assertSame('2026-05-07 11:20:00', $entry->started_at?->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-05-07 12:00:00', $entry->ended_at?->format('Y-m-d H:i:s'));
+
+        Carbon::setTestNow(null);
+    }
+
+    public function test_duration_entry_accepts_long_duration_without_working_hours_limit(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+        Carbon::setTestNow(Carbon::parse('2026-05-07 12:00:00'));
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.tasks.time-entries.store', [$project, $task]), [
+                'duration_minutes' => 500,
+            ])
+            ->assertRedirect();
+
+        $entry = TaskTimeEntry::query()->firstOrFail();
+        $this->assertSame(500 * 60, $entry->duration_seconds);
+
+        Carbon::setTestNow(null);
+    }
+
+    public function test_user_can_update_entry_with_duration_minutes(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();
+        Carbon::setTestNow(Carbon::parse('2026-05-07 12:00:00'));
+
+        $entry = TaskTimeEntry::factory()
+            ->forTask($task)
+            ->forUser($staff)
+            ->between(
+                Carbon::parse('2026-05-07 09:00:00'),
+                Carbon::parse('2026-05-07 10:00:00'),
+            )
+            ->manual()
+            ->create();
+
+        $this->actingAs($staff)
+            ->patch(route('admin.projects.tasks.time-entries.update', [$project, $task, $entry]), [
+                'duration_minutes' => 30,
+            ])
+            ->assertRedirect();
+
+        $fresh = $entry->fresh();
+        $this->assertNotNull($fresh);
+        $this->assertSame(30 * 60, $fresh->duration_seconds);
+        $this->assertSame('2026-05-07 11:30:00', $fresh->started_at?->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-05-07 12:00:00', $fresh->ended_at?->format('Y-m-d H:i:s'));
+        $this->assertNull($fresh->notes);
+
+        Carbon::setTestNow(null);
+    }
+
     public function test_manual_entry_does_not_change_task_status(): void
     {
         ['staff' => $staff, 'project' => $project, 'task' => $task] = $this->setupProjectWithTask();

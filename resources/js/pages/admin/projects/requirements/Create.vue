@@ -6,7 +6,7 @@ import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/P
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
-import RequirementRichTextEditor from '@/components/RequirementRichTextEditor.vue';
+import RichTextEditor from '@/components/RichTextEditor.vue';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -19,7 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
-import { edit as projectsEdit, index as projectsIndex } from '@/routes/admin/projects/index';
+import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import {
     create as requirementsCreate,
     index as requirementsIndex,
@@ -47,6 +47,7 @@ const props = defineProps<{
 const descriptionJson = ref(emptyTipTapDocumentJson());
 
 const responsibleUserId = ref('');
+const maxGeneratedPhase = ref('1');
 
 const responsibleLabel = computed(() => {
     if (responsibleUserId.value === '') {
@@ -69,9 +70,7 @@ defineOptions({
             { title: 'Projects', href: projectsIndex.url() },
             {
                 title: pageProps.project.name,
-                href: pageProps.canManageProject
-                    ? projectsEdit.url(pageProps.project.id)
-                    : requirementsIndex.url(pageProps.project.id),
+                href: projectsShow.url(pageProps.project.id),
             },
             { title: 'Requirements', href: requirementsIndex.url(pageProps.project.id) },
             {
@@ -84,17 +83,14 @@ defineOptions({
 </script>
 
 <template>
+
     <Head :title="`Add requirement · ${project.name}`" />
 
     <div class="flex flex-col gap-8">
-        <PageHeader title="Add requirement"
-            :description="`For project ${project.name}`" />
+        <PageHeader title="Add requirement" :description="`For project ${project.name}`" />
 
-        <Form
-            v-bind="ProjectRequirementController.store.form({ project: project.id })"
-            class="flex max-w-2xl flex-col gap-8"
-            v-slot="{ errors, processing, recentlySuccessful }"
-        >
+        <Form v-bind="ProjectRequirementController.store.form({ project: project.id })"
+            class="flex max-w-2xl flex-col gap-8" v-slot="{ errors, processing, recentlySuccessful }">
             <input type="hidden" name="responsible_user_id" :value="responsibleUserId" />
 
             <GlassCard class="p-6">
@@ -112,24 +108,26 @@ defineOptions({
                     </div>
                     <div class="grid gap-2">
                         <Label for="requirement-description">Description</Label>
-                        <RequirementRichTextEditor
-                            id="requirement-description"
-                            v-model="descriptionJson"
-                            input-name="description"
-                        />
+                        <RichTextEditor id="requirement-description" v-model="descriptionJson"
+                            input-name="description" />
                         <InputError :message="errors.description" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="max-generated-phase">Number of phases</Label>
+                        <Input id="max-generated-phase" name="max_generated_phase" type="number" min="1" max="100"
+                            v-model="maxGeneratedPhase" required />
+                        <p class="text-xs text-muted-foreground">
+                            How many phases this requirement spans. Use 1 when no phase split is needed.
+                        </p>
+                        <InputError :message="errors.max_generated_phase" />
                     </div>
                     <div class="grid gap-2">
                         <Label id="responsible_user_id-label">Responsible (optional)</Label>
                         <DropdownMenu>
                             <DropdownMenuTrigger as-child>
-                                <Button
-                                    id="responsible_user_id"
-                                    type="button"
-                                    variant="outline"
+                                <Button id="responsible_user_id" type="button" variant="outline"
                                     class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
-                                    aria-labelledby="responsible_user_id-label"
-                                >
+                                    aria-labelledby="responsible_user_id-label">
                                     <span class="truncate text-left">{{ responsibleLabel }}</span>
                                     <ChevronDown class="size-4 shrink-0 opacity-50" />
                                 </Button>
@@ -140,11 +138,8 @@ defineOptions({
                                     <DropdownMenuRadioItem value="">
                                         Use default (project lead / first team head)
                                     </DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem
-                                        v-for="u in assignable_responsibles"
-                                        :key="u.id"
-                                        :value="String(u.id)"
-                                    >
+                                    <DropdownMenuRadioItem v-for="u in assignable_responsibles" :key="u.id"
+                                        :value="String(u.id)">
                                         {{ u.name }} ({{ u.email }})
                                     </DropdownMenuRadioItem>
                                 </DropdownMenuRadioGroup>
@@ -163,10 +158,7 @@ defineOptions({
                 <Button variant="outline" as-child>
                     <Link :href="requirementsIndex.url(project.id)">Cancel</Link>
                 </Button>
-                <span
-                    v-show="recentlySuccessful"
-                    class="text-sm text-muted-foreground"
-                >
+                <span v-show="recentlySuccessful" class="text-sm text-muted-foreground">
                     Saved.
                 </span>
             </div>

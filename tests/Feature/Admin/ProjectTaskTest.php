@@ -9,6 +9,8 @@ use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
 use App\Models\Team;
 use App\Models\User;
+use App\Notifications\TaskAssignedNotification;
+use App\Notifications\TaskUpdatedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -144,6 +146,77 @@ class ProjectTaskTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_parent_status_update_cascades_to_descendants(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $parent = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $child = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.show', [$project, $parent]))
+            ->patch(route('admin.projects.tasks.update', [$project, $parent]), [
+                'title' => $parent->title,
+                'status' => ProjectTaskStatus::Blocked->value,
+            ])
+            ->assertRedirect(route('admin.projects.tasks.show', [$project, $parent]));
+
+        $this->assertSame(ProjectTaskStatus::Blocked, $parent->fresh()->status);
+        $this->assertSame(ProjectTaskStatus::Blocked, $child->fresh()->status);
+    }
+
+    public function test_child_status_update_does_not_cascade_to_parent_or_siblings(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $parent = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $child = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $sibling = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.show', [$project, $child]))
+            ->patch(route('admin.projects.tasks.update', [$project, $child]), [
+                'title' => $child->title,
+                'status' => ProjectTaskStatus::InProgress->value,
+            ])
+            ->assertRedirect(route('admin.projects.tasks.show', [$project, $child]));
+
+        $this->assertSame(ProjectTaskStatus::ToDo, $parent->fresh()->status);
+        $this->assertSame(ProjectTaskStatus::InProgress, $child->fresh()->status);
+        $this->assertSame(ProjectTaskStatus::ToDo, $sibling->fresh()->status);
+    }
+
     public function test_task_show_lists_direct_subtasks(): void
     {
         extract($this->projectWithTeamHead());
@@ -235,6 +308,30 @@ class ProjectTaskTest extends TestCase
             'project_id' => $project->id,
             'title' => 'General task',
             'project_requirement_id' => null,
+        ]);
+    }
+
+    public function test_store_sends_assignment_notification_to_assignee(): void
+    {
+        extract($this->projectWithTeamHead());
+        $assignee = User::factory()->withPrimaryTeam($team)->create();
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->post(route('admin.projects.tasks.store', $project), [
+                'title' => 'Assigned task',
+                'status' => ProjectTaskStatus::ToDo->value,
+                'assignee_user_id' => $assignee->id,
+                'project_requirement_id' => null,
+                'parent_project_task_id' => null,
+                'estimated_minutes' => null,
+            ])
+            ->assertRedirect(route('admin.projects.tasks.index', $project));
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => TaskAssignedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $assignee->id,
         ]);
     }
 
@@ -423,6 +520,78 @@ class ProjectTaskTest extends TestCase
         $this->assertSame('Renamed by creator', $task->fresh()->title);
     }
 
+    public function test_update_with_same_assignee_sends_task_updated_notification(): void
+    {
+        extract($this->projectWithTeamHead());
+        $assignee = User::factory()->withPrimaryTeam($team)->create();
+
+        $task = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $assignee->id,
+                'status' => ProjectTaskStatus::ToDo,
+                'title' => 'Original title',
+            ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->patch(route('admin.projects.tasks.update', [$project, $task]), [
+                'title' => 'Retitled task',
+                'status' => ProjectTaskStatus::ToDo->value,
+                'assignee_user_id' => $assignee->id,
+            ])
+            ->assertRedirect(route('admin.projects.tasks.index', $project));
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => TaskUpdatedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $assignee->id,
+        ]);
+    }
+
+    public function test_update_with_changed_assignee_sends_assignment_notification_only_to_new_assignee(): void
+    {
+        extract($this->projectWithTeamHead());
+        $oldAssignee = User::factory()->withPrimaryTeam($team)->create();
+        $newAssignee = User::factory()->withPrimaryTeam($team)->create();
+
+        $task = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $oldAssignee->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->patch(route('admin.projects.tasks.update', [$project, $task]), [
+                'title' => $task->title,
+                'status' => ProjectTaskStatus::InProgress->value,
+                'assignee_user_id' => $newAssignee->id,
+            ])
+            ->assertRedirect(route('admin.projects.tasks.index', $project));
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => TaskAssignedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $newAssignee->id,
+        ]);
+
+        $this->assertDatabaseMissing('notifications', [
+            'type' => TaskAssignedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $oldAssignee->id,
+        ]);
+
+        $this->assertDatabaseMissing('notifications', [
+            'type' => TaskUpdatedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $newAssignee->id,
+        ]);
+    }
+
     public function test_staff_creator_can_delete_own_task(): void
     {
         extract($this->projectWithTeamHead());
@@ -515,5 +684,147 @@ class ProjectTaskTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('admin/projects/tasks/Index')
                 ->where('tasks', fn ($tasks) => count($tasks) >= 2));
+    }
+
+    public function test_linked_task_defaults_to_phase_one_when_max_is_one(): void
+    {
+        extract($this->projectWithTeamHead());
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'max_generated_phase' => 1,
+        ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->post(route('admin.projects.tasks.store', $project), [
+                'title' => 'Single phase task',
+                'status' => ProjectTaskStatus::ToDo->value,
+                'project_requirement_id' => $requirement->id,
+                'estimated_minutes' => 30,
+            ])
+            ->assertRedirect(route('admin.projects.tasks.index', $project));
+
+        $this->assertDatabaseHas('project_tasks', [
+            'title' => 'Single phase task',
+            'project_requirement_id' => $requirement->id,
+            'phase' => 1,
+        ]);
+    }
+
+    public function test_linked_task_requires_phase_when_max_greater_than_one(): void
+    {
+        extract($this->projectWithTeamHead());
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'max_generated_phase' => 3,
+        ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->post(route('admin.projects.tasks.store', $project), [
+                'title' => 'Missing phase',
+                'status' => ProjectTaskStatus::ToDo->value,
+                'project_requirement_id' => $requirement->id,
+                'estimated_minutes' => 30,
+            ])
+            ->assertSessionHasErrors('phase');
+    }
+
+    public function test_linked_task_rejects_invalid_phase(): void
+    {
+        extract($this->projectWithTeamHead());
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'max_generated_phase' => 2,
+        ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->post(route('admin.projects.tasks.store', $project), [
+                'title' => 'Bad phase',
+                'status' => ProjectTaskStatus::ToDo->value,
+                'project_requirement_id' => $requirement->id,
+                'phase' => 4,
+                'estimated_minutes' => 30,
+            ])
+            ->assertSessionHasErrors('phase');
+    }
+
+    public function test_unlinked_task_must_not_have_phase(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->post(route('admin.projects.tasks.store', $project), [
+                'title' => 'Unlinked with phase',
+                'status' => ProjectTaskStatus::ToDo->value,
+                'phase' => 1,
+            ])
+            ->assertSessionHasErrors('phase');
+    }
+
+    public function test_tasks_index_includes_requirement_max_phases(): void
+    {
+        extract($this->projectWithTeamHead());
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'max_generated_phase' => 4,
+        ]);
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.index', $project))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('requirements.0.max_generated_phase', 4)
+                ->where('requirements.0.value', $requirement->id));
+    }
+
+    public function test_tasks_index_can_filter_by_phase(): void
+    {
+        extract($this->projectWithTeamHead());
+        $requirement = ProjectRequirement::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $client->id,
+            'max_generated_phase' => 3,
+        ]);
+
+        $phaseOneTask = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'project_requirement_id' => $requirement->id,
+                'phase' => 1,
+                'title' => 'Phase one task',
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'project_requirement_id' => $requirement->id,
+                'phase' => 2,
+                'title' => 'Phase two task',
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.index', [
+                'project' => $project,
+                'phase' => 1,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.phase', '1')
+                ->where('show_phase_filter', true)
+                ->has('phase_filter_options', 3)
+                ->has('tasks', 1)
+                ->where('tasks.0.id', $phaseOneTask->id)
+                ->where('tasks.0.phase', 1));
     }
 }

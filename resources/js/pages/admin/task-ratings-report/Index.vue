@@ -7,7 +7,7 @@ import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskFormSelect from '@/components/TaskFormSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { index as projectsIndex } from '@/routes/admin/projects/index';
 import { index as taskRatingsReportIndex } from '@/routes/admin/task-ratings-report/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
 
 type SelectOption = { value: number; label: string };
 
@@ -195,12 +196,12 @@ const ratingsChartOptions = computed(() => ({
                 </div>
                 <div class="grid min-w-[200px] flex-1 gap-2">
                     <Label for="tr-project">Project</Label>
-                    <TaskFormSelect id="tr-project" v-model="projectValue" name="project_id" none-label="All projects"
+                    <FormSelect id="tr-project" v-model="projectValue" name="project_id" none-label="All projects"
                         placeholder="All projects" :options="projectSelectOptions" />
                 </div>
                 <div class="grid min-w-[200px] flex-1 gap-2">
                     <Label for="tr-user">Staff involved</Label>
-                    <TaskFormSelect id="tr-user" v-model="userValue" name="user_id" none-label="Everyone"
+                    <FormSelect id="tr-user" v-model="userValue" name="user_id" none-label="Everyone"
                         placeholder="Everyone" :options="userSelectOptions" />
                 </div>
                 <Button type="button" class="w-full sm:w-auto" @click="applyFilters">Apply</Button>
@@ -230,8 +231,7 @@ const ratingsChartOptions = computed(() => ({
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="row in filteredRows" :key="row.user_id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                        <TableRow v-for="row in filteredRows" :key="row.user_id">
                             <DataTableTd label="Name" class="font-medium">{{ row.name }}</DataTableTd>
                             <DataTableTd label="Avg as assignee" class="tabular-nums text-muted-foreground">
                                 {{ avgLabel(row.assignee_avg) }}
@@ -245,7 +245,7 @@ const ratingsChartOptions = computed(() => ({
                             <DataTableTd label="Reviews (creator)" class="tabular-nums text-muted-foreground">
                                 {{ row.creator_count }}
                             </DataTableTd>
-                        </tr>
+                        </TableRow>
                     </tbody>
                 </DataTable>
                 <div v-else class="text-sm text-muted-foreground">
@@ -272,8 +272,7 @@ const ratingsChartOptions = computed(() => ({
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="r in filteredRecentReviews" :key="r.id"
-                            class="border-b border-border/40 transition-colors even:bg-muted/15 hover:bg-muted/30">
+                        <TableRow v-for="r in filteredRecentReviews" :key="r.id">
                             <DataTableTd label="Date" class="text-muted-foreground">
                                 {{ new Date(r.created_at).toLocaleString() }}
                             </DataTableTd>
@@ -289,7 +288,7 @@ const ratingsChartOptions = computed(() => ({
                             <DataTableTd label="Creator rating" class="tabular-nums text-muted-foreground">
                                 {{ r.creator_rating ?? '—' }}
                             </DataTableTd>
-                        </tr>
+                        </TableRow>
                     </tbody>
                 </DataTable>
                 <div v-else class="text-sm text-muted-foreground">

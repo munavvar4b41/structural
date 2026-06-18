@@ -15,7 +15,7 @@ const props = withDefaults(
 </script>
 
 <template>
-    <div :class="cn('glass-panel overflow-hidden rounded-3xl', props.class)">
+    <div :class="cn('data-table glass-panel overflow-hidden rounded-3xl', props.class)">
         <div :class="cn(
             props.responsive ? 'md:overflow-x-auto' : 'overflow-x-auto',
         )
@@ -25,10 +25,10 @@ const props = withDefaults(
                 props.responsive && 'data-table-responsive',
             )
                 " :style="minWidth
-                        ? {
-                            '--data-table-min-width': minWidth,
-                        }
-                        : undefined
+                    ? {
+                        '--data-table-min-width': minWidth,
+                    }
+                    : undefined
                     ">
                 <slot />
             </table>

@@ -5,9 +5,11 @@ namespace Tests\Feature\Admin;
 use App\Enums\ProjectTaskStatus;
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Models\TaskTimeEntry;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -98,6 +100,46 @@ class MyWorkTest extends TestCase
                 ->where('columns.'.$toDoIndex.'.tasks.0.title', 'Alpha task'));
     }
 
+    public function test_my_work_hides_tasks_until_display_after_is_reached(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-27 12:00:00'));
+
+        $team = Team::factory()->create();
+        $head = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        ProjectTask::factory()->forProject($project)->create([
+            'created_by_user_id' => $head->id,
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+            'title' => 'Show now',
+            'display_after_at' => now()->subMinute(),
+        ]);
+
+        ProjectTask::factory()->forProject($project)->create([
+            'created_by_user_id' => $head->id,
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+            'title' => 'Show later',
+            'display_after_at' => now()->addHour(),
+        ]);
+
+        $toDoIndex = array_search(ProjectTaskStatus::ToDo, ProjectTaskStatus::boardOrder(), true);
+        $this->assertNotFalse($toDoIndex);
+
+        $this->actingAs($staff)
+            ->get(route('admin.my-work.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('columns.'.$toDoIndex.'.tasks', 1)
+                ->where('columns.'.$toDoIndex.'.tasks.0.title', 'Show now'));
+
+        Carbon::setTestNow();
+    }
+
     public function test_assignee_only_staff_cannot_patch_status_to_done(): void
     {
         $team = Team::factory()->create();
@@ -166,6 +208,96 @@ class MyWorkTest extends TestCase
         $this->actingAs($staff)
             ->get(route('admin.my-work.index', ['task_id' => 999_999]))
             ->assertNotFound();
+    }
+
+    public function test_my_work_hides_child_tasks_and_shows_only_parents(): void
+    {
+        $team = Team::factory()->create();
+        $head = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $parent = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+                'status' => ProjectTaskStatus::ToDo,
+                'title' => 'Parent task',
+            ]);
+
+        ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+                'status' => ProjectTaskStatus::ToDo,
+                'title' => 'Child task',
+            ]);
+
+        $toDoIndex = array_search(ProjectTaskStatus::ToDo, ProjectTaskStatus::boardOrder(), true);
+        $this->assertNotFalse($toDoIndex);
+
+        $this->actingAs($staff)
+            ->get(route('admin.my-work.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('columns.'.$toDoIndex.'.tasks', 1)
+                ->where('columns.'.$toDoIndex.'.tasks.0.title', 'Parent task')
+                ->where('columns.'.$toDoIndex.'.tasks.0.children_count', 1));
+    }
+
+    public function test_my_work_rolls_up_child_timer_seconds_on_parent_card(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-05-07 10:00:00'));
+
+        $team = Team::factory()->create();
+        $head = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $parent = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+                'status' => ProjectTaskStatus::InProgress,
+                'title' => 'Parent task',
+            ]);
+
+        $child = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+                'status' => ProjectTaskStatus::InProgress,
+            ]);
+
+        TaskTimeEntry::factory()
+            ->forTask($child)
+            ->forUser($staff)
+            ->between(
+                Carbon::parse('2026-05-07 09:00:00'),
+                Carbon::parse('2026-05-07 09:25:00'),
+            )
+            ->create();
+
+        $inProgressIndex = array_search(ProjectTaskStatus::InProgress, ProjectTaskStatus::boardOrder(), true);
+        $this->assertNotFalse($inProgressIndex);
+
+        $this->actingAs($staff)
+            ->get(route('admin.my-work.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('columns.'.$inProgressIndex.'.tasks.0.timer_today_seconds', 25 * 60));
+
+        Carbon::setTestNow();
     }
 
     public function test_task_preview_denied_when_user_cannot_view_task(): void

@@ -55,16 +55,19 @@ onBeforeUnmount(() => {
 }
 :deep(.tiptap-content h2) {
     margin: 0.5em 0 0.25em;
-    font-size: 1.125rem;
+    font-size: 1.5em;
     font-weight: 600;
 }
 :deep(.tiptap-content h3) {
     margin: 0.5em 0 0.25em;
-    font-size: 1rem;
+    font-size: 1.17em;
     font-weight: 600;
 }
 :deep(.tiptap-content a) {
     color: var(--color-primary);
     text-decoration: underline;
+}
+:deep(.tiptap-content ul) {
+    list-style: revert;
 }
 </style>

@@ -7,6 +7,7 @@ use App\Models\ProjectTask;
 use App\Models\User;
 use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\ProjectTaskAssigneeCapabilities;
+use App\Support\ValidatesLinkedTaskPhase;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -14,9 +15,11 @@ use Illuminate\Validation\Validator;
 
 class UpdateProjectTaskRequest extends FormRequest
 {
+    use ValidatesLinkedTaskPhase;
+
     protected function prepareForValidation(): void
     {
-        foreach (['assignee_user_id', 'project_requirement_id', 'parent_project_task_id', 'estimated_minutes'] as $key) {
+        foreach (['assignee_user_id', 'project_requirement_id', 'parent_project_task_id', 'estimated_minutes', 'display_after_at', 'notify_at', 'phase'] as $key) {
             if ($this->has($key) && $this->input($key) === '') {
                 $this->merge([$key => null]);
             }
@@ -71,6 +74,9 @@ class UpdateProjectTaskRequest extends FormRequest
                 'assignee_user_id' => ['prohibited'],
                 'status' => ['sometimes', Rule::enum(ProjectTaskStatus::class)],
                 'estimated_minutes' => $estimationRules,
+                'display_after_at' => ['prohibited'],
+                'notify_at' => ['prohibited'],
+                'phase' => ['prohibited'],
             ];
         }
 
@@ -94,7 +100,42 @@ class UpdateProjectTaskRequest extends FormRequest
                 Rule::exists('project_tasks', 'id')->where('project_id', $project->id),
             ],
             'estimated_minutes' => $estimationRules,
+            'display_after_at' => ['nullable', 'date'],
+            'notify_at' => ['nullable', 'date'],
+            'phase' => ['nullable', 'integer', 'min:1'],
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function validated($key = null, $default = null): mixed
+    {
+        $validated = parent::validated($key, $default);
+
+        if ($key !== null) {
+            return $validated;
+        }
+
+        /** @var ProjectTask $task */
+        $task = $this->route('task');
+        $project = $task->project;
+
+        if (! array_key_exists('project_requirement_id', $validated) && ! array_key_exists('phase', $validated)) {
+            return $validated;
+        }
+
+        $requirementId = array_key_exists('project_requirement_id', $validated)
+            ? $validated['project_requirement_id']
+            : $task->project_requirement_id;
+
+        $phase = array_key_exists('phase', $validated)
+            ? $validated['phase']
+            : ($requirementId !== null ? $task->phase : null);
+
+        $validated['phase'] = $this->resolveValidatedTaskPhase($project, $requirementId, $phase);
+
+        return $validated;
     }
 
     /**
@@ -166,6 +207,24 @@ class UpdateProjectTaskRequest extends FormRequest
                     $validator->errors()->add(
                         'project_requirement_id',
                         __('Subtasks must use the same requirement link as their parent task.'),
+                    );
+                }
+
+                if ($this->input('notify_at', $task->notify_at) === null) {
+                    return;
+                }
+
+                $assigneeId = $this->has('assignee_user_id')
+                    ? $this->input('assignee_user_id')
+                    : $task->assignee_user_id;
+
+                $hasAssignee = $assigneeId !== null && $assigneeId !== '';
+                $hasProjectLead = $task->project->lead_user_id !== null;
+
+                if (! $hasAssignee && ! $hasProjectLead) {
+                    $validator->errors()->add(
+                        'notify_at',
+                        __('A reminder needs at least one recipient. Assign a task owner or set a project lead.'),
                     );
                 }
             },

@@ -49,4 +49,14 @@ class ProjectPolicy
     {
         return $actor->canManageProjects() && $this->view($actor, $project);
     }
+
+    public function manageTags(User $actor, Project $project): bool
+    {
+        return $this->update($actor, $project);
+    }
+
+    public function manageMetadata(User $actor, Project $project): bool
+    {
+        return $this->update($actor, $project);
+    }
 }

@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\UpdateProjectRequest;
 use App\Models\Project;
 use App\Models\Team;
 use App\Models\User;
+use App\Support\ProjectShowPayloadBuilder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,8 @@ use Inertia\Response;
 class ProjectController extends Controller
 {
     use AuthorizesRequests;
+
+    public function __construct(private readonly ProjectShowPayloadBuilder $showPayloadBuilder) {}
 
     public function index(Request $request): Response
     {
@@ -147,6 +150,16 @@ class ProjectController extends Controller
             ],
             'show_lead_filter' => $actor->role->canViewAllProjects(),
         ]);
+    }
+
+    public function show(Request $request, Project $project): Response
+    {
+        $this->authorize('view', $project);
+
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
+        return Inertia::render('admin/projects/Show', $this->showPayloadBuilder->build($project, $actor));
     }
 
     public function create(): Response
