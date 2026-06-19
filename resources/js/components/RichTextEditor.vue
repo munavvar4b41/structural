@@ -2,7 +2,7 @@
 import Link from '@tiptap/extension-link';
 import StarterKit from '@tiptap/starter-kit';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
-import { Bold, Heading2, Heading3, Italic, Link2, List } from 'lucide-vue-next';
+import { Bold, Heading2, Heading3, Italic, Link2, List, ListOrdered } from 'lucide-vue-next';
 import { onBeforeUnmount, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import { emptyTipTapDocumentJson, parseTipTapDocument } from '@/lib/tiptapDocument';
@@ -125,6 +125,10 @@ function setLink(): void {
                 @click="editor.chain().focus().toggleBulletList().run()">
                 <List />
             </Button>
+            <Button type="button" variant="ghost" size="icon-sm" class="shrink-0" aria-label="Number list"
+                @click="editor.chain().focus().toggleOrderedList().run()">
+                <ListOrdered />
+            </Button>
             <Button type="button" variant="ghost" size="icon-sm" class="shrink-0" aria-label="Link" @click="setLink">
                 <Link2 />
             </Button>
@@ -150,6 +154,7 @@ function setLink(): void {
 :deep(.tiptap-content ol) {
     margin: 0.35em 0;
     padding-left: 1.25rem;
+    list-style: revert;
 }
 
 :deep(.tiptap-content h2) {

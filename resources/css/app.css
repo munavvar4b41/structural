@@ -281,6 +281,7 @@
             letter-spacing: 0.05em;
             text-transform: uppercase;
             color: var(--muted-foreground);
+            padding: 4px 0px;
         }
 
         table[data-responsive-table] tbody td[data-label='']::before,

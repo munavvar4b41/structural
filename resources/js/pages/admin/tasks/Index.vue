@@ -25,6 +25,8 @@ import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { index as projectsIndex } from '@/routes/admin/projects/index';
 import { show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
 import { index as tasksIndex } from '@/routes/admin/tasks/index';
+import TableRow from '@/components/dashboard/TableRow.vue';
+import DataTable from '@/components/dashboard/DataTable.vue';
 
 type Option = {
     value: string | number;
@@ -294,8 +296,8 @@ function onCreateSuccess(): void {
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-requirement">Requirement</Label>
-                        <FormSelect id="create-requirement" name="project_requirement_id"
-                            v-model="createRequirement" placeholder="None" :options="requirementSelectOptions" />
+                        <FormSelect id="create-requirement" name="project_requirement_id" v-model="createRequirement"
+                            placeholder="None" :options="requirementSelectOptions" />
                         <InputError :message="errors.project_requirement_id" />
                     </div>
                     <div class="grid gap-2">
@@ -329,72 +331,66 @@ function onCreateSuccess(): void {
             </DialogContent>
         </Dialog>
 
-        <GlassCard>
-            <div class="mb-6 space-y-1">
-                <h2 class="text-lg font-semibold">Task list</h2>
-                <p class="text-sm text-muted-foreground">
-                    Tasks across visible projects. Select a project to create a new task.
-                </p>
-            </div>
-            <div class="md:overflow-x-auto">
-                <table data-responsive-table
-                    class="data-table-responsive w-full table-fixed text-left text-sm md:min-w-[920px]"
-                    style="--data-table-min-width: 920px">
-                    <thead class="border-b bg-muted/40">
-                        <tr>
-                            <th class="w-[30%] px-4 py-3 font-medium">Title</th>
-                            <th class="px-4 py-3 font-medium">Project</th>
-                            <th class="px-4 py-3 font-medium">Status</th>
-                            <th class="px-4 py-3 font-medium">Assignee</th>
-                            <th class="min-w-[25%] px-4 py-3 font-medium">Requirement</th>
-                            <th class="px-4 py-3 font-medium">Estimate</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="task in tasks" :key="task.id" class="border-b border-border/60 last:border-0">
-                            <td data-label="Title" class="max-w-0 px-4 py-3 align-middle"
-                                :style="{ paddingLeft: `calc(0.75rem + ${task.tree_depth} * 1rem)` }">
-                                <div class="flex min-w-0 items-center gap-1.5">
-                                    <CornerDownRight v-if="task.tree_depth > 0"
-                                        class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                                    <div class="min-w-0 flex-1">
-                                        <Button variant="link"
-                                            class="h-auto w-full min-w-0 justify-start p-0 font-medium text-foreground"
-                                            as-child>
-                                            <Link
-                                                class="block text-left text-foreground line-clamp-2 break-words hover:underline"
-                                                :title="task.title"
-                                                :href="projectTasksShow.url({ project: task.project.id, task: task.id })">
-                                                {{ task.title }}
-                                            </Link>
-                                        </Button>
-                                    </div>
+        <div>
+            <h2 class="text-lg font-semibold">Task list</h2>
+            <p class="text-sm text-muted-foreground mb-4">
+                Tasks across visible projects. Select a project to create a new task.
+            </p>
+            <DataTable data-responsive-table>
+                <thead class="border-b bg-muted/40">
+                    <tr>
+                        <th class="w-[30%] px-4 py-3 font-medium">Title</th>
+                        <th class="px-4 py-3 font-medium">Project</th>
+                        <th class="px-4 py-3 font-medium">Status</th>
+                        <th class="px-4 py-3 font-medium">Assignee</th>
+                        <th class="min-w-[25%] px-4 py-3 font-medium">Requirement</th>
+                        <th class="px-4 py-3 font-medium">Estimate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <TableRow v-for="task in tasks" :key="task.id">
+                        <td data-label="Title" class="px-4 py-3 text-muted-foreground"
+                            :style="{ paddingLeft: `calc(0.75rem + ${task.tree_depth} * 1rem)` }">
+                            <div class="flex min-w-0 items-center gap-1.5">
+                                <CornerDownRight v-if="task.tree_depth > 0"
+                                    class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                                <div class="min-w-0 flex-1">
+                                    <Button variant="link"
+                                        class="h-auto w-full min-w-0 justify-start p-0 font-medium text-foreground"
+                                        as-child>
+                                        <Link
+                                            class="block text-left text-foreground line-clamp-2 break-words hover:underline"
+                                            :title="task.title"
+                                            :href="projectTasksShow.url({ project: task.project.id, task: task.id })">
+                                            {{ task.title }}
+                                        </Link>
+                                    </Button>
                                 </div>
-                            </td>
-                            <td data-label="Project" class="px-4 py-3 text-muted-foreground">
-                                {{ formatProjectLabel(task) }}
-                            </td>
-                            <td data-label="Status" class="px-4 py-3 text-muted-foreground">
-                                {{ task.status_label }}
-                            </td>
-                            <td data-label="Assignee" class="px-4 py-3 text-muted-foreground">
-                                {{ task.assignee?.name ?? '—' }}
-                            </td>
-                            <td data-label="Requirement" class="px-4 py-3 text-muted-foreground">
-                                {{ task.requirement_title ?? '—' }}
-                            </td>
-                            <td data-label="Estimate" class="px-4 py-3 text-muted-foreground">
-                                {{ formatTaskMinutes(task.estimated_minutes) }}
-                            </td>
-                        </tr>
-                        <tr v-if="tasks.length === 0">
-                            <td data-label="" colspan="6" class="px-4 py-8 text-center text-muted-foreground">
-                                No tasks match this filter.
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </GlassCard>
+                            </div>
+                        </td>
+                        <td data-label="Project" class="px-4 py-3 text-muted-foreground">
+                            {{ formatProjectLabel(task) }}
+                        </td>
+                        <td data-label="Status" class="px-4 py-3 text-muted-foreground">
+                            {{ task.status_label }}
+                        </td>
+                        <td data-label="Assignee" class="px-4 py-3 text-muted-foreground">
+                            {{ task.assignee?.name ?? '—' }}
+                        </td>
+                        <td data-label="Requirement" class="px-4 py-3 text-muted-foreground">
+                            {{ task.requirement_title ?? '—' }}
+                        </td>
+                        <td data-label="Estimate" class="px-4 py-3 text-muted-foreground">
+                            {{ formatTaskMinutes(task.estimated_minutes) }}
+                        </td>
+                    </TableRow>
+                    <tr v-if="tasks.length === 0">
+                        <td data-label="" colspan="6" class="px-4 py-8 text-center text-muted-foreground">
+                            No tasks match this filter.
+                        </td>
+                    </tr>
+                </tbody>
+            </DataTable>
+        </div>
     </div>
 </template>
