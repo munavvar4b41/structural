@@ -52,6 +52,7 @@ onBeforeUnmount(() => {
 :deep(.tiptap-content ol) {
     margin: 0.35em 0;
     padding-left: 1.25rem;
+    list-style: revert;
 }
 :deep(.tiptap-content h2) {
     margin: 0.5em 0 0.25em;
@@ -66,8 +67,5 @@ onBeforeUnmount(() => {
 :deep(.tiptap-content a) {
     color: var(--color-primary);
     text-decoration: underline;
-}
-:deep(.tiptap-content ul) {
-    list-style: revert;
 }
 </style>
