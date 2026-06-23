@@ -113,4 +113,12 @@ class ProjectTask extends Model
     {
         return $this->hasMany(ProjectTaskReview::class, 'project_task_id');
     }
+
+    /**
+     * @return HasMany<CaseStudy, $this>
+     */
+    public function caseStudies(): HasMany
+    {
+        return $this->hasMany(CaseStudy::class, 'project_task_id');
+    }
 }

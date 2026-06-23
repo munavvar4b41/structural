@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\ProjectTaskStatus;
+use App\Models\CaseStudy;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\TaskTimeEntry;
@@ -18,7 +19,9 @@ class ProjectTaskShowPayloadBuilder
      *     task: array<string, mixed>,
      *     can_manage_project: bool,
      *     checklist: array<string, mixed>,
-     *     time_tracking: array<string, mixed>
+     *     time_tracking: array<string, mixed>,
+     *     case_studies: list<array<string, mixed>>,
+     *     can_create_case_study: bool
      * }
      */
     public function build(Project $project, ProjectTask $task, User $actor): array
@@ -39,6 +42,9 @@ class ProjectTaskShowPayloadBuilder
             'can_manage_project' => $actor->can('update', $project),
             'checklist' => ProjectTaskChecklistProps::forTask($task, $actor),
             'time_tracking' => $this->timeTrackingProps($task, $actor),
+            'case_studies' => $this->caseStudiesProps($task, $actor),
+            'can_create_case_study' => ! $actor->isClient()
+                && $actor->can('create', [CaseStudy::class, $project]),
         ];
     }
 
@@ -214,5 +220,26 @@ class ProjectTaskShowPayloadBuilder
             ProjectTaskStatus::Done,
             ProjectTaskStatus::Cancelled,
         ], true);
+    }
+
+    /**
+     * @return list<array{id: int, title: string, summary: string|null, created_at: string|null}>
+     */
+    private function caseStudiesProps(ProjectTask $task, User $actor): array
+    {
+        if ($actor->isClient()) {
+            return [];
+        }
+
+        return $task->caseStudies()
+            ->orderByDesc('created_at')
+            ->get(['id', 'title', 'summary', 'created_at'])
+            ->map(static fn (CaseStudy $caseStudy): array => [
+                'id' => $caseStudy->id,
+                'title' => $caseStudy->title,
+                'summary' => $caseStudy->summary,
+                'created_at' => $caseStudy->created_at?->toIso8601String(),
+            ])
+            ->all();
     }
 }

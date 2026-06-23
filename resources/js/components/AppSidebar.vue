@@ -11,6 +11,7 @@ import {
     FolderKanban,
     LayoutGrid,
     FileCheck,
+    BookOpen,
     Star,
     Timer,
     Users,
@@ -29,6 +30,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as adminCaseStudiesIndex } from '@/routes/admin/case-studies/index';
 import { edit as adminCareersSettingsEdit } from '@/routes/admin/careers-settings/index';
 import { edit as adminCompanyEdit } from '@/routes/admin/company/index';
 import { index as adminJobPostingsIndex } from '@/routes/admin/job-postings/index';
@@ -98,6 +100,18 @@ const mainNavItems = computed((): NavItem[] => {
             icon: FileCheck,
             activeMatch: 'prefix',
         });
+    }
+
+    if (page.props.auth.user?.can_view_projects && page.props.auth.user?.role !== 'client') {
+        items.push({
+            title: 'Case studies',
+            href: adminCaseStudiesIndex(),
+            icon: BookOpen,
+            activeMatch: 'prefix',
+        });
+    }
+
+    if (page.props.auth.user?.can_view_projects) {
         items.push({
             title: 'My work',
             href: adminMyWorkIndex(),

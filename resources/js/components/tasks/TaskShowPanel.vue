@@ -28,6 +28,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { formatSeconds } from '@/lib/formatSeconds';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
+import { create as caseStudiesCreate, show as caseStudiesShow } from '@/routes/admin/projects/case-studies/index';
 import { show as requirementsShow } from '@/routes/admin/projects/requirements/index';
 import {
     edit as projectTasksEdit,
@@ -44,6 +45,13 @@ import type {
     TimeTracking,
 } from '@/types/projectTaskShow';
 
+type CaseStudyBrief = {
+    id: number;
+    title: string;
+    summary: string | null;
+    created_at: string | null;
+};
+
 const props = withDefaults(
     defineProps<{
         project: ProjectSummary;
@@ -51,9 +59,13 @@ const props = withDefaults(
         can_manage_project: boolean;
         checklist: Checklist;
         time_tracking: TimeTracking;
+        case_studies?: CaseStudyBrief[];
+        can_create_case_study?: boolean;
         embedded?: boolean;
     }>(),
     {
+        case_studies: () => [],
+        can_create_case_study: false,
         embedded: false,
     },
 );
@@ -1166,6 +1178,52 @@ const checklistDeleteDescription = computed(() => {
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </GlassCard>
+
+        <GlassCard v-if="case_studies.length > 0 || can_create_case_study">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3">
+                <h2 class="text-sm font-semibold">Case studies</h2>
+                <Button v-if="can_create_case_study" size="sm" variant="outline" as-child>
+                    <Link
+                        :href="
+                            caseStudiesCreate.url(project.id, {
+                                query: { project_task_id: task.id },
+                            })
+                        "
+                    >
+                        Add case study
+                    </Link>
+                </Button>
+            </div>
+            <div class="divide-y divide-border/60">
+                <div
+                    v-for="caseStudy in case_studies"
+                    :key="caseStudy.id"
+                    class="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                >
+                    <div>
+                        <p class="font-medium">{{ caseStudy.title }}</p>
+                        <p v-if="caseStudy.summary" class="text-sm text-muted-foreground">
+                            {{ caseStudy.summary }}
+                        </p>
+                    </div>
+                    <Button variant="ghost" size="sm" as-child>
+                        <Link
+                            :href="
+                                caseStudiesShow.url({
+                                    project: project.id,
+                                    case_study: caseStudy.id,
+                                })
+                            "
+                        >
+                            View
+                        </Link>
+                    </Button>
+                </div>
+                <p v-if="case_studies.length === 0" class="px-4 py-6 text-center text-sm text-muted-foreground">
+                    No case studies linked to this task yet.
+                </p>
             </div>
         </GlassCard>
     </div>
