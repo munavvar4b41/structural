@@ -20,6 +20,21 @@ class ProjectTaskTest extends TestCase
 {
     use RefreshDatabase;
 
+    private function tipTapJson(string $plainText): string
+    {
+        return (string) json_encode([
+            'type' => 'doc',
+            'content' => [
+                [
+                    'type' => 'paragraph',
+                    'content' => [
+                        ['type' => 'text', 'text' => $plainText],
+                    ],
+                ],
+            ],
+        ]);
+    }
+
     /**
      * @return array{team: Team, head: User, client: User, project: Project}
      */
@@ -45,6 +60,128 @@ class ProjectTaskTest extends TestCase
                 ->component('admin/projects/tasks/Index')
                 ->has('tasks')
                 ->where('can_manage_project', true));
+    }
+
+    public function test_create_page_renders_for_authorized_user(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.create', $project))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/projects/tasks/Create')
+                ->where('project.id', $project->id)
+                ->has('status_options')
+                ->has('assignable_users')
+                ->has('requirements')
+                ->has('parent_tasks')
+                ->has('defaults')
+                ->has('cancel_href'));
+    }
+
+    public function test_unauthorized_user_cannot_view_create_page(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $this->actingAs($client)
+            ->get(route('admin.projects.tasks.create', $project))
+            ->assertForbidden();
+    }
+
+    public function test_store_accepts_tiptap_description(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $description = $this->tipTapJson('Rich task body');
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.create', $project))
+            ->post(route('admin.projects.tasks.store', $project), [
+                'title' => 'Rich description task',
+                'description' => $description,
+                'status' => ProjectTaskStatus::ToDo->value,
+                'assignee_user_id' => null,
+                'project_requirement_id' => null,
+                'parent_project_task_id' => null,
+                'estimated_minutes' => null,
+            ])
+            ->assertRedirect(route('admin.projects.tasks.index', $project));
+
+        $task = ProjectTask::query()->where('title', 'Rich description task')->first();
+        $this->assertNotNull($task);
+        $this->assertSame($description, $task->description);
+    }
+
+    public function test_edit_page_renders_for_authorized_user(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $task = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+                'title' => 'Editable task',
+            ]);
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.edit', [$project, $task]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/projects/tasks/Edit')
+                ->where('project.id', $project->id)
+                ->where('task.id', $task->id)
+                ->where('task.title', 'Editable task')
+                ->has('status_options')
+                ->has('assignable_users')
+                ->has('requirements')
+                ->has('parent_tasks')
+                ->has('cancel_href'));
+    }
+
+    public function test_unauthorized_user_cannot_view_edit_page(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $task = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $this->actingAs($client)
+            ->get(route('admin.projects.tasks.edit', [$project, $task]))
+            ->assertForbidden();
+    }
+
+    public function test_update_accepts_tiptap_description(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $task = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+                'title' => 'Before edit',
+                'description' => 'Plain legacy text',
+            ]);
+
+        $description = $this->tipTapJson('Updated rich body');
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.edit', [$project, $task]))
+            ->patch(route('admin.projects.tasks.update', [$project, $task]), [
+                'title' => 'Before edit',
+                'description' => $description,
+                'status' => ProjectTaskStatus::ToDo->value,
+                'return' => route('admin.projects.tasks.show', [$project, $task]),
+            ])
+            ->assertRedirect(route('admin.projects.tasks.show', [$project, $task]));
+
+        $this->assertSame($description, $task->fresh()->description);
     }
 
     public function test_team_head_can_view_task_show(): void

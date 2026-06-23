@@ -1,22 +1,14 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
-import { ChevronDown } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import ProjectController from '@/actions/App/Http/Controllers/Admin/ProjectController';
 import FormField from '@/components/dashboard/FormField.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import FormMultiSelect from '@/components/FormMultiSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuCheckboxItem,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-    DropdownMenuRadioGroup,
-    DropdownMenuRadioItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -50,14 +42,29 @@ const props = withDefaults(
 );
 
 const clientUserId = ref('');
-const selectedTeamIds = ref<number[]>([]);
+const selectedTeamIds = ref<string[]>([]);
 const leadUserId = ref('');
 const estimationRequired = ref(false);
 
+const teamOptions = computed(() =>
+    props.teams.map((t) => ({ value: String(t.value), label: t.label })),
+);
+
+const clientOptions = computed(() =>
+    props.clients.map((c) => ({ value: String(c.value), label: c.label })),
+);
+
 const viableLeadCandidates = computed(() =>
     props.lead_candidates.filter((c) =>
-        c.team_ids.some((tid) => selectedTeamIds.value.includes(tid)),
+        c.team_ids.some((tid) => selectedTeamIds.value.includes(String(tid))),
     ),
+);
+
+const leadOptions = computed(() =>
+    viableLeadCandidates.value.map((c) => ({
+        value: String(c.value),
+        label: c.label,
+    })),
 );
 
 watch(selectedTeamIds, () => {
@@ -68,57 +75,6 @@ watch(selectedTeamIds, () => {
         leadUserId.value = '';
     }
 });
-
-const teamButtonLabel = computed(() => {
-    if (props.teams.length === 0) {
-        return 'No teams available';
-    }
-
-    if (selectedTeamIds.value.length === 0) {
-        return 'Select teams';
-    }
-
-    if (selectedTeamIds.value.length <= 2) {
-        return props.teams
-            .filter((t) => selectedTeamIds.value.includes(t.value))
-            .map((t) => t.label)
-            .join(', ');
-    }
-
-    return `${selectedTeamIds.value.length} teams selected`;
-});
-
-const clientContactLabel = computed(() => {
-    if (clientUserId.value === '') {
-        return 'Select a client user';
-    }
-
-    const opt = props.clients.find((c) => String(c.value) === clientUserId.value);
-
-    return opt?.label ?? 'Select a client user';
-});
-
-const leadUserLabel = computed(() => {
-    if (leadUserId.value === '') {
-        return 'Use first team head (default)';
-    }
-
-    const opt = viableLeadCandidates.value.find(
-        (c) => String(c.value) === leadUserId.value,
-    );
-
-    return opt?.label ?? 'Use first team head (default)';
-});
-
-function setTeamChecked(teamId: number, checked: boolean): void {
-    if (checked) {
-        if (!selectedTeamIds.value.includes(teamId)) {
-            selectedTeamIds.value = [...selectedTeamIds.value, teamId];
-        }
-    } else {
-        selectedTeamIds.value = selectedTeamIds.value.filter((id) => id !== teamId);
-    }
-}
 
 defineOptions({
     layout: {
@@ -131,36 +87,15 @@ defineOptions({
 </script>
 
 <template>
+
     <Head title="Add project" />
 
     <div class="flex flex-col gap-8">
-        <PageHeader title="Add project"
-            description="Create a project, assign a client contact, and assign teams" />
+        <PageHeader title="Add project" description="Create a project, assign a client contact, and assign teams" />
 
-        <Form
-            v-bind="ProjectController.store.form()"
-            class="flex max-w-xl flex-col gap-8"
-            v-slot="{ errors, processing, recentlySuccessful }"
-        >
-            <input type="hidden" name="client_user_id" :value="clientUserId" />
-            <input
-                v-if="leadUserId !== ''"
-                type="hidden"
-                name="lead_user_id"
-                :value="leadUserId"
-            />
-            <input
-                v-for="id in selectedTeamIds"
-                :key="id"
-                type="hidden"
-                name="team_ids[]"
-                :value="id"
-            />
-            <input
-                type="hidden"
-                name="estimation_required"
-                :value="estimationRequired ? '1' : '0'"
-            />
+        <Form v-bind="ProjectController.store.form()" class="flex max-w-xl flex-col gap-8"
+            v-slot="{ errors, processing, recentlySuccessful }">
+            <input type="hidden" name="estimation_required" :value="estimationRequired ? '1' : '0'" />
 
             <GlassCard class="p-6">
                 <div class="mb-6 space-y-1">
@@ -170,93 +105,27 @@ defineOptions({
                     </p>
                 </div>
                 <div class="grid gap-6">
-                    <FormField
-                        label="Name"
-                        html-for="name"
-                        :error="errors.name" required
-                    >
+                    <FormField label="Name" html-for="name" :error="errors.name" required>
                         <Input id="name" name="name" type="text" required />
                     </FormField>
-                    <FormField
-                        label="Code"
-                        html-for="code"
-                        :error="errors.code"
-                    >
+                    <FormField label="Code" html-for="code" :error="errors.code">
                         <Input id="code" name="code" type="text" />
                     </FormField>
                     <div class="grid gap-2">
                         <Label for="description">Description</Label>
-                        <textarea
-                            id="description"
-                            name="description"
-                            rows="4"
-                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
-                        />
+                        <textarea id="description" name="description" rows="4"
+                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30" />
                         <InputError :message="errors.description" />
                     </div>
-                    <div class="grid gap-2">
-                        <Label id="client_user_id-label">Client contact</Label>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger as-child>
-                                <Button
-                                    id="client_user_id"
-                                    type="button"
-                                    variant="outline"
-                                    class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
-                                    aria-labelledby="client_user_id-label"
-                                >
-                                    <span class="truncate text-left">{{
-                                        clientContactLabel
-                                    }}</span>
-                                    <ChevronDown class="size-4 shrink-0 opacity-50" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width)">
-                                <DropdownMenuLabel>Client user</DropdownMenuLabel>
-                                <DropdownMenuRadioGroup v-model="clientUserId">
-                                    <DropdownMenuRadioItem
-                                        v-for="opt in clients"
-                                        :key="opt.value"
-                                        :value="String(opt.value)"
-                                    >
-                                        {{ opt.label }}
-                                    </DropdownMenuRadioItem>
-                                </DropdownMenuRadioGroup>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <InputError :message="errors.client_user_id" />
-                    </div>
+                    <FormField label="Client contact" html-for="client_user_id" :error="errors.client_user_id" required>
+                        <FormSelect id="client_user_id" name="client_user_id" v-model="clientUserId" required
+                            placeholder="Select a client user" :options="clientOptions" />
+                    </FormField>
                     <div v-if="viableLeadCandidates.length > 0" class="grid gap-2">
-                        <Label id="lead_user_id-label">Project lead</Label>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger as-child>
-                                <Button
-                                    id="lead_user_id"
-                                    type="button"
-                                    variant="outline"
-                                    class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
-                                    aria-labelledby="lead_user_id-label"
-                                >
-                                    <span class="truncate text-left">{{ leadUserLabel }}</span>
-                                    <ChevronDown class="size-4 shrink-0 opacity-50" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width)">
-                                <DropdownMenuLabel>Project lead</DropdownMenuLabel>
-                                <DropdownMenuRadioGroup v-model="leadUserId">
-                                    <DropdownMenuRadioItem value="">
-                                        First team head (default)
-                                    </DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem
-                                        v-for="opt in viableLeadCandidates"
-                                        :key="opt.value"
-                                        :value="String(opt.value)"
-                                    >
-                                        {{ opt.label }}
-                                    </DropdownMenuRadioItem>
-                                </DropdownMenuRadioGroup>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Label for="lead_user_id">Project lead</Label>
+                        <FormSelect id="lead_user_id" name="lead_user_id" v-model="leadUserId"
+                            none-label="First team head (default)" placeholder="First team head (default)"
+                            :options="leadOptions" />
                         <p class="text-xs text-muted-foreground">
                             Must be a team head or staff on an assigned team. If you do not choose
                             one, the first team head on those teams becomes the project lead and
@@ -265,47 +134,17 @@ defineOptions({
                         <InputError :message="errors.lead_user_id" />
                     </div>
                     <div class="grid gap-2">
-                        <Label id="team_ids-label">Assigned teams</Label>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger as-child>
-                                <Button
-                                    id="team_ids"
-                                    type="button"
-                                    variant="outline"
-                                    class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
-                                    aria-labelledby="team_ids-label"
-                                >
-                                    <span class="truncate text-left">{{ teamButtonLabel }}</span>
-                                    <ChevronDown class="size-4 shrink-0 opacity-50" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width)">
-                                <DropdownMenuLabel>Teams</DropdownMenuLabel>
-                                <DropdownMenuCheckboxItem
-                                    v-for="opt in teams"
-                                    :key="opt.value"
-                                    :model-value="selectedTeamIds.includes(opt.value)"
-                                    @update:model-value="
-                                        (v: boolean | string) =>
-                                            setTeamChecked(opt.value, v === true)
-                                    "
-                                >
-                                    {{ opt.label }}
-                                </DropdownMenuCheckboxItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Label for="team_ids">Assigned teams</Label>
+                        <FormMultiSelect id="team_ids" name="team_ids" v-model="selectedTeamIds" menu-label="Teams"
+                            placeholder="Select teams" :options="teamOptions" />
                         <p class="text-xs text-muted-foreground">
                             Open the menu and tick each team that should work on this project.
                         </p>
                         <InputError :message="errors.team_ids" />
                     </div>
                     <div class="flex gap-3 rounded-lg border border-border p-4">
-                        <input
-                            id="estimation_required"
-                            v-model="estimationRequired"
-                            type="checkbox"
-                            class="mt-1 size-4 shrink-0 rounded border border-input text-primary focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                        />
+                        <input id="estimation_required" v-model="estimationRequired" type="checkbox"
+                            class="mt-1 size-4 shrink-0 rounded border border-input text-primary focus-visible:ring-[3px] focus-visible:ring-ring/50" />
                         <div class="grid gap-1">
                             <Label for="estimation_required" class="cursor-pointer font-medium">
                                 Require time estimate for every task
@@ -327,10 +166,7 @@ defineOptions({
                 <Button variant="outline" as-child>
                     <Link :href="projectsIndex()">Cancel</Link>
                 </Button>
-                <span
-                    v-show="recentlySuccessful"
-                    class="text-sm text-muted-foreground"
-                >
+                <span v-show="recentlySuccessful" class="text-sm text-muted-foreground">
                     Saved.
                 </span>
             </div>

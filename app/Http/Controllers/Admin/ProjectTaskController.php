@@ -205,13 +205,7 @@ class ProjectTaskController extends Controller
                     ['value' => 'ad_hoc', 'label' => 'New task (post-transfer)'],
                 ]
                 : [],
-            'status_options' => $this->statusOptions(),
-            'assignable_users' => $this->assignableUserOptions($project),
-            'requirements' => $project->requirements()->orderBy('title')->get(['id', 'title', 'max_generated_phase'])->map(static fn (ProjectRequirement $r): array => [
-                'value' => $r->id,
-                'label' => $r->title,
-                'max_generated_phase' => max(1, (int) ($r->max_generated_phase ?? RequirementPhaseRegistry::INITIAL_MAX_PHASE)),
-            ])->all(),
+            ...$this->taskFormOptions($project),
             'can_create_tasks' => $actor->can('create', [ProjectTask::class, $project]),
             'can_manage_project' => $actor->can('update', $project),
         ]);
@@ -236,6 +230,50 @@ class ProjectTaskController extends Controller
         }
 
         return array_keys($keep);
+    }
+
+    public function create(Request $request, Project $project): Response
+    {
+        $this->authorize('create', [ProjectTask::class, $project]);
+
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
+        $requirementId = $this->validatedRequirementIdFromQuery($request, $project);
+        $parentTaskId = $this->validatedParentTaskIdFromQuery($request, $project);
+
+        return Inertia::render('admin/projects/tasks/Create', [
+            'project' => $this->projectSummary($project),
+            ...$this->taskFormOptions($project),
+            'parent_tasks' => $this->parentTaskOptions($project),
+            'defaults' => [
+                'project_requirement_id' => $requirementId !== null ? (string) $requirementId : '',
+                'parent_project_task_id' => $parentTaskId !== null ? (string) $parentTaskId : '',
+            ],
+            'cancel_href' => $this->resolveCancelHref($request, $project),
+        ]);
+    }
+
+    public function edit(Request $request, Project $project, ProjectTask $task): Response
+    {
+        $this->ensureTaskBelongsToProject($project, $task);
+        $this->authorize('update', $task);
+
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
+
+        return Inertia::render('admin/projects/tasks/Edit', [
+            'project' => $this->projectSummary($project),
+            'task' => $this->taskEditPayload($task),
+            ...$this->taskFormOptions($project),
+            'parent_tasks' => $this->parentTaskOptionsForEdit($project, $task),
+            'is_assignee_only_limited' => ProjectTaskAssigneeCapabilities::isAssigneeOnlyLimited($actor, $task),
+            'cancel_href' => $this->resolveCancelHref(
+                $request,
+                $project,
+                route('admin.projects.tasks.show', [$project, $task]),
+            ),
+        ]);
     }
 
     public function show(Request $request, Project $project, ProjectTask $task): Response
@@ -264,7 +302,7 @@ class ProjectTaskController extends Controller
             $this->assignmentNotificationDispatcher->sendTaskAssigned($task, $actor);
         }
 
-        return back()->with('toast', __('Task created.'));
+        return to_route('admin.projects.tasks.index', $project)->with('toast', __('Task created.'));
     }
 
     public function update(UpdateProjectTaskRequest $request, Project $project, ProjectTask $task): RedirectResponse
@@ -301,6 +339,11 @@ class ProjectTaskController extends Controller
             $this->assignmentNotificationDispatcher->sendTaskAssigned($task, $actor);
         } elseif ($task->wasChanged()) {
             $this->assignmentNotificationDispatcher->sendTaskUpdated($task, $actor);
+        }
+
+        $return = $request->input('return');
+        if (is_string($return) && $return !== '' && $this->isSafeAdminReturnUrl($return)) {
+            return redirect($return)->with('toast', __('Task updated.'));
         }
 
         return back()->with('toast', __('Task updated.'));
@@ -346,6 +389,168 @@ class ProjectTaskController extends Controller
                 'label' => $s->label(),
             ])
             ->all();
+    }
+
+    /**
+     * @return array{
+     *     status_options: list<array{value: string, label: string}>,
+     *     assignable_users: list<array{value: int, label: string}>,
+     *     requirements: list<array{value: int, label: string, max_generated_phase: int}>
+     * }
+     */
+    private function taskFormOptions(Project $project): array
+    {
+        return [
+            'status_options' => $this->statusOptions(),
+            'assignable_users' => $this->assignableUserOptions($project),
+            'requirements' => $project->requirements()->orderBy('title')->get(['id', 'title', 'max_generated_phase'])->map(static fn (ProjectRequirement $r): array => [
+                'value' => $r->id,
+                'label' => $r->title,
+                'max_generated_phase' => max(1, (int) ($r->max_generated_phase ?? RequirementPhaseRegistry::INITIAL_MAX_PHASE)),
+            ])->all(),
+        ];
+    }
+
+    /**
+     * @return list<array{id: int, title: string, tree_depth: int}>
+     */
+    private function parentTaskOptions(Project $project): array
+    {
+        $tasks = $project->tasks()->orderBy('title')->get(['id', 'title', 'parent_project_task_id']);
+
+        return collect(ProjectTaskDisplayOrder::depthFirstWithDepth($tasks))
+            ->map(static fn (array $row): array => [
+                'id' => $row['task']->id,
+                'title' => $row['task']->title,
+                'tree_depth' => $row['depth'],
+            ])
+            ->all();
+    }
+
+    private function parentTaskOptionsForEdit(Project $project, ProjectTask $editing): array
+    {
+        $tasks = $project->tasks()->orderBy('title')->get(['id', 'title', 'parent_project_task_id']);
+
+        /** @var array<int, list<int>> $childrenByParent */
+        $childrenByParent = [];
+        foreach ($tasks as $task) {
+            if ($task->parent_project_task_id !== null) {
+                $childrenByParent[$task->parent_project_task_id][] = $task->id;
+            }
+        }
+
+        $blockedIds = $this->collectDescendantTaskIds((int) $editing->id, $childrenByParent);
+        $blockedIds[(int) $editing->id] = true;
+
+        $eligible = $tasks->filter(static fn (ProjectTask $task): bool => ! isset($blockedIds[$task->id]));
+
+        return collect(ProjectTaskDisplayOrder::depthFirstWithDepth($eligible))
+            ->map(static fn (array $row): array => [
+                'id' => $row['task']->id,
+                'title' => $row['task']->title,
+                'tree_depth' => $row['depth'],
+            ])
+            ->all();
+    }
+
+    /**
+     * @param  array<int, list<int>>  $childrenByParent
+     * @return array<int, true>
+     */
+    private function collectDescendantTaskIds(int $taskId, array $childrenByParent): array
+    {
+        $descendantIds = [];
+        $queue = $childrenByParent[$taskId] ?? [];
+
+        while ($queue !== []) {
+            $currentId = array_shift($queue);
+
+            if ($currentId === null || isset($descendantIds[$currentId])) {
+                continue;
+            }
+
+            $descendantIds[$currentId] = true;
+            $queue = array_merge($queue, $childrenByParent[$currentId] ?? []);
+        }
+
+        return $descendantIds;
+    }
+
+    private function validatedRequirementIdFromQuery(Request $request, Project $project): ?int
+    {
+        $raw = $request->query('requirement');
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+
+        $id = (int) $raw;
+        if ($id <= 0) {
+            return null;
+        }
+
+        $exists = ProjectRequirement::query()
+            ->where('project_id', $project->id)
+            ->whereKey($id)
+            ->exists();
+
+        return $exists ? $id : null;
+    }
+
+    private function validatedParentTaskIdFromQuery(Request $request, Project $project): ?int
+    {
+        $raw = $request->query('parent');
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+
+        $id = (int) $raw;
+        if ($id <= 0) {
+            return null;
+        }
+
+        $exists = ProjectTask::query()
+            ->where('project_id', $project->id)
+            ->whereKey($id)
+            ->exists();
+
+        return $exists ? $id : null;
+    }
+
+    private function resolveCancelHref(Request $request, Project $project, ?string $default = null): string
+    {
+        $return = $request->query('return');
+        if (is_string($return) && $return !== '' && $this->isSafeAdminReturnUrl($return)) {
+            return $return;
+        }
+
+        return $default ?? route('admin.projects.tasks.index', $project);
+    }
+
+    private function isSafeAdminReturnUrl(string $url): bool
+    {
+        $path = parse_url($url, PHP_URL_PATH);
+
+        return is_string($path) && str_starts_with($path, '/admin/');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function taskEditPayload(ProjectTask $task): array
+    {
+        return [
+            'id' => $task->id,
+            'title' => $task->title,
+            'description' => $task->description,
+            'status' => $task->status->value,
+            'assignee_user_id' => $task->assignee_user_id,
+            'project_requirement_id' => $task->project_requirement_id,
+            'parent_project_task_id' => $task->parent_project_task_id,
+            'estimated_minutes' => $task->estimated_minutes,
+            'phase' => $task->phase,
+            'display_after_at' => $task->display_after_at?->toIso8601String(),
+            'notify_at' => $task->notify_at?->toIso8601String(),
+        ];
     }
 
     /**

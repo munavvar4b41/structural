@@ -1,21 +1,13 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
-import { ChevronDown } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementController';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import InputError from '@/components/InputError.vue';
 import RichTextEditor from '@/components/RichTextEditor.vue';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-    DropdownMenuRadioGroup,
-    DropdownMenuRadioItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
@@ -49,17 +41,12 @@ const descriptionJson = ref(emptyTipTapDocumentJson());
 const responsibleUserId = ref('');
 const maxGeneratedPhase = ref('1');
 
-const responsibleLabel = computed(() => {
-    if (responsibleUserId.value === '') {
-        return 'Use default (project lead / first team head)';
-    }
-
-    const u = props.assignable_responsibles.find(
-        (x) => String(x.id) === responsibleUserId.value,
-    );
-
-    return u ? `${u.name} (${u.email})` : 'Use default (project lead / first team head)';
-});
+const responsibleOptions = computed(() =>
+    props.assignable_responsibles.map((u) => ({
+        value: String(u.id),
+        label: `${u.name} (${u.email})`,
+    })),
+);
 
 defineOptions({
     layout: (pageProps: {
@@ -91,7 +78,6 @@ defineOptions({
 
         <Form v-bind="ProjectRequirementController.store.form({ project: project.id })"
             class="flex max-w-2xl flex-col gap-8" v-slot="{ errors, processing, recentlySuccessful }">
-            <input type="hidden" name="responsible_user_id" :value="responsibleUserId" />
 
             <GlassCard class="p-6">
                 <div class="mb-6 space-y-1">
@@ -122,29 +108,10 @@ defineOptions({
                         <InputError :message="errors.max_generated_phase" />
                     </div>
                     <div class="grid gap-2">
-                        <Label id="responsible_user_id-label">Responsible (optional)</Label>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger as-child>
-                                <Button id="responsible_user_id" type="button" variant="outline"
-                                    class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
-                                    aria-labelledby="responsible_user_id-label">
-                                    <span class="truncate text-left">{{ responsibleLabel }}</span>
-                                    <ChevronDown class="size-4 shrink-0 opacity-50" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width)">
-                                <DropdownMenuLabel>Responsible</DropdownMenuLabel>
-                                <DropdownMenuRadioGroup v-model="responsibleUserId">
-                                    <DropdownMenuRadioItem value="">
-                                        Use default (project lead / first team head)
-                                    </DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem v-for="u in assignable_responsibles" :key="u.id"
-                                        :value="String(u.id)">
-                                        {{ u.name }} ({{ u.email }})
-                                    </DropdownMenuRadioItem>
-                                </DropdownMenuRadioGroup>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Label for="responsible_user_id">Responsible (optional)</Label>
+                        <FormSelect id="responsible_user_id" name="responsible_user_id" v-model="responsibleUserId"
+                            none-label="Use default (project lead / first team head)"
+                            placeholder="Use default (project lead / first team head)" :options="responsibleOptions" />
                         <p class="text-xs text-muted-foreground">
                             Leave blank to use the project lead or the first team head on this project.
                         </p>

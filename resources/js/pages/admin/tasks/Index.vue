@@ -1,29 +1,20 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import { CornerDownRight } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
-import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
-import GlassCard from '@/components/dashboard/GlassCard.vue';
+import { computed } from 'vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import MultiSelectDropdown from '@/components/MultiSelectDropdown.vue';
+import FormMultiSelect from '@/components/FormMultiSelect.vue';
 import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { index as projectsIndex } from '@/routes/admin/projects/index';
-import { show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
+import {
+    create as projectTasksCreate,
+    show as projectTasksShow,
+} from '@/routes/admin/projects/tasks/index';
 import { index as tasksIndex } from '@/routes/admin/tasks/index';
 import TableRow from '@/components/dashboard/TableRow.vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
@@ -99,39 +90,17 @@ defineOptions({
     }),
 });
 
-const createOpen = ref(false);
-const createStatus = ref('to_do');
-const createAssignee = ref('');
-const createRequirement = ref('');
-const createParent = ref('');
-const createDisplayAfterAt = ref('');
-const createNotifyAt = ref('');
-
-watch(createOpen, (open) => {
-    if (open) {
-        createStatus.value = 'to_do';
-        createAssignee.value = '';
-        createRequirement.value = '';
-        createParent.value = '';
-        createDisplayAfterAt.value = '';
-        createNotifyAt.value = '';
-    }
-});
-
-const statusSelectOptions = computed(() =>
-    props.status_options.map((option) => ({ value: String(option.value), label: option.label })),
-);
 const assigneeSelectOptions = computed(() =>
     props.assignable_users.map((option) => ({ value: String(option.value), label: option.label })),
 );
-const requirementSelectOptions = computed(() =>
-    props.requirements.map((option) => ({ value: String(option.value), label: option.label })),
-);
-const parentSelectOptions = computed(() =>
-    props.parent_tasks.map((option) => ({ value: String(option.value), label: option.label })),
-);
 const projectSelectOptions = computed(() =>
     props.projects.map((option) => ({ value: String(option.value), label: option.label })),
+);
+
+const createTaskHref = computed(() =>
+    props.selected_project !== null
+        ? projectTasksCreate.url(props.selected_project.id)
+        : null,
 );
 
 function reloadTasks(overrides: Record<string, unknown> = {}): void {
@@ -188,23 +157,9 @@ function formatProjectLabel(task: TaskRow): string {
 
     return task.project.name;
 }
-
-function ensureSelectedProjectForCreate(): void {
-    if (props.selected_project === null) {
-        return;
-    }
-
-    createOpen.value = true;
-}
-
-function onCreateSuccess(): void {
-    createOpen.value = false;
-    reloadTasks();
-}
 </script>
 
 <template>
-
     <Head title="Tasks" />
 
     <div class="flex flex-col gap-8">
@@ -224,8 +179,17 @@ function onCreateSuccess(): void {
                     type="button" @click="setFilter('unlinked')">
                     No requirement
                 </Button>
-                <Button type="button" :disabled="selected_project === null || !can_create_tasks_for_selected_project"
-                    @click="ensureSelectedProjectForCreate()">
+                <Button
+                    v-if="createTaskHref !== null && can_create_tasks_for_selected_project"
+                    as-child
+                >
+                    <Link :href="createTaskHref">Add task</Link>
+                </Button>
+                <Button
+                    v-else
+                    type="button"
+                    disabled
+                >
                     Add task
                 </Button>
             </div>
@@ -249,87 +213,13 @@ function onCreateSuccess(): void {
                     </div>
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-status">Status</Label>
-                        <MultiSelectDropdown id="filter-status" :model-value="filters.status" :options="status_options"
-                            placeholder="All statuses" menu-label="Statuses" @update:model-value="onStatusFilter" />
+                        <FormMultiSelect id="filter-status" :model-value="filters.status" :options="status_options"
+                            placeholder="All statuses" menu-label="Statuses" class="min-w-[12rem]"
+                            @update:model-value="onStatusFilter" />
                     </div>
                 </div>
             </template>
         </ListToolbar>
-
-        <Dialog v-model:open="createOpen">
-            <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-                <DialogHeader>
-                    <DialogTitle>Add task</DialogTitle>
-                    <DialogDescription>
-                        <span v-if="selected_project === null">Select a project first.</span>
-                        <span v-else-if="selected_project.estimation_required">
-                            Time estimate (minutes) is required for {{ selected_project.name }}.
-                        </span>
-                        <span v-else>Optional time estimate in minutes for {{ selected_project.name }}.</span>
-                    </DialogDescription>
-                </DialogHeader>
-                <Form v-if="selected_project !== null"
-                    v-bind="ProjectTaskController.store.form({ project: selected_project.id })" class="grid gap-4"
-                    @success="onCreateSuccess" v-slot="{ errors, processing }">
-                    <div class="grid gap-2">
-                        <Label for="create-title">Title</Label>
-                        <Input id="create-title" name="title" type="text" required />
-                        <InputError :message="errors.title" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-description">Description</Label>
-                        <textarea id="create-description" name="description" rows="3"
-                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30" />
-                        <InputError :message="errors.description" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-status">Status</Label>
-                        <FormSelect id="create-status" name="status" v-model="createStatus" required
-                            placeholder="Status" :options="statusSelectOptions" />
-                        <InputError :message="errors.status" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-assignee">Assignee</Label>
-                        <FormSelect id="create-assignee" name="assignee_user_id" v-model="createAssignee"
-                            none-label="Unassigned" placeholder="Unassigned" :options="assigneeSelectOptions" />
-                        <InputError :message="errors.assignee_user_id" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-requirement">Requirement</Label>
-                        <FormSelect id="create-requirement" name="project_requirement_id" v-model="createRequirement"
-                            placeholder="None" :options="requirementSelectOptions" />
-                        <InputError :message="errors.project_requirement_id" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-parent">Parent task (subtask)</Label>
-                        <FormSelect id="create-parent" name="parent_project_task_id" v-model="createParent"
-                            placeholder="None" :options="parentSelectOptions" />
-                        <InputError :message="errors.parent_project_task_id" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-estimate">Estimate (minutes)</Label>
-                        <Input id="create-estimate" name="estimated_minutes" type="number" min="1" step="1"
-                            :required="selected_project.estimation_required" />
-                        <InputError :message="errors.estimated_minutes" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-display-after-at">Display after</Label>
-                        <Input id="create-display-after-at" name="display_after_at" type="datetime-local"
-                            v-model="createDisplayAfterAt" />
-                        <InputError :message="errors.display_after_at" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-notify-at">Notify task at</Label>
-                        <Input id="create-notify-at" name="notify_at" type="datetime-local" v-model="createNotifyAt" />
-                        <InputError :message="errors.notify_at" />
-                    </div>
-                    <DialogFooter class="gap-3">
-                        <Button type="button" variant="outline" @click="createOpen = false">Cancel</Button>
-                        <Button type="submit" :disabled="processing">Create</Button>
-                    </DialogFooter>
-                </Form>
-            </DialogContent>
-        </Dialog>
 
         <div>
             <h2 class="text-lg font-semibold">Task list</h2>
@@ -385,8 +275,8 @@ function onCreateSuccess(): void {
                         </td>
                     </TableRow>
                     <tr v-if="tasks.length === 0">
-                        <td data-label="" colspan="6" class="px-4 py-8 text-center text-muted-foreground">
-                            No tasks match this filter.
+                        <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">
+                            No tasks match the current filters.
                         </td>
                     </tr>
                 </tbody>

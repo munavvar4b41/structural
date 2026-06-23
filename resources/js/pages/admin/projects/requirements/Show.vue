@@ -40,6 +40,7 @@ import {
 } from '@/routes/admin/projects/requirements/index';
 import { show as estimationShow } from '@/routes/admin/projects/requirements/estimation/index';
 import {
+    create as projectTasksCreate,
     index as projectTasksIndex,
     show as projectTasksShow,
 } from '@/routes/admin/projects/tasks/index';
@@ -150,43 +151,40 @@ const props = defineProps<{
 
 const page = usePage();
 
-const createTaskOpen = ref(false);
 const reviewDialogOpen = ref(false);
 
-function openCreateTaskDialog(): void {
+const createTaskHref = computed(() =>
+    projectTasksCreate.url(
+        { project: props.project.id },
+        {
+            query: {
+                requirement: String(props.requirement.id),
+                return: requirementsShow.url({
+                    project: props.project.id,
+                    requirement: props.requirement.id,
+                }),
+            },
+        },
+    ),
+);
+
+function goToCreateTask(): void {
     if (!props.can_create_tasks) {
         return;
     }
 
-    createTaskOpen.value = true;
+    router.visit(createTaskHref.value);
 }
 
 function onEmptyTasksKeydown(event: KeyboardEvent): void {
     if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        openCreateTaskDialog();
+        goToCreateTask();
     }
 }
 
 const taskDeleteOpen = ref(false);
 const taskPendingDelete = ref<RequirementTaskRow | null>(null);
-
-function formatParentTaskLabel(task: RequirementTaskRow): string {
-    if (task.tree_depth <= 0) {
-        return task.title;
-    }
-
-    return `${'— '.repeat(task.tree_depth)}${task.title}`;
-}
-
-const createTaskStatus = ref('to_do');
-const createTaskAssignee = ref('');
-const createTaskParent = ref('');
-const createTaskPhase = ref('1');
-
-const requirementPhaseSelectOptions = computed(() =>
-    buildPhaseSelectOptions(props.phase_settings.max_generated_phase),
-);
 
 const showRequirementPhaseField = computed(
     () => props.phase_settings.requires_phase_selection,
@@ -228,30 +226,6 @@ const filteredRequirementTasks = computed(() => {
 
     return props.requirement_tasks.filter((task) => visibleIds.has(task.id));
 });
-
-watch(createTaskOpen, (open) => {
-    if (open) {
-        createTaskStatus.value = 'to_do';
-        createTaskAssignee.value = '';
-        createTaskParent.value = '';
-        createTaskPhase.value = '1';
-    }
-});
-
-const taskStatusSelectOptions = computed(() =>
-    props.task_status_options.map((o) => ({ value: o.value, label: o.label })),
-);
-
-const taskAssigneeSelectOptions = computed(() =>
-    props.task_assignable_users.map((u) => ({ value: String(u.value), label: u.label })),
-);
-
-const taskParentSelectOptions = computed(() =>
-    props.requirement_tasks.map((task) => ({
-        value: String(task.id),
-        label: formatParentTaskLabel(task),
-    })),
-);
 
 function openTaskDelete(row: RequirementTaskRow): void {
     taskPendingDelete.value = row;
@@ -325,7 +299,7 @@ onMounted(() => {
     const params = new URLSearchParams(queryPart);
 
     if (params.get('add_task') === '1' && props.can_create_tasks) {
-        openCreateTaskDialog();
+        goToCreateTask();
     }
 });
 
@@ -589,78 +563,12 @@ defineOptions({
                                     class="min-w-[10rem]" v-model="taskPhaseFilter" :options="taskPhaseFilterOptions"
                                     placeholder="Any phase" none-label="Any phase" exclude-from-submit />
                             </div>
-                            <Button v-if="can_create_tasks" type="button" class="shrink-0"
-                                @click="openCreateTaskDialog">
-                                Add task
+                            <Button v-if="can_create_tasks" as-child class="shrink-0">
+                                <Link :href="createTaskHref">Add task</Link>
                             </Button>
                         </div>
                     </div>
                     <div class="md:overflow-x-auto">
-                        <Dialog v-model:open="createTaskOpen">
-                            <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-                                <DialogHeader>
-                                    <DialogTitle>Add task</DialogTitle>
-                                    <DialogDescription>
-                                        This task will be linked to this requirement.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <Form v-bind="ProjectTaskController.store.form({ project: project.id })"
-                                    class="grid gap-4" @success="createTaskOpen = false"
-                                    v-slot="{ errors, processing }">
-                                    <input type="hidden" name="project_requirement_id" :value="requirement.id" />
-                                    <div class="grid gap-2">
-                                        <Label for="req-task-title">Title</Label>
-                                        <Input id="req-task-title" name="title" type="text" required />
-                                        <InputError :message="errors.title" />
-                                    </div>
-                                    <div class="grid gap-2">
-                                        <Label for="req-task-description">Description</Label>
-                                        <textarea id="req-task-description" name="description" rows="3"
-                                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30" />
-                                        <InputError :message="errors.description" />
-                                    </div>
-                                    <div class="grid gap-2">
-                                        <Label for="req-task-status">Status</Label>
-                                        <FormSelect id="req-task-status" name="status" v-model="createTaskStatus"
-                                            required placeholder="Status" :options="taskStatusSelectOptions" />
-                                        <InputError :message="errors.status" />
-                                    </div>
-                                    <div class="grid gap-2">
-                                        <Label for="req-task-assignee">Assignee</Label>
-                                        <FormSelect id="req-task-assignee" name="assignee_user_id"
-                                            v-model="createTaskAssignee" none-label="Unassigned"
-                                            placeholder="Unassigned" :options="taskAssigneeSelectOptions" />
-                                        <InputError :message="errors.assignee_user_id" />
-                                    </div>
-                                    <div v-if="showRequirementPhaseField" class="grid gap-2">
-                                        <Label for="req-task-phase">Phase</Label>
-                                        <FormSelect id="req-task-phase" name="phase" v-model="createTaskPhase"
-                                            required placeholder="Phase" :options="requirementPhaseSelectOptions" />
-                                        <InputError :message="errors.phase" />
-                                    </div>
-                                    <div class="grid gap-2">
-                                        <Label for="req-task-parent">Parent task (subtask)</Label>
-                                        <FormSelect id="req-task-parent" name="parent_project_task_id"
-                                            v-model="createTaskParent" placeholder="None"
-                                            :options="taskParentSelectOptions" />
-                                        <InputError :message="errors.parent_project_task_id" />
-                                    </div>
-                                    <div class="grid gap-2">
-                                        <Label for="req-task-estimate">Estimate (minutes)</Label>
-                                        <Input id="req-task-estimate" name="estimated_minutes" type="number" min="1"
-                                            step="1" :required="project.estimation_required" />
-                                        <InputError :message="errors.estimated_minutes" />
-                                    </div>
-                                    <DialogFooter class="gap-3">
-                                        <Button type="button" variant="outline" @click="createTaskOpen = false">
-                                            Cancel
-                                        </Button>
-                                        <Button type="submit" :disabled="processing">Create</Button>
-                                    </DialogFooter>
-                                </Form>
-                            </DialogContent>
-                        </Dialog>
-
                         <table data-responsive-table
                             class="data-table-responsive w-full table-fixed text-left text-sm md:min-w-[640px]"
                             style="--data-table-min-width: 640px">
@@ -747,7 +655,7 @@ defineOptions({
                                     <td data-label="" colspan="5" class="px-4 py-8 text-center text-muted-foreground"
                                         :class="can_create_tasks ? 'cursor-pointer hover:bg-muted/30' : ''"
                                         :role="can_create_tasks ? 'button' : undefined"
-                                        :tabindex="can_create_tasks ? 0 : undefined" @click="openCreateTaskDialog"
+                                        :tabindex="can_create_tasks ? 0 : undefined" @click="goToCreateTask"
                                         @keydown="onEmptyTasksKeydown">
                                         <template v-if="can_create_tasks">
                                             No tasks yet. Click here or use Add task to create one.

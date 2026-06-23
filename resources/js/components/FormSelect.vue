@@ -16,19 +16,15 @@ const NONE_SENTINEL = '__task_form_unset__';
 const props = withDefaults(
     defineProps<{
         id: string;
-        name: string;
+        name?: string;
         modelValue: string;
         options: { value: string; label: string }[];
         required?: boolean;
         placeholder?: string;
         noneLabel?: string;
-        /** When true, the trigger is non-interactive (matches native disabled select). */
         disabled?: boolean;
-        /**
-         * When true, hidden inputs are disabled so the field is omitted from form submission
-         * (same as a disabled native control).
-         */
         excludeFromSubmit?: boolean;
+        class?: string;
     }>(),
     {
         required: false,
@@ -72,24 +68,22 @@ function onSelectUpdate(v: AcceptableValue): void {
 <template>
     <div class="grid gap-1">
         <Select :model-value="selectModelValue" :disabled="disabled" @update:model-value="onSelectUpdate">
-            <SelectTrigger :id="id" :class="cn('w-full')">
+            <SelectTrigger :id="id" :class="cn('w-full max-w-full min-w-0', props.class)">
                 <SelectValue :placeholder="placeholder" />
             </SelectTrigger>
             <SelectContent>
                 <SelectItem v-if="!required" :value="NONE_SENTINEL">
                     {{ noneLabel }}
                 </SelectItem>
-                <SelectItem
-                    v-for="opt in itemOptions"
-                    :key="opt.value"
-                    :value="opt.value"
-                >
+                <SelectItem v-for="opt in itemOptions" :key="opt.value" :value="opt.value">
                     {{ opt.label }}
                 </SelectItem>
             </SelectContent>
         </Select>
-        <input v-if="required" type="hidden" :name="name" :value="modelValue" :disabled="excludeFromSubmit" />
-        <input v-else-if="modelValue !== ''" type="hidden" :name="name" :value="modelValue"
-            :disabled="excludeFromSubmit" />
+        <template v-if="name !== undefined">
+            <input v-if="required" type="hidden" :name="name" :value="modelValue" :disabled="excludeFromSubmit" />
+            <input v-else-if="modelValue !== ''" type="hidden" :name="name" :value="modelValue"
+                :disabled="excludeFromSubmit" />
+        </template>
     </div>
 </template>
