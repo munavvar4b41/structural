@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\ProjectTagController;
 use App\Http\Controllers\Admin\ProjectTaskChecklistItemController;
 use App\Http\Controllers\Admin\ProjectTaskController;
 use App\Http\Controllers\Admin\ProposalController;
+use App\Http\Controllers\Admin\RequirementController;
 use App\Http\Controllers\Admin\SuggestionController;
 use App\Http\Controllers\Admin\TaskCompletionReviewController;
 use App\Http\Controllers\Admin\TaskController;
@@ -85,6 +86,7 @@ Route::patch('notifications/{notification}', [NotificationController::class, 'ma
     ->name('notifications.read');
 Route::get('tasks', [TaskController::class, 'index'])->name('tasks.index');
 Route::get('proposals', [ProposalController::class, 'index'])->name('proposals.index');
+Route::get('requirements', [RequirementController::class, 'index'])->name('requirements.index');
 Route::get('task-reviews', [TaskCompletionReviewController::class, 'index'])->name('task-reviews.index');
 Route::get('estimation-reviews', [EstimationReviewController::class, 'index'])->name('estimation-reviews.index');
 Route::get('task-ratings-report', [TaskRatingReportController::class, 'index'])->name('task-ratings-report.index');
