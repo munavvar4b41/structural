@@ -302,6 +302,12 @@ class ProjectTaskController extends Controller
             $this->assignmentNotificationDispatcher->sendTaskAssigned($task, $actor);
         }
 
+        if ($this->cameFromGlobalTasksIndex($request)) {
+            return redirect()
+                ->back()
+                ->with('toast', __('Task created.'));
+        }
+
         return to_route('admin.projects.tasks.index', $project)->with('toast', __('Task created.'));
     }
 
@@ -531,6 +537,14 @@ class ProjectTaskController extends Controller
         $path = parse_url($url, PHP_URL_PATH);
 
         return is_string($path) && str_starts_with($path, '/admin/');
+    }
+
+    private function cameFromGlobalTasksIndex(Request $request): bool
+    {
+        $previous = $request->headers->get('referer', url()->previous());
+        $path = parse_url($previous, PHP_URL_PATH);
+
+        return is_string($path) && preg_match('#/admin/tasks/?$#', $path) === 1;
     }
 
     /**

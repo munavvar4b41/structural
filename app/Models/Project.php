@@ -69,6 +69,14 @@ class Project extends Model
     }
 
     /**
+     * @return HasMany<CaseStudy, $this>
+     */
+    public function caseStudies(): HasMany
+    {
+        return $this->hasMany(CaseStudy::class);
+    }
+
+    /**
      * @return HasMany<TaskTimeEntry, $this>
      */
     public function timeEntries(): HasMany

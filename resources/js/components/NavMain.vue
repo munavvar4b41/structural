@@ -8,10 +8,10 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
-import type { NavItem } from '@/types';
+import type { NavGroup, NavItem } from '@/types';
 
 defineProps<{
-    items: NavItem[];
+    groups: NavGroup[];
 }>();
 
 const { isCurrentUrl, isCurrentOrParentUrl } = useCurrentUrl();
@@ -26,12 +26,16 @@ function isNavItemActive(item: NavItem): boolean {
 </script>
 
 <template>
-    <SidebarGroup class="px-3 py-0">
+    <SidebarGroup
+        v-for="group in groups"
+        :key="group.label"
+        class="px-3 py-0"
+    >
         <SidebarGroupLabel class="px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Platform
+            {{ group.label }}
         </SidebarGroupLabel>
         <SidebarMenu>
-            <SidebarMenuItem v-for="item in items" :key="item.title">
+            <SidebarMenuItem v-for="item in group.items" :key="item.title">
                 <SidebarMenuButton
                     as-child
                     :is-active="isNavItemActive(item)"
