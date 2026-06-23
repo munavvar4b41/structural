@@ -1,20 +1,13 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
-import { ChevronDown } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import JobPostingController from '@/actions/App/Http/Controllers/Admin/JobPostingController';
 import FormField from '@/components/dashboard/FormField.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import RichTextEditor from '@/components/RichTextEditor.vue';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuRadioGroup,
-    DropdownMenuRadioItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
 import {
@@ -73,22 +66,8 @@ const teamId = ref(
 const status = ref(props.job_posting.status);
 const employmentType = ref(props.job_posting.employment_type);
 
-const teamLabel = computed(() => {
-    if (teamId.value === '') {
-        return 'No team';
-    }
-
-    return props.teams.find((t) => String(t.value) === teamId.value)?.label ?? 'Select team';
-});
-
-const statusLabel = computed(
-    () => props.status_options.find((o) => o.value === status.value)?.label ?? 'Select status',
-);
-
-const employmentTypeLabel = computed(
-    () =>
-        props.employment_type_options.find((o) => o.value === employmentType.value)?.label ??
-        'Select type',
+const teamOptions = computed(() =>
+    props.teams.map((t) => ({ value: String(t.value), label: t.label })),
 );
 </script>
 
@@ -103,9 +82,6 @@ const employmentTypeLabel = computed(
             #default="{ errors, processing, recentlySuccessful }">
             <input type="hidden" name="description" :value="descriptionJson" />
             <input type="hidden" name="requirements" :value="requirementsJson" />
-            <input type="hidden" name="team_id" :value="teamId" />
-            <input type="hidden" name="status" :value="status" />
-            <input type="hidden" name="employment_type" :value="employmentType" />
 
             <GlassCard class="p-6">
                 <div class="grid gap-6">
@@ -120,66 +96,20 @@ const employmentTypeLabel = computed(
                             required />
                     </FormField>
 
-                    <div class="grid gap-2">
-                        <span class="text-sm font-medium">Team</span>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger as-child>
-                                <Button variant="outline" type="button" class="justify-between">
-                                    {{ teamLabel }}
-                                    <ChevronDown class="size-4 opacity-50" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" class="w-[var(--reka-dropdown-menu-trigger-width)]">
-                                <DropdownMenuRadioGroup v-model="teamId">
-                                    <DropdownMenuRadioItem value="">No team</DropdownMenuRadioItem>
-                                    <DropdownMenuRadioItem v-for="team in teams" :key="team.value"
-                                        :value="String(team.value)">
-                                        {{ team.label }}
-                                    </DropdownMenuRadioItem>
-                                </DropdownMenuRadioGroup>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
+                    <FormField label="Team" html-for="team_id">
+                        <FormSelect id="team_id" name="team_id" v-model="teamId" none-label="No team"
+                            placeholder="Select team" :options="teamOptions" />
+                    </FormField>
 
-                    <div class="grid gap-2">
-                        <span class="text-sm font-medium">Employment type</span>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger as-child>
-                                <Button variant="outline" type="button" class="justify-between">
-                                    {{ employmentTypeLabel }}
-                                    <ChevronDown class="size-4 opacity-50" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start">
-                                <DropdownMenuRadioGroup v-model="employmentType">
-                                    <DropdownMenuRadioItem v-for="opt in employment_type_options" :key="opt.value"
-                                        :value="opt.value">
-                                        {{ opt.label }}
-                                    </DropdownMenuRadioItem>
-                                </DropdownMenuRadioGroup>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
+                    <FormField label="Employment type" html-for="employment_type" required>
+                        <FormSelect id="employment_type" name="employment_type" v-model="employmentType" required
+                            placeholder="Select type" :options="employment_type_options" />
+                    </FormField>
 
-                    <div class="grid gap-2">
-                        <span class="text-sm font-medium">Status</span>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger as-child>
-                                <Button variant="outline" type="button" class="justify-between">
-                                    {{ statusLabel }}
-                                    <ChevronDown class="size-4 opacity-50" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start">
-                                <DropdownMenuRadioGroup v-model="status">
-                                    <DropdownMenuRadioItem v-for="opt in status_options" :key="opt.value"
-                                        :value="opt.value">
-                                        {{ opt.label }}
-                                    </DropdownMenuRadioItem>
-                                </DropdownMenuRadioGroup>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
+                    <FormField label="Status" html-for="status" required>
+                        <FormSelect id="status" name="status" v-model="status" required placeholder="Select status"
+                            :options="status_options" />
+                    </FormField>
 
                     <FormField label="Published at" html-for="published_at" :error="errors.published_at">
                         <Input id="published_at" name="published_at" type="datetime-local"

@@ -9,7 +9,7 @@ import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import MultiSelectDropdown from '@/components/MultiSelectDropdown.vue';
+import FormMultiSelect from '@/components/FormMultiSelect.vue';
 import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -524,9 +524,9 @@ onMounted(() => {
                             </div>
                             <div class="grid gap-1">
                                 <Label class="text-xs text-muted-foreground" for="filter-status">Status</Label>
-                                <MultiSelectDropdown id="filter-status" :model-value="filters.status"
+                                <FormMultiSelect id="filter-status" :model-value="filters.status"
                                     :options="status_options" placeholder="All statuses" menu-label="Statuses"
-                                    @update:model-value="onStatusFilter" />
+                                    class="min-w-[12rem]" @update:model-value="onStatusFilter" />
                             </div>
                             <div v-if="can_filter_estimation_source" class="grid gap-1">
                                 <Label class="text-xs text-muted-foreground" for="filter-estimation-source">Estimation

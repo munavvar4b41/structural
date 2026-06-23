@@ -1,18 +1,11 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
-import { ChevronDown } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import TeamSelectionController from '@/actions/App/Http/Controllers/TeamSelectionController';
 import FormField from '@/components/dashboard/FormField.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-    DropdownMenuRadioGroup,
-    DropdownMenuRadioItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+
 type TeamOption = {
     value: number;
     label: string;
@@ -28,10 +21,8 @@ const primaryTeamId = ref(
     props.teams[0] !== undefined ? String(props.teams[0].value) : '',
 );
 
-const primaryTeamLabel = computed(
-    () =>
-        props.teams.find((t) => String(t.value) === primaryTeamId.value)?.label ??
-        'Select primary team',
+const teamOptions = computed(() =>
+    props.teams.map((t) => ({ value: String(t.value), label: t.label })),
 );
 
 defineOptions({
@@ -43,48 +34,14 @@ defineOptions({
 </script>
 
 <template>
+
     <Head title="Select team" />
 
-    <Form
-        v-bind="TeamSelectionController.store.form()"
-        v-slot="{ errors, processing }"
-        class="flex flex-col gap-6"
-    >
-        <input type="hidden" name="primary_team_id" :value="primaryTeamId" />
-
+    <Form v-bind="TeamSelectionController.store.form()" v-slot="{ errors, processing }" class="flex flex-col gap-6">
         <div class="grid gap-6">
-            <FormField
-                label="Primary team"
-                html-for="primary_team_id"
-                :error="errors.primary_team_id"
-                required
-            >
-                <DropdownMenu>
-                    <DropdownMenuTrigger as-child>
-                        <Button
-                            id="primary_team_id"
-                            type="button"
-                            variant="outline"
-                            class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
-                            aria-labelledby="primary_team_id-label"
-                        >
-                            <span class="truncate text-left">{{ primaryTeamLabel }}</span>
-                            <ChevronDown class="size-4 shrink-0 opacity-50" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width)">
-                        <DropdownMenuLabel>Primary team</DropdownMenuLabel>
-                        <DropdownMenuRadioGroup v-model="primaryTeamId">
-                            <DropdownMenuRadioItem
-                                v-for="opt in teams"
-                                :key="opt.value"
-                                :value="String(opt.value)"
-                            >
-                                {{ opt.label }}
-                            </DropdownMenuRadioItem>
-                        </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+            <FormField label="Primary team" html-for="primary_team_id" :error="errors.primary_team_id" required>
+                <FormSelect id="primary_team_id" name="primary_team_id" v-model="primaryTeamId" required
+                    placeholder="Select primary team" :options="teamOptions" />
             </FormField>
 
             <Button type="submit" class="w-full" :disabled="processing">

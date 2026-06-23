@@ -3,11 +3,10 @@ import { Form, Head, Link } from '@inertiajs/vue3';
 import { CornerDownRight } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
-import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import MultiSelectDropdown from '@/components/MultiSelectDropdown.vue';
+import FormMultiSelect from '@/components/FormMultiSelect.vue';
 import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -249,8 +248,9 @@ function onCreateSuccess(): void {
                     </div>
                     <div class="grid gap-1">
                         <Label class="text-xs text-muted-foreground" for="filter-status">Status</Label>
-                        <MultiSelectDropdown id="filter-status" :model-value="filters.status" :options="status_options"
-                            placeholder="All statuses" menu-label="Statuses" @update:model-value="onStatusFilter" />
+                        <FormMultiSelect id="filter-status" :model-value="filters.status" :options="status_options"
+                            placeholder="All statuses" menu-label="Statuses" class="min-w-[12rem]"
+                            @update:model-value="onStatusFilter" />
                     </div>
                 </div>
             </template>
