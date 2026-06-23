@@ -1,22 +1,14 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
-import { ChevronDown } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import FormField from '@/components/dashboard/FormField.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import FormMultiSelect from '@/components/FormMultiSelect.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuCheckboxItem,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-    DropdownMenuRadioGroup,
-    DropdownMenuRadioItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -45,70 +37,23 @@ const roleId = ref(props.assignableRoles[0]?.value ?? '');
 const primaryTeamId = ref(
     props.teams[0] !== undefined ? String(props.teams[0].value) : '',
 );
-const selectedTeamIds = ref<number[]>(
-    props.teams[0] !== undefined ? [props.teams[0].value] : [],
+const selectedTeamIds = ref<string[]>(
+    props.teams[0] !== undefined ? [String(props.teams[0].value)] : [],
+);
+
+const teamOptions = computed(() =>
+    props.teams.map((t) => ({ value: String(t.value), label: t.label })),
 );
 
 watch(primaryTeamId, (idStr) => {
-    const id = Number(idStr);
-
-    if (!Number.isFinite(id)) {
+    if (idStr === '') {
         return;
     }
 
-    if (!selectedTeamIds.value.includes(id)) {
-        selectedTeamIds.value = [...selectedTeamIds.value, id];
+    if (!selectedTeamIds.value.includes(idStr)) {
+        selectedTeamIds.value = [...selectedTeamIds.value, idStr];
     }
 });
-
-const roleLabel = computed(
-    () =>
-        props.assignableRoles.find((r) => r.value === roleId.value)?.label ??
-        'Select role',
-);
-
-const primaryTeamLabel = computed(
-    () =>
-        props.teams.find((t) => String(t.value) === primaryTeamId.value)?.label ??
-        'Select primary team',
-);
-
-const additionalTeamsLabel = computed(() => {
-    if (props.teams.length === 0) {
-        return 'No teams available';
-    }
-
-    const extraIds = selectedTeamIds.value.filter(
-        (id) => id !== Number(primaryTeamId.value),
-    );
-
-    if (extraIds.length === 0) {
-        return 'No additional teams';
-    }
-
-    if (extraIds.length <= 2) {
-        return props.teams
-            .filter((t) => extraIds.includes(t.value))
-            .map((t) => t.label)
-            .join(', ');
-    }
-
-    return `${extraIds.length} additional teams`;
-});
-
-function setTeamChecked(teamId: number, checked: boolean): void {
-    if (teamId === Number(primaryTeamId.value) && !checked) {
-        return;
-    }
-
-    if (checked) {
-        if (!selectedTeamIds.value.includes(teamId)) {
-            selectedTeamIds.value = [...selectedTeamIds.value, teamId];
-        }
-    } else {
-        selectedTeamIds.value = selectedTeamIds.value.filter((id) => id !== teamId);
-    }
-}
 
 defineOptions({
     layout: {
@@ -121,26 +66,14 @@ defineOptions({
 </script>
 
 <template>
+
     <Head title="Add user" />
 
     <div class="flex flex-col gap-8">
         <PageHeader title="Add user" description="Create a new account" />
 
-        <Form
-            v-bind="UserController.store.form()"
-            class="flex max-w-xl flex-col gap-8"
-            v-slot="{ errors, processing, recentlySuccessful }"
-        >
-            <input type="hidden" name="role" :value="roleId" />
-            <input type="hidden" name="primary_team_id" :value="primaryTeamId" />
-            <input
-                v-for="id in selectedTeamIds"
-                :key="id"
-                type="hidden"
-                name="team_ids[]"
-                :value="id"
-            />
-
+        <Form v-bind="UserController.store.form()" class="flex max-w-xl flex-col gap-8"
+            v-slot="{ errors, processing, recentlySuccessful }">
             <GlassCard class="p-6">
                 <div class="mb-6 space-y-1">
                     <h2 class="text-lg font-semibold">Account</h2>
@@ -149,169 +82,48 @@ defineOptions({
                     </p>
                 </div>
                 <div class="grid gap-6">
-                    <FormField
-                        label="Name"
-                        html-for="name"
-                        :error="errors.name"
-                        required
-                    >
-                        <Input
-                            id="name"
-                            name="name"
-                            type="text"
-                            required
-                            autocomplete="name"
-                            placeholder="Full name"
-                        />
+                    <FormField label="Name" html-for="name" :error="errors.name" required>
+                        <Input id="name" name="name" type="text" required autocomplete="name" placeholder="Full name" />
                     </FormField>
-                    <FormField
-                        label="Email"
-                        html-for="email"
-                        :error="errors.email"
-                        required
-                    >
-                        <Input
-                            id="email"
-                            name="email"
-                            type="email"
-                            required
-                            autocomplete="username"
-                            placeholder="email@example.com"
-                        />
+                    <FormField label="Email" html-for="email" :error="errors.email" required>
+                        <Input id="email" name="email" type="email" required autocomplete="username"
+                            placeholder="email@example.com" />
                     </FormField>
                     <div class="grid gap-2">
-                        <Label id="role-label">Role</Label>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger as-child>
-                                <Button
-                                    id="role"
-                                    type="button"
-                                    variant="outline"
-                                    class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
-                                    aria-labelledby="role-label"
-                                >
-                                    <span class="truncate text-left">{{ roleLabel }}</span>
-                                    <ChevronDown class="size-4 shrink-0 opacity-50" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width)">
-                                <DropdownMenuLabel>Role</DropdownMenuLabel>
-                                <DropdownMenuRadioGroup v-model="roleId">
-                                    <DropdownMenuRadioItem
-                                        v-for="opt in assignableRoles"
-                                        :key="opt.value"
-                                        :value="opt.value"
-                                    >
-                                        {{ opt.label }}
-                                    </DropdownMenuRadioItem>
-                                </DropdownMenuRadioGroup>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Label for="role">Role</Label>
+                        <FormSelect id="role" name="role" v-model="roleId" required placeholder="Select role"
+                            :options="assignableRoles" />
                         <InputError :message="errors.role" />
                     </div>
                     <div class="grid gap-2">
-                        <Label id="primary_team_id-label">Primary team</Label>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger as-child>
-                                <Button
-                                    id="primary_team_id"
-                                    type="button"
-                                    variant="outline"
-                                    class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
-                                    aria-labelledby="primary_team_id-label"
-                                >
-                                    <span class="truncate text-left">{{
-                                        primaryTeamLabel
-                                    }}</span>
-                                    <ChevronDown class="size-4 shrink-0 opacity-50" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width)">
-                                <DropdownMenuLabel>Primary team</DropdownMenuLabel>
-                                <DropdownMenuRadioGroup v-model="primaryTeamId">
-                                    <DropdownMenuRadioItem
-                                        v-for="opt in teams"
-                                        :key="opt.value"
-                                        :value="String(opt.value)"
-                                    >
-                                        {{ opt.label }}
-                                    </DropdownMenuRadioItem>
-                                </DropdownMenuRadioGroup>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Label for="primary_team_id">Primary team</Label>
+                        <FormSelect id="primary_team_id" name="primary_team_id" v-model="primaryTeamId" required
+                            placeholder="Select primary team" :options="teamOptions" />
                         <InputError :message="errors.primary_team_id" />
                     </div>
                     <div class="grid gap-2">
-                        <Label id="team_ids-label">Additional team assignments</Label>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger as-child>
-                                <Button
-                                    id="team_ids"
-                                    type="button"
-                                    variant="outline"
-                                    class="h-auto min-h-9 w-full justify-between px-3 py-2 font-normal"
-                                    aria-labelledby="team_ids-label"
-                                >
-                                    <span class="truncate text-left">{{
-                                        additionalTeamsLabel
-                                    }}</span>
-                                    <ChevronDown class="size-4 shrink-0 opacity-50" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent class="w-(--reka-dropdown-menu-trigger-width)">
-                                <DropdownMenuLabel>Teams</DropdownMenuLabel>
-                                <DropdownMenuCheckboxItem
-                                    v-for="opt in teams"
-                                    :key="opt.value"
-                                    :disabled="opt.value === Number(primaryTeamId)"
-                                    :model-value="selectedTeamIds.includes(opt.value)"
-                                    @update:model-value="
-                                        (v: boolean | string) =>
-                                            setTeamChecked(opt.value, v === true)
-                                    "
-                                >
-                                    {{ opt.label }}
-                                    <span
-                                        v-if="opt.value === Number(primaryTeamId)"
-                                        class="text-xs text-muted-foreground"
-                                    >
-                                        (primary)
-                                    </span>
-                                </DropdownMenuCheckboxItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Label for="team_ids">Additional team assignments</Label>
+                        <FormMultiSelect id="team_ids" name="team_ids" v-model="selectedTeamIds" menu-label="Teams"
+                            placeholder="No additional teams" :options="teamOptions"
+                            :disabled-options="primaryTeamId !== '' ? [primaryTeamId] : []">
+                            <template #option-suffix="{ option }">
+                                <span v-if="option.value === primaryTeamId" class="text-xs text-muted-foreground">
+                                    (primary)
+                                </span>
+                            </template>
+                        </FormMultiSelect>
                         <p class="text-xs text-muted-foreground">
                             Open the menu to assign teams. The primary team is always included.
                         </p>
                         <InputError :message="errors.team_ids" />
                     </div>
-                    <FormField
-                        label="Password"
-                        html-for="password"
-                        :error="errors.password"
-                        required
-                    >
-                        <Input
-                            id="password"
-                            name="password"
-                            type="password"
-                            required
-                            autocomplete="new-password"
-                        />
+                    <FormField label="Password" html-for="password" :error="errors.password" required>
+                        <Input id="password" name="password" type="password" required autocomplete="new-password" />
                     </FormField>
-                    <FormField
-                        label="Confirm password"
-                        html-for="password_confirmation"
-                        :error="errors.password_confirmation"
-                        required
-                    >
-                        <Input
-                            id="password_confirmation"
-                            name="password_confirmation"
-                            type="password"
-                            required
-                            autocomplete="new-password"
-                        />
+                    <FormField label="Confirm password" html-for="password_confirmation"
+                        :error="errors.password_confirmation" required>
+                        <Input id="password_confirmation" name="password_confirmation" type="password" required
+                            autocomplete="new-password" />
                     </FormField>
                 </div>
             </GlassCard>
@@ -323,10 +135,7 @@ defineOptions({
                 <Button variant="outline" as-child>
                     <Link :href="usersIndex()">Cancel</Link>
                 </Button>
-                <span
-                    v-show="recentlySuccessful"
-                    class="text-sm text-muted-foreground"
-                >
+                <span v-show="recentlySuccessful" class="text-sm text-muted-foreground">
                     Saved.
                 </span>
             </div>

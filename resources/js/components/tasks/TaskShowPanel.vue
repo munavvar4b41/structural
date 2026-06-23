@@ -11,6 +11,7 @@ import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import RichTextViewer from '@/components/RichTextViewer.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,6 +30,7 @@ import { formatSeconds } from '@/lib/formatSeconds';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { show as requirementsShow } from '@/routes/admin/projects/requirements/index';
 import {
+    edit as projectTasksEdit,
     index as projectTasksIndex,
     show as projectTasksShow,
 } from '@/routes/admin/projects/tasks/index';
@@ -767,11 +769,18 @@ const checklistDeleteDescription = computed(() => {
                     <Link :href="projectTasksIndex.url(project.id)">Back to task list</Link>
                 </Button>
                 <Button v-if="task.can_update" variant="outline" as-child>
-                    <Link :href="projectTasksIndex.url(project.id, {
-                        query: { edit_task: String(task.id) },
-                    })
-                        ">
-                        Edit on list
+                    <Link :href="projectTasksEdit.url({
+                        project: project.id,
+                        task: task.id,
+                    }, {
+                        query: {
+                            return: projectTasksShow.url({
+                                project: project.id,
+                                task: task.id,
+                            }),
+                        },
+                    })">
+                        Edit task
                     </Link>
                 </Button>
                 <Button v-if="task.can_delete" variant="outline" class="text-destructive hover:bg-destructive/10"
@@ -876,7 +885,7 @@ const checklistDeleteDescription = computed(() => {
                 </div>
                 <div v-if="task.description" class="grid gap-1">
                     <span class="text-xs font-medium text-muted-foreground">Description</span>
-                    <p class="whitespace-pre-wrap text-muted-foreground">{{ task.description }}</p>
+                    <RichTextViewer :json="task.description" class="text-muted-foreground" />
                 </div>
             </div>
         </GlassCard>
@@ -1128,10 +1137,17 @@ const checklistDeleteDescription = computed(() => {
                                         Submit for completion
                                     </Button>
                                     <Button v-if="sub.can_update" variant="outline" size="sm" as-child>
-                                        <Link :href="projectTasksIndex.url(project.id, {
-                                            query: { edit_task: String(sub.id) },
-                                        })
-                                            ">
+                                        <Link :href="projectTasksEdit.url({
+                                            project: project.id,
+                                            task: sub.id,
+                                        }, {
+                                            query: {
+                                                return: projectTasksShow.url({
+                                                    project: project.id,
+                                                    task: task.id,
+                                                }),
+                                            },
+                                        })">
                                             Edit
                                         </Link>
                                     </Button>

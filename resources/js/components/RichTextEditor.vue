@@ -40,7 +40,7 @@ const editor = useEditor({
     editorProps: {
         attributes: {
             class:
-                'tiptap-content max-w-none min-h-[140px] px-3 py-2 text-sm focus:outline-none',
+                'tiptap-content max-w-none h-[300px] overflow-y-auto px-3 py-2 text-sm focus:outline-none',
         },
     },
     onUpdate: ({ editor: ed }) => {
