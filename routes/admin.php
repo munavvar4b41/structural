@@ -95,9 +95,7 @@ Route::delete('projects/{project}/tags/{tag}', [ProjectTagController::class, 'de
 Route::post('projects/{project}/metadata', [ProjectMetadataController::class, 'store'])->name('projects.metadata.store');
 Route::patch('projects/{project}/metadata/{metadata}', [ProjectMetadataController::class, 'update'])->name('projects.metadata.update');
 Route::delete('projects/{project}/metadata/{metadata}', [ProjectMetadataController::class, 'destroy'])->name('projects.metadata.destroy');
-Route::resource('projects.tasks', ProjectTaskController::class)
-    ->only(['index', 'show', 'store', 'update', 'destroy'])
-    ->scoped();
+Route::resource('projects.tasks', ProjectTaskController::class);
 Route::patch('projects/{project}/requirements/{requirement}/review', [ProjectRequirementController::class, 'markReviewed'])
     ->name('projects.requirements.review');
 Route::patch('projects/{project}/requirements/{requirement}/confirm-understanding', [ProjectRequirementController::class, 'confirmUnderstanding'])

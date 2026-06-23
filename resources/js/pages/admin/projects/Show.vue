@@ -5,7 +5,6 @@ import { computed, ref, watch } from 'vue';
 import ProjectMetadataController from '@/actions/App/Http/Controllers/Admin/ProjectMetadataController';
 import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementController';
 import ProjectTagController from '@/actions/App/Http/Controllers/Admin/ProjectTagController';
-import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
 import TaskTimeEntryController from '@/actions/App/Http/Controllers/Admin/TaskTimeEntryController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
@@ -31,7 +30,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
-import { buildPhaseSelectOptions, requiresPhaseSelection } from '@/lib/requirementPhaseOptions';
+import { requiresPhaseSelection } from '@/lib/requirementPhaseOptions';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { edit as projectsEdit, index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import {
@@ -43,7 +42,7 @@ import {
     index as proposalsIndex,
     show as proposalsShow,
 } from '@/routes/admin/projects/proposals/index';
-import { index as projectTasksIndex, show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
+import { index as projectTasksIndex, create as projectTasksCreate, show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
 import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserBrief = {
@@ -202,16 +201,6 @@ const responsibleUserId = ref('');
 const requirementTitle = ref('');
 const requirementMaxPhase = ref('1');
 
-const taskOpen = ref(false);
-const createStatus = ref('to_do');
-const createAssignee = ref('');
-const createRequirement = ref('');
-const createPhase = ref('1');
-const createParent = ref('');
-const createTitle = ref('');
-const createDisplayAfterAt = ref('');
-const createNotifyAt = ref('');
-
 const timeEntryOpen = ref(false);
 const timeEntryTaskId = ref('');
 const manualTimeOnly = ref(false);
@@ -235,49 +224,12 @@ const durationOnlyHint = computed(
 const entryDeleteOpen = ref(false);
 const entryPendingDelete = ref<TimeEntryRow | null>(null);
 
-const statusSelectOptions = computed(() =>
-    props.status_options.map((o) => ({ value: o.value, label: o.label })),
-);
-
-const assigneeSelectOptions = computed(() =>
-    props.assignable_users.map((u) => ({ value: String(u.value), label: u.label })),
-);
-
-const requirementSelectOptions = computed(() =>
-    props.requirement_options.map((r) => ({ value: String(r.value), label: r.label })),
-);
-
-function maxPhaseForRequirement(requirementId: string): number {
-    if (requirementId === '') {
-        return 1;
-    }
-
-    const requirement = props.requirement_options.find((r) => String(r.value) === requirementId);
-
-    return requirement?.max_generated_phase ?? 1;
-}
-
-const createPhaseSelectOptions = computed(() =>
-    buildPhaseSelectOptions(maxPhaseForRequirement(createRequirement.value)),
-);
-
-const showCreatePhaseField = computed(
-    () => createRequirement.value !== '' && requiresPhaseSelection(maxPhaseForRequirement(createRequirement.value)),
-);
-
 const showPhaseColumn = computed(() =>
     props.requirement_options.some((requirement) => requiresPhaseSelection(requirement.max_generated_phase)),
 );
 
 const taskSelectOptions = computed(() =>
     props.task_options.map((t) => ({ value: String(t.value), label: t.label })),
-);
-
-const parentSelectOptions = computed(() =>
-    props.tasks.map((task) => ({
-        value: String(task.id),
-        label: `${task.tree_depth > 0 ? '— '.repeat(task.tree_depth) : ''}${task.title}`,
-    })),
 );
 
 const responsibleLabel = computed(() => {
@@ -418,17 +370,6 @@ function resetRequirementDialog(): void {
     requirementMaxPhase.value = '1';
 }
 
-function resetTaskDialog(): void {
-    createStatus.value = 'to_do';
-    createAssignee.value = '';
-    createRequirement.value = '';
-    createPhase.value = '1';
-    createParent.value = '';
-    createTitle.value = '';
-    createDisplayAfterAt.value = '';
-    createNotifyAt.value = '';
-}
-
 function resetTimeEntryDialog(): void {
     timeEntryTaskId.value = '';
     manualTimeOnly.value = false;
@@ -513,16 +454,6 @@ watch(requirementOpen, (open) => {
     if (open) {
         resetRequirementDialog();
     }
-});
-
-watch(taskOpen, (open) => {
-    if (open) {
-        resetTaskDialog();
-    }
-});
-
-watch(createRequirement, () => {
-    createPhase.value = '1';
 });
 
 watch(timeEntryOpen, (open) => {
@@ -758,8 +689,8 @@ watch(timeEntryOpen, (open) => {
                         Showing {{ tasks.length }} of {{ tasks_total }} tasks.
                     </p>
                 </div>
-                <Button v-if="can_create_tasks" type="button" @click="taskOpen = true">
-                    Add task
+                <Button v-if="can_create_tasks" as-child>
+                    <Link :href="projectTasksCreate.url(project.id)">Add task</Link>
                 </Button>
             </div>
 
@@ -977,85 +908,6 @@ watch(timeEntryOpen, (open) => {
                 <DialogFooter class="gap-3">
                     <Button type="button" variant="outline" @click="requirementOpen = false">Cancel</Button>
                     <Button type="submit" :disabled="processing">Add requirement</Button>
-                </DialogFooter>
-            </Form>
-        </DialogContent>
-    </Dialog>
-
-    <Dialog v-model:open="taskOpen">
-        <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-            <DialogHeader>
-                <DialogTitle>Add task</DialogTitle>
-                <DialogDescription>
-                    <span v-if="project.estimation_required">Time estimate (minutes) is required.</span>
-                    <span v-else>Optional time estimate in minutes.</span>
-                </DialogDescription>
-            </DialogHeader>
-            <Form v-bind="ProjectTaskController.store.form({ project: project.id })" class="grid gap-4" preserve-scroll
-                @success="taskOpen = false" v-slot="{ errors, processing }">
-                <div class="grid gap-2">
-                    <Label for="create-title">Title</Label>
-                    <TypeaheadInput id="create-title" v-model="createTitle" name="title" type="task_title" required />
-                    <InputError :message="errors.title" />
-                </div>
-                <div class="grid gap-2">
-                    <Label for="create-description">Description</Label>
-                    <textarea id="create-description" name="description" rows="3"
-                        class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30" />
-                    <InputError :message="errors.description" />
-                </div>
-                <div class="grid gap-2">
-                    <Label for="create-status">Status</Label>
-                    <FormSelect id="create-status" name="status" v-model="createStatus" required placeholder="Status"
-                        :options="statusSelectOptions" />
-                    <InputError :message="errors.status" />
-                </div>
-                <div class="grid gap-2">
-                    <Label for="create-assignee">Assignee</Label>
-                    <FormSelect id="create-assignee" name="assignee_user_id" v-model="createAssignee"
-                        none-label="Unassigned" placeholder="Unassigned" :options="assigneeSelectOptions" />
-                    <InputError :message="errors.assignee_user_id" />
-                </div>
-                <div class="grid gap-2">
-                    <Label for="create-requirement">Requirement</Label>
-                    <FormSelect id="create-requirement" name="project_requirement_id" v-model="createRequirement"
-                        placeholder="None" :options="requirementSelectOptions" />
-                    <InputError :message="errors.project_requirement_id" />
-                </div>
-                <div v-if="showCreatePhaseField" class="grid gap-2">
-                    <Label for="create-phase">Phase</Label>
-                    <FormSelect id="create-phase" name="phase" v-model="createPhase" required placeholder="Phase"
-                        :options="createPhaseSelectOptions" />
-                    <InputError :message="errors.phase" />
-                </div>
-                <div class="grid gap-2">
-                    <Label for="create-parent">Parent task (subtask)</Label>
-                    <FormSelect id="create-parent" name="parent_project_task_id" v-model="createParent"
-                        placeholder="None" :options="parentSelectOptions" />
-                    <InputError :message="errors.parent_project_task_id" />
-                </div>
-                <div class="grid gap-2">
-                    <Label for="create-estimated-minutes">
-                        Estimate (minutes)<span v-if="project.estimation_required"> *</span>
-                    </Label>
-                    <Input id="create-estimated-minutes" name="estimated_minutes" type="number" min="1" step="1"
-                        :required="project.estimation_required" />
-                    <InputError :message="errors.estimated_minutes" />
-                </div>
-                <div class="grid gap-2">
-                    <Label for="create-display-after">Display after</Label>
-                    <Input id="create-display-after" name="display_after_at" type="datetime-local"
-                        v-model="createDisplayAfterAt" />
-                    <InputError :message="errors.display_after_at" />
-                </div>
-                <div class="grid gap-2">
-                    <Label for="create-notify">Reminder at</Label>
-                    <Input id="create-notify" name="notify_at" type="datetime-local" v-model="createNotifyAt" />
-                    <InputError :message="errors.notify_at" />
-                </div>
-                <DialogFooter class="gap-3">
-                    <Button type="button" variant="outline" @click="taskOpen = false">Cancel</Button>
-                    <Button type="submit" :disabled="processing">Add task</Button>
                 </DialogFooter>
             </Form>
         </DialogContent>

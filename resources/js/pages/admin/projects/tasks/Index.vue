@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { CornerDownRight } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
@@ -7,23 +7,13 @@ import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import FormMultiSelect from '@/components/FormMultiSelect.vue';
 import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
-import { buildPhaseSelectOptions, requiresPhaseSelection } from '@/lib/requirementPhaseOptions';
+import { requiresPhaseSelection } from '@/lib/requirementPhaseOptions';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import {
@@ -31,6 +21,8 @@ import {
     show as requirementsShow,
 } from '@/routes/admin/projects/requirements/index';
 import {
+    create as projectTasksCreate,
+    edit as projectTasksEdit,
     index as projectTasksIndex,
     show as projectTasksShow,
 } from '@/routes/admin/projects/tasks/index';
@@ -194,83 +186,13 @@ defineOptions({
     }),
 });
 
-const createOpen = ref(false);
-const editOpen = ref(false);
-const editingTask = ref<TaskRow | null>(null);
-
-const createStatus = ref('to_do');
-const createAssignee = ref('');
-const createRequirement = ref('');
-const createPhase = ref('1');
-const createParent = ref('');
-const createDisplayAfterAt = ref('');
-const createNotifyAt = ref('');
-
-const editStatus = ref('to_do');
-const editAssignee = ref('');
-const editRequirement = ref('');
-const editPhase = ref('1');
-const editParent = ref('');
-const editDisplayAfterAt = ref('');
-const editNotifyAt = ref('');
-
-function toDatetimeLocalValue(value: string | null): string {
-    if (value === null) {
-        return '';
-    }
-
-    const asDate = new Date(value);
-
-    if (Number.isNaN(asDate.getTime())) {
-        return '';
-    }
-
-    const local = new Date(asDate.getTime() - asDate.getTimezoneOffset() * 60000);
-
-    return local.toISOString().slice(0, 16);
-}
-
-watch(createOpen, (open) => {
-    if (open) {
-        createStatus.value = 'to_do';
-        createAssignee.value = '';
-        createRequirement.value = '';
-        createPhase.value = '1';
-        createParent.value = '';
-        createDisplayAfterAt.value = '';
-        createNotifyAt.value = '';
-    }
-});
-
-watch([editOpen, editingTask], () => {
-    if (editOpen.value && editingTask.value) {
-        const t = editingTask.value;
-        editStatus.value = t.status;
-        editAssignee.value = t.assignee_user_id !== null ? String(t.assignee_user_id) : '';
-        editRequirement.value =
-            t.project_requirement_id !== null ? String(t.project_requirement_id) : '';
-        editPhase.value = t.phase !== null ? String(t.phase) : '1';
-        editParent.value =
-            t.parent_project_task_id !== null ? String(t.parent_project_task_id) : '';
-        editDisplayAfterAt.value = toDatetimeLocalValue(t.display_after_at);
-        editNotifyAt.value = toDatetimeLocalValue(t.notify_at);
-    }
-});
-
-const statusSelectOptions = computed(() =>
-    props.status_options.map((o) => ({ value: o.value, label: o.label })),
+const assigneeSelectOptions = computed(() =>
+    props.assignable_users.map((u) => ({ value: String(u.value), label: u.label })),
 );
 
-const editStatusSelectOptions = computed(() => {
-    const base = statusSelectOptions.value;
-    const row = editingTask.value;
-
-    if (row !== null && row.is_assignee_only_limited) {
-        return base.filter((o) => o.value !== 'done');
-    }
-
-    return base;
-});
+const showPhaseColumn = computed(() =>
+    props.requirements.some((requirement) => requiresPhaseSelection(requirement.max_generated_phase)),
+);
 
 function submitForCompletionFromList(task: TaskRow): void {
     router.post(
@@ -282,119 +204,6 @@ function submitForCompletionFromList(task: TaskRow): void {
         { preserveScroll: true },
     );
 }
-
-const assigneeSelectOptions = computed(() =>
-    props.assignable_users.map((u) => ({ value: String(u.value), label: u.label })),
-);
-
-const requirementSelectOptions = computed(() =>
-    props.requirements.map((r) => ({ value: String(r.value), label: r.label })),
-);
-
-function requirementMaxPhase(requirementId: string): number {
-    if (requirementId === '') {
-        return 1;
-    }
-
-    const requirement = props.requirements.find((r) => String(r.value) === requirementId);
-
-    return requirement?.max_generated_phase ?? 1;
-}
-
-const createPhaseSelectOptions = computed(() =>
-    buildPhaseSelectOptions(requirementMaxPhase(createRequirement.value)),
-);
-
-const editPhaseSelectOptions = computed(() =>
-    buildPhaseSelectOptions(requirementMaxPhase(editRequirement.value)),
-);
-
-const showCreatePhaseField = computed(
-    () => createRequirement.value !== '' && requiresPhaseSelection(requirementMaxPhase(createRequirement.value)),
-);
-
-const showEditPhaseField = computed(
-    () => editRequirement.value !== '' && requiresPhaseSelection(requirementMaxPhase(editRequirement.value)),
-);
-
-const showPhaseColumn = computed(() =>
-    props.requirements.some((requirement) => requiresPhaseSelection(requirement.max_generated_phase)),
-);
-
-watch(createRequirement, () => {
-    createPhase.value = '1';
-});
-
-watch(editRequirement, () => {
-    editPhase.value = '1';
-});
-
-function formatParentTaskLabel(task: TaskRow): string {
-    if (task.tree_depth <= 0) {
-        return task.title;
-    }
-
-    return `${'— '.repeat(task.tree_depth)}${task.title}`;
-}
-
-const taskChildrenByParentId = computed(() => {
-    const byParent = new Map<number, number[]>();
-
-    for (const task of props.tasks) {
-        if (task.parent_project_task_id === null) {
-            continue;
-        }
-
-        const children = byParent.get(task.parent_project_task_id) ?? [];
-        children.push(task.id);
-        byParent.set(task.parent_project_task_id, children);
-    }
-
-    return byParent;
-});
-
-function collectDescendantTaskIds(taskId: number): Set<number> {
-    const descendantIds = new Set<number>();
-    const queue = [...(taskChildrenByParentId.value.get(taskId) ?? [])];
-
-    while (queue.length > 0) {
-        const currentId = queue.shift();
-
-        if (currentId === undefined || descendantIds.has(currentId)) {
-            continue;
-        }
-
-        descendantIds.add(currentId);
-
-        const children = taskChildrenByParentId.value.get(currentId) ?? [];
-        queue.push(...children);
-    }
-
-    return descendantIds;
-}
-
-const parentSelectOptions = computed(() =>
-    props.tasks.map((task) => ({
-        value: String(task.id),
-        label: formatParentTaskLabel(task),
-    })),
-);
-
-const parentSelectOptionsForEdit = computed(() => {
-    if (editingTask.value === null) {
-        return parentSelectOptions.value;
-    }
-
-    const blockedIds = collectDescendantTaskIds(editingTask.value.id);
-    blockedIds.add(editingTask.value.id);
-
-    return props.tasks
-        .filter((task) => !blockedIds.has(task.id))
-        .map((task) => ({
-            value: String(task.id),
-            label: formatParentTaskLabel(task),
-        }));
-});
 
 function setFilter(filter: string): void {
     reloadTasks({ task_filter: filter });
@@ -434,16 +243,6 @@ const deleteTaskDescription = computed(() => {
     return `Delete "${row.title}"? This cannot be undone.`;
 });
 
-function openEdit(task: TaskRow): void {
-    editingTask.value = task;
-    editOpen.value = true;
-}
-
-function closeEdit(): void {
-    editOpen.value = false;
-    editingTask.value = null;
-}
-
 function tryOpenEditFromQuery(): void {
     const rawUrl = page.url;
     const queryPart = rawUrl.includes('?') ? rawUrl.slice(rawUrl.indexOf('?') + 1) : '';
@@ -460,8 +259,6 @@ function tryOpenEditFromQuery(): void {
         return;
     }
 
-    openEdit(task);
-
     const indexOptions = {
         query: stripFilterParams({
             task_filter: props.task_filter,
@@ -472,7 +269,17 @@ function tryOpenEditFromQuery(): void {
         }),
     };
 
-    router.get(projectTasksIndex.url(props.project.id, indexOptions), {}, { replace: true, preserveState: true, preserveScroll: true });
+    router.visit(
+        projectTasksEdit.url(
+            { project: props.project.id, task: task.id },
+            {
+                query: {
+                    return: projectTasksIndex.url(props.project.id, indexOptions),
+                },
+            },
+        ),
+        { replace: true },
+    );
 }
 
 onMounted(() => {
@@ -505,8 +312,8 @@ onMounted(() => {
                         type="button" @click="setFilter('unlinked')">
                         No requirement
                     </Button>
-                    <Button v-if="can_create_tasks" type="button" @click="createOpen = true">
-                        Add task
+                    <Button v-if="can_create_tasks" as-child>
+                        <Link :href="projectTasksCreate.url(project.id)">Add task</Link>
                     </Button>
                 </div>
             </div>
@@ -547,167 +354,6 @@ onMounted(() => {
                 </template>
             </ListToolbar>
         </div>
-
-        <Dialog v-model:open="createOpen">
-            <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-                <DialogHeader>
-                    <DialogTitle>Add task</DialogTitle>
-                    <DialogDescription>
-                        <span v-if="project.estimation_required">Time estimate (minutes) is required.</span>
-                        <span v-else>Optional time estimate in minutes.</span>
-                    </DialogDescription>
-                </DialogHeader>
-                <Form v-bind="ProjectTaskController.store.form({ project: project.id })" class="grid gap-4"
-                    @success="createOpen = false" v-slot="{ errors, processing }">
-                    <div class="grid gap-2">
-                        <Label for="create-title">Title</Label>
-                        <Input id="create-title" name="title" type="text" required />
-                        <InputError :message="errors.title" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-description">Description</Label>
-                        <textarea id="create-description" name="description" rows="3"
-                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30" />
-                        <InputError :message="errors.description" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-status">Status</Label>
-                        <FormSelect id="create-status" name="status" v-model="createStatus" required
-                            placeholder="Status" :options="statusSelectOptions" />
-                        <InputError :message="errors.status" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-assignee">Assignee</Label>
-                        <FormSelect id="create-assignee" name="assignee_user_id" v-model="createAssignee"
-                            none-label="Unassigned" placeholder="Unassigned" :options="assigneeSelectOptions" />
-                        <InputError :message="errors.assignee_user_id" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-requirement">Requirement</Label>
-                        <FormSelect id="create-requirement" name="project_requirement_id" v-model="createRequirement"
-                            placeholder="None" :options="requirementSelectOptions" />
-                        <InputError :message="errors.project_requirement_id" />
-                    </div>
-                    <div v-if="showCreatePhaseField" class="grid gap-2">
-                        <Label for="create-phase">Phase</Label>
-                        <FormSelect id="create-phase" name="phase" v-model="createPhase" required placeholder="Phase"
-                            :options="createPhaseSelectOptions" />
-                        <InputError :message="errors.phase" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-parent">Parent task (subtask)</Label>
-                        <FormSelect id="create-parent" name="parent_project_task_id" v-model="createParent"
-                            placeholder="None" :options="parentSelectOptions" />
-                        <InputError :message="errors.parent_project_task_id" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-estimate">Estimate (minutes)</Label>
-                        <Input id="create-estimate" name="estimated_minutes" type="number" min="1" step="1"
-                            :required="project.estimation_required" />
-                        <InputError :message="errors.estimated_minutes" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-display-after-at">Display after</Label>
-                        <Input id="create-display-after-at" name="display_after_at" type="datetime-local"
-                            v-model="createDisplayAfterAt" />
-                        <InputError :message="errors.display_after_at" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-notify-at">Notify task at</Label>
-                        <Input id="create-notify-at" name="notify_at" type="datetime-local" v-model="createNotifyAt" />
-                        <InputError :message="errors.notify_at" />
-                    </div>
-                    <DialogFooter class="gap-3">
-                        <Button type="button" variant="outline" @click="createOpen = false">
-                            Cancel
-                        </Button>
-                        <Button type="submit" :disabled="processing">Create</Button>
-                    </DialogFooter>
-                </Form>
-            </DialogContent>
-        </Dialog>
-
-        <Dialog :open="editOpen" @update:open="(v: boolean) => !v && closeEdit()">
-            <DialogContent v-if="editingTask" class="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-                <DialogHeader>
-                    <DialogTitle>Edit task</DialogTitle>
-                    <DialogDescription>{{ editingTask.title }}</DialogDescription>
-                </DialogHeader>
-                <Form :key="editingTask.id" v-bind="ProjectTaskController.update.form({
-                    project: project.id,
-                    task: editingTask.id,
-                })
-                    " class="grid gap-4" @success="closeEdit()" v-slot="{ errors, processing }">
-                    <div class="grid gap-2">
-                        <Label for="edit-title">Title</Label>
-                        <Input id="edit-title" name="title" type="text" required :default-value="editingTask.title" />
-                        <InputError :message="errors.title" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="edit-description">Description</Label>
-                        <textarea id="edit-description" name="description" rows="3" v-model="editingTask.description"
-                            class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30" />
-                        <InputError :message="errors.description" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="edit-status">Status</Label>
-                        <FormSelect id="edit-status" name="status" v-model="editStatus" required placeholder="Status"
-                            :options="editStatusSelectOptions" />
-                        <InputError :message="errors.status" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="edit-assignee">Assignee</Label>
-                        <FormSelect id="edit-assignee" name="assignee_user_id" v-model="editAssignee"
-                            none-label="Unassigned" placeholder="Unassigned" :options="assigneeSelectOptions" />
-                        <InputError :message="errors.assignee_user_id" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="edit-requirement">Requirement</Label>
-                        <FormSelect id="edit-requirement" name="project_requirement_id" v-model="editRequirement"
-                            placeholder="None" :options="requirementSelectOptions" />
-                        <InputError :message="errors.project_requirement_id" />
-                    </div>
-                    <div v-if="showEditPhaseField" class="grid gap-2">
-                        <Label for="edit-phase">Phase</Label>
-                        <FormSelect id="edit-phase" name="phase" v-model="editPhase" required placeholder="Phase"
-                            :options="editPhaseSelectOptions" />
-                        <InputError :message="errors.phase" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="edit-parent">Parent task</Label>
-                        <FormSelect id="edit-parent" name="parent_project_task_id" v-model="editParent"
-                            placeholder="None" :options="parentSelectOptionsForEdit" />
-                        <InputError :message="errors.parent_project_task_id" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="edit-estimate">Estimate (minutes)</Label>
-                        <Input id="edit-estimate" name="estimated_minutes" type="number" min="1" step="1"
-                            :required="project.estimation_required" :default-value="editingTask.estimated_minutes !== null
-                                ? String(editingTask.estimated_minutes)
-                                : ''
-                                " />
-                        <InputError :message="errors.estimated_minutes" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="edit-display-after-at">Display after</Label>
-                        <Input id="edit-display-after-at" name="display_after_at" type="datetime-local"
-                            v-model="editDisplayAfterAt" />
-                        <InputError :message="errors.display_after_at" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="edit-notify-at">Notify task at</Label>
-                        <Input id="edit-notify-at" name="notify_at" type="datetime-local" v-model="editNotifyAt" />
-                        <InputError :message="errors.notify_at" />
-                    </div>
-                    <DialogFooter class="gap-3">
-                        <Button type="button" variant="outline" @click="closeEdit()">
-                            Cancel
-                        </Button>
-                        <Button type="submit" :disabled="processing">Save</Button>
-                    </DialogFooter>
-                </Form>
-            </DialogContent>
-        </Dialog>
 
         <GlassCard>
             <div class="mb-6 space-y-1">
@@ -799,9 +445,25 @@ onMounted(() => {
                                         type="button" @click="submitForCompletionFromList(task)">
                                         Submit for completion
                                     </Button>
-                                    <Button v-if="task.can_update" variant="outline" size="sm" type="button"
-                                        @click="openEdit(task)">
-                                        Edit
+                                    <Button v-if="task.can_update" variant="outline" size="sm" as-child>
+                                        <Link :href="projectTasksEdit.url({
+                                            project: project.id,
+                                            task: task.id,
+                                        }, {
+                                            query: {
+                                                return: projectTasksIndex.url(project.id, {
+                                                    query: stripFilterParams({
+                                                        task_filter,
+                                                        search: filters.search,
+                                                        assignee_id: filters.assignee_id,
+                                                        status: filters.status,
+                                                        phase: filters.phase,
+                                                    }),
+                                                }),
+                                            },
+                                        })">
+                                            Edit
+                                        </Link>
                                     </Button>
                                     <Button v-if="task.can_delete" variant="outline" size="sm"
                                         class="text-destructive hover:bg-destructive/10" type="button"

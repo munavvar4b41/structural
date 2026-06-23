@@ -6,6 +6,7 @@ use App\Enums\ProjectTaskStatus;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Support\ProjectRequirementAssignableUsers;
+use App\Support\TipTapDocument;
 use App\Support\ValidatesLinkedTaskPhase;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -18,10 +19,31 @@ class StoreProjectTaskRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $merge = [];
+
         foreach (['assignee_user_id', 'project_requirement_id', 'parent_project_task_id', 'estimated_minutes', 'display_after_at', 'notify_at', 'phase'] as $key) {
             if ($this->has($key) && $this->input($key) === '') {
-                $this->merge([$key => null]);
+                $merge[$key] = null;
             }
+        }
+
+        $desc = $this->input('description');
+        if (is_string($desc) && $desc !== '' && ! TipTapDocument::isValidDocumentJson($desc)) {
+            $merge['description'] = (string) json_encode([
+                'type' => 'doc',
+                'content' => [
+                    [
+                        'type' => 'paragraph',
+                        'content' => [
+                            ['type' => 'text', 'text' => $desc],
+                        ],
+                    ],
+                ],
+            ]);
+        }
+
+        if ($merge !== []) {
+            $this->merge($merge);
         }
     }
 
@@ -52,7 +74,20 @@ class StoreProjectTaskRequest extends FormRequest
 
         return [
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:50000'],
+            'description' => [
+                'nullable',
+                'string',
+                'max:50000',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value === null || $value === '') {
+                        return;
+                    }
+
+                    if (! is_string($value) || ! TipTapDocument::isValidDocumentJson($value)) {
+                        $fail(__('The description must be valid rich text.'));
+                    }
+                },
+            ],
             'status' => ['required', Rule::enum(ProjectTaskStatus::class)],
             'assignee_user_id' => [
                 'nullable',
