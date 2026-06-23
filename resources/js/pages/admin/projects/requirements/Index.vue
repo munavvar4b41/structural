@@ -241,7 +241,7 @@ const deleteRequirementDescription = computed(() => {
                 <TableRow v-for="row in requirements.data" :key="row.id">
                     <DataTableTd label="Title" class="align-top">
                         <div class="font-medium">{{ row.title }}</div>
-                        <p v-if="row.description_preview" class="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                        <p v-if="row.description_preview" class="hidden md:block mt-1 line-clamp-2 text-xs text-muted-foreground">
                             {{ row.description_preview }}
                         </p>
                     </DataTableTd>
