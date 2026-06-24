@@ -8,8 +8,8 @@ import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import TableIconAction from '@/components/TableIconAction.vue';
-import { index as projectsIndex } from '@/routes/admin/projects/index';
 import { index as estimationReviewsIndex } from '@/routes/admin/estimation-reviews/index';
+import { index as projectsIndex } from '@/routes/admin/projects/index';
 
 type UserBrief = {
     id: number;

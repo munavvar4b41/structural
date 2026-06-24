@@ -4,15 +4,19 @@ import { computed, ref, watch } from 'vue';
 import ProjectController from '@/actions/App/Http/Controllers/Admin/ProjectController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import DataTablePagination from '@/components/dashboard/DataTablePagination.vue';
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
+import { index as projectCaseStudiesIndex } from '@/routes/admin/projects/case-studies/index';
 import {
     create as projectsCreate,
     edit as projectsEdit,
@@ -20,11 +24,7 @@ import {
     show as projectsShow,
 } from '@/routes/admin/projects/index';
 import { index as projectRequirementsIndex } from '@/routes/admin/projects/requirements/index';
-import { index as projectCaseStudiesIndex } from '@/routes/admin/projects/case-studies/index';
 import { index as projectTasksIndex } from '@/routes/admin/projects/tasks/index';
-import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
-import TableIconAction from '@/components/TableIconAction.vue';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type ClientUserSummary = {
     id: number;
@@ -274,7 +274,7 @@ const deleteProjectDescription = computed(() => {
                             <TableIconAction
                                 icon="pencil"
                                 label="Edit"
-                                :href="projectsEdit(project.id)"
+                                :href="projectsEdit.url(project.id)"
                             />
                             <TableIconAction
                                 icon="trash"

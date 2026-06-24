@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import GlassCard from '@/components/dashboard/GlassCard.vue';
 import { Clock, FolderTree, Layers, ListChecks } from 'lucide-vue-next';
+import GlassCard from '@/components/dashboard/GlassCard.vue';
 
 export type EstimationAnalytics = {
     total_lines: number;

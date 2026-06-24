@@ -30,9 +30,10 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
-import { index as adminCaseStudiesIndex } from '@/routes/admin/case-studies/index';
 import { edit as adminCareersSettingsEdit } from '@/routes/admin/careers-settings/index';
+import { index as adminCaseStudiesIndex } from '@/routes/admin/case-studies/index';
 import { edit as adminCompanyEdit } from '@/routes/admin/company/index';
+import { index as adminEstimationReviewsIndex } from '@/routes/admin/estimation-reviews/index';
 import { index as adminJobPostingsIndex } from '@/routes/admin/job-postings/index';
 import { index as leaveRequestsIndex, manage as leaveRequestsManage } from '@/routes/admin/leave-requests/index';
 import { edit as adminLeaveSettingsEdit } from '@/routes/admin/leave-settings/index';
@@ -41,12 +42,11 @@ import { index as adminProjectsIndex } from '@/routes/admin/projects/index';
 import { index as adminProposalsIndex } from '@/routes/admin/proposals/index';
 import { index as adminRequirementsIndex } from '@/routes/admin/requirements/index';
 import { index as adminTaskRatingsReportIndex } from '@/routes/admin/task-ratings-report/index';
-import { index as adminEstimationReviewsIndex } from '@/routes/admin/estimation-reviews/index';
-import { index as adminUnderstandingReviewsIndex } from '@/routes/admin/understanding-reviews/index';
 import { index as adminTaskReviewsIndex } from '@/routes/admin/task-reviews/index';
 import { index as adminTasksIndex } from '@/routes/admin/tasks/index';
 import { index as adminTeamsIndex } from '@/routes/admin/teams/index';
 import { index as adminTimeReportIndex } from '@/routes/admin/time-report/index';
+import { index as adminUnderstandingReviewsIndex } from '@/routes/admin/understanding-reviews/index';
 import { index as adminUsersIndex } from '@/routes/admin/users/index';
 import type { NavGroup, NavItem } from '@/types';
 

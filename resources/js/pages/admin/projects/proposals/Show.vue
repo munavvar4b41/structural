@@ -7,8 +7,8 @@ import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue'
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
-import TableIconAction from '@/components/TableIconAction.vue';
 import RichTextViewer from '@/components/RichTextViewer.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {

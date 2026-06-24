@@ -4,12 +4,15 @@ import { computed, ref } from 'vue';
 import TeamController from '@/actions/App/Http/Controllers/Admin/TeamController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import DataTablePagination from '@/components/dashboard/DataTablePagination.vue';
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import {
@@ -17,9 +20,6 @@ import {
     edit as teamsEdit,
     index as teamsIndex,
 } from '@/routes/admin/teams/index';
-import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
-import TableIconAction from '@/components/TableIconAction.vue';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type TeamRow = {
     id: number;
@@ -144,7 +144,7 @@ const deleteTeamDescription = computed(() => {
                             <TableIconAction
                                 icon="pencil"
                                 label="Edit"
-                                :href="teamsEdit(team.id)"
+                                :href="teamsEdit.url(team.id)"
                             />
                             <TableIconAction
                                 icon="trash"

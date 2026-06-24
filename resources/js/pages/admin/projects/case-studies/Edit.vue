@@ -3,12 +3,12 @@ import { Head, Link } from '@inertiajs/vue3';
 import CaseStudyForm from '@/components/case-studies/CaseStudyForm.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import { Button } from '@/components/ui/button';
-import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
+import { index as globalCaseStudiesIndex } from '@/routes/admin/case-studies/index';
 import {
     edit as caseStudiesEdit,
     show as caseStudiesShow,
 } from '@/routes/admin/projects/case-studies/index';
-import { index as globalCaseStudiesIndex } from '@/routes/admin/case-studies/index';
+import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 
 type ProjectSummary = {
     id: number;

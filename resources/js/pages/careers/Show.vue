@@ -54,6 +54,7 @@ function submitApplication(): void {
         preserveScroll: true,
         onSuccess: () => {
             form.reset();
+
             if (resumeInput.value) {
                 resumeInput.value.value = '';
             }

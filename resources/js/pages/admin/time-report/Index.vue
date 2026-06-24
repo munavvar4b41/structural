@@ -7,8 +7,9 @@ import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import StatCard from '@/components/dashboard/StatCard.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -22,7 +23,6 @@ import { Label } from '@/components/ui/label';
 import { colorsForProjectIds } from '@/lib/charts';
 import { formatSeconds } from '@/lib/formatSeconds';
 import { index as timeReportIndex } from '@/routes/admin/time-report/index';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type SelectOption = { value: number; label: string };
 

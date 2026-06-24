@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import type { InertiaLinkProps } from '@inertiajs/vue3';
 import {
     ArrowLeft,
     ArrowRight,
@@ -28,7 +29,7 @@ import type { Component } from 'vue';
 import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import { cn, toUrl } from '@/lib/utils';
 
 type IconName =
     | 'eye'
@@ -75,7 +76,7 @@ const props = withDefaults(
         label: string;
         icon?: IconName;
         tone?: ActionTone;
-        href?: string;
+        href?: NonNullable<InertiaLinkProps['href']>;
         external?: boolean;
         destructive?: boolean;
         type?: 'button' | 'submit';
@@ -145,20 +146,20 @@ const toneByIcon: Record<IconName, ActionTone> = {
 };
 
 const toneClasses: Record<ActionTone, string> = {
-    view: 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:border-blue-500/30 dark:bg-blue-950/40 dark:text-blue-400 dark:hover:bg-blue-900/50',
-    edit: 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-400 dark:hover:bg-amber-900/50',
-    delete: 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/50',
-    create: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-400 dark:hover:bg-emerald-900/50',
-    navigate: 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-500/30 dark:bg-slate-800/40 dark:text-slate-300 dark:hover:bg-slate-700/50',
-    advance: 'border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-950/40 dark:text-indigo-400 dark:hover:bg-indigo-900/50',
-    confirm: 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-500/30 dark:bg-green-950/40 dark:text-green-400 dark:hover:bg-green-900/50',
-    reject: 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/50',
-    submit: 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-500/30 dark:bg-violet-950/40 dark:text-violet-400 dark:hover:bg-violet-900/50',
-    time: 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 dark:border-orange-500/30 dark:bg-orange-950/40 dark:text-orange-400 dark:hover:bg-orange-900/50',
-    users: 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-500/30 dark:bg-sky-950/40 dark:text-sky-400 dark:hover:bg-sky-900/50',
-    download: 'border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 dark:border-cyan-500/30 dark:bg-cyan-950/40 dark:text-cyan-400 dark:hover:bg-cyan-900/50',
-    estimate: 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-500/30 dark:bg-purple-950/40 dark:text-purple-400 dark:hover:bg-purple-900/50',
-    reopen: 'border-yellow-200 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 dark:border-yellow-500/30 dark:bg-yellow-950/40 dark:text-yellow-400 dark:hover:bg-yellow-900/50',
+    view: 'border-info/30 bg-info/10 text-info hover:bg-info/20 dark:border-info/30 dark:bg-info/10 dark:text-info dark:hover:bg-info/20',
+    edit: 'border-warning/30 bg-warning/10 text-warning hover:bg-warning/20 dark:border-warning/30 dark:bg-warning/10 dark:text-warning dark:hover:bg-warning/20',
+    delete: 'border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 dark:border-destructive/30 dark:bg-destructive/10 dark:text-destructive dark:hover:bg-destructive/20',
+    create: 'border-success/30 bg-success/10 text-success hover:bg-success/20 dark:border-success/30 dark:bg-success/10 dark:text-success dark:hover:bg-success/20',
+    navigate: 'border-border bg-muted/50 text-muted-foreground hover:bg-muted dark:border-border dark:bg-muted/30 dark:text-muted-foreground dark:hover:bg-muted/50',
+    advance: 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 dark:border-primary/30 dark:bg-primary/10 dark:text-primary dark:hover:bg-primary/20',
+    confirm: 'border-success/30 bg-success/10 text-success hover:bg-success/20 dark:border-success/30 dark:bg-success/10 dark:text-success dark:hover:bg-success/20',
+    reject: 'border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 dark:border-destructive/30 dark:bg-destructive/10 dark:text-destructive dark:hover:bg-destructive/20',
+    submit: 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 dark:border-primary/30 dark:bg-primary/10 dark:text-primary dark:hover:bg-primary/20',
+    time: 'border-warning/30 bg-warning/10 text-warning hover:bg-warning/20 dark:border-warning/30 dark:bg-warning/10 dark:text-warning dark:hover:bg-warning/20',
+    users: 'border-info/30 bg-info/10 text-info hover:bg-info/20 dark:border-info/30 dark:bg-info/10 dark:text-info dark:hover:bg-info/20',
+    download: 'border-info/30 bg-info/10 text-info hover:bg-info/20 dark:border-info/30 dark:bg-info/10 dark:text-info dark:hover:bg-info/20',
+    estimate: 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 dark:border-primary/30 dark:bg-primary/10 dark:text-primary dark:hover:bg-primary/20',
+    reopen: 'border-warning/30 bg-warning/10 text-warning hover:bg-warning/20 dark:border-warning/30 dark:bg-warning/10 dark:text-warning dark:hover:bg-warning/20',
 };
 
 const IconComponent = computed(() => iconMap[props.icon]);
@@ -175,6 +176,8 @@ const resolvedTone = computed((): ActionTone => {
     return toneByIcon[props.icon];
 });
 
+const resolvedHref = computed(() => (props.href === undefined ? undefined : toUrl(props.href)));
+
 const buttonClass = computed(() =>
     cn('size-9 shrink-0 rounded-lg border shadow-none', toneClasses[resolvedTone.value]),
 );
@@ -184,14 +187,14 @@ const buttonClass = computed(() =>
     <span class="inline-flex shrink-0 p-0.5">
         <Tooltip>
             <TooltipTrigger as-child>
-                <Button v-if="href && external" variant="outline" size="icon-sm" :class="buttonClass" as-child>
-                    <a :href="href" :aria-label="label" target="_blank" rel="noopener noreferrer">
+                <Button v-if="resolvedHref && external" variant="outline" size="icon-sm" :class="buttonClass" as-child>
+                    <a :href="resolvedHref" :aria-label="label" target="_blank" rel="noopener noreferrer">
                         <component :is="IconComponent" class="size-4" />
                         <span class="sr-only">{{ label }}</span>
                     </a>
                 </Button>
-                <Button v-else-if="href" variant="outline" size="icon-sm" :class="buttonClass" as-child>
-                    <Link :href="href" :aria-label="label">
+                <Button v-else-if="resolvedHref" variant="outline" size="icon-sm" :class="buttonClass" as-child>
+                    <Link :href="resolvedHref" :aria-label="label">
                         <component :is="IconComponent" class="size-4" />
                         <span class="sr-only">{{ label }}</span>
                     </Link>

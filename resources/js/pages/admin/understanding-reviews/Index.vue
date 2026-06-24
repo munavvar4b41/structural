@@ -2,9 +2,9 @@
 import { Head } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
-import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import FormSelect from '@/components/FormSelect.vue';
 import ListToolbar from '@/components/ListToolbar.vue';

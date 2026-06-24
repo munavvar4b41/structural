@@ -10,8 +10,8 @@ import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue'
 import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import InputError from '@/components/InputError.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import InputError from '@/components/InputError.vue';
 import RichTextViewer from '@/components/RichTextViewer.vue';
 import TableIconAction from '@/components/TableIconAction.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
@@ -842,7 +842,7 @@ function onChecklistAddSuccess(): void {
         </div>
 
         <GlassCard v-if="task.status === 'review'"
-            class="border-amber-200/80 bg-amber-50/40 dark:border-amber-500/35 dark:bg-amber-500/10">
+            class="border-warning/30 bg-warning/10">
             <div class="space-y-1">
                 <h2 class="text-lg font-semibold">Awaiting review</h2>
                 <p class="text-sm text-muted-foreground">
@@ -1110,8 +1110,8 @@ function onChecklistAddSuccess(): void {
                                 </td>
                                 <td data-label="Duration" class="px-3 py-2 align-top tabular-nums">
                                     <span v-if="entry.is_running" :class="entry.is_paused
-                                        ? 'text-amber-600 dark:text-amber-400'
-                                        : 'text-emerald-600 dark:text-emerald-400'">
+                                        ? 'text-warning'
+                                        : 'text-success'">
                                         {{ formatSeconds(entryDurationSeconds(entry), { withSeconds: true }) }}
                                     </span>
                                     <span v-else>

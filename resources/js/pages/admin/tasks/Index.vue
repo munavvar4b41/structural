@@ -2,10 +2,12 @@
 import { Head, Link } from '@inertiajs/vue3';
 import { CornerDownRight } from 'lucide-vue-next';
 import { computed } from 'vue';
+import DataTable from '@/components/dashboard/DataTable.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
 import FormMultiSelect from '@/components/FormMultiSelect.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
@@ -16,8 +18,6 @@ import {
     show as projectTasksShow,
 } from '@/routes/admin/projects/tasks/index';
 import { index as tasksIndex } from '@/routes/admin/tasks/index';
-import TableRow from '@/components/dashboard/TableRow.vue';
-import DataTable from '@/components/dashboard/DataTable.vue';
 
 type Option = {
     value: string | number;

@@ -8,14 +8,13 @@ import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectT
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import InputError from '@/components/InputError.vue';
-import RequirementPhaseSettingsCard, {
-    type RequirementPhaseSettings,
-} from '@/components/requirements/RequirementPhaseSettingsCard.vue';
-import RichTextEditor from '@/components/RichTextEditor.vue';
-import TableIconAction from '@/components/TableIconAction.vue';
-import RichTextViewer from '@/components/RichTextViewer.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import InputError from '@/components/InputError.vue';
+import RequirementPhaseSettingsCard from '@/components/requirements/RequirementPhaseSettingsCard.vue';
+import type {RequirementPhaseSettings} from '@/components/requirements/RequirementPhaseSettingsCard.vue';
+import RichTextEditor from '@/components/RichTextEditor.vue';
+import RichTextViewer from '@/components/RichTextViewer.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,17 +28,17 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { buildPhaseSelectOptions } from '@/lib/requirementPhaseOptions';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
+import { buildPhaseSelectOptions } from '@/lib/requirementPhaseOptions';
 import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
 import { cn, isCurrentUser } from '@/lib/utils';
 import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
+import { show as estimationShow } from '@/routes/admin/projects/requirements/estimation/index';
 import {
     edit as requirementsEdit,
     index as requirementsIndex,
     show as requirementsShow,
 } from '@/routes/admin/projects/requirements/index';
-import { show as estimationShow } from '@/routes/admin/projects/requirements/estimation/index';
 import {
     create as projectTasksCreate,
     index as projectTasksIndex,
@@ -606,11 +605,11 @@ defineOptions({
                                                 aria-hidden="true" />
                                             <div class="min-w-0 flex-1">
                                                 <span v-if="task.estimation_source === 'transferred'"
-                                                    class="mb-0.5 inline-block rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200">
+                                                    class="mb-0.5 inline-block rounded bg-success/15 px-1.5 py-0.5 text-xs font-medium text-success">
                                                     From estimation
                                                 </span>
                                                 <span v-else-if="task.estimation_source === 'ad_hoc'"
-                                                    class="mb-0.5 inline-block rounded bg-sky-500/15 px-1.5 py-0.5 text-xs font-medium text-sky-800 dark:text-sky-200">
+                                                    class="mb-0.5 inline-block rounded bg-info/15 px-1.5 py-0.5 text-xs font-medium text-info">
                                                     New task
                                                 </span>
                                                 <p class="font-medium text-foreground line-clamp-2 break-words" :title="task.title">

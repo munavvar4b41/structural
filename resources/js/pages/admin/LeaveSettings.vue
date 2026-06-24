@@ -60,7 +60,7 @@ defineProps<Props>();
 
                     <div class="flex items-center gap-4">
                         <Button type="submit" :disabled="processing">Save</Button>
-                        <span v-show="recentlySuccessful" class="text-sm text-neutral-600 dark:text-neutral-400">
+                        <span v-show="recentlySuccessful" class="text-sm text-muted-foreground">
                             Saved.
                         </span>
                     </div>

@@ -8,7 +8,9 @@ import DataTablePagination from '@/components/dashboard/DataTablePagination.vue'
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -20,8 +22,6 @@ import {
     index as proposalsIndex,
     show as proposalsShow,
 } from '@/routes/admin/projects/proposals/index';
-import TableIconAction from '@/components/TableIconAction.vue';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserBrief = {
     id: number;

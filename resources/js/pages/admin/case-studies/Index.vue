@@ -7,21 +7,21 @@ import DataTablePagination from '@/components/dashboard/DataTablePagination.vue'
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import TableIconAction from '@/components/TableIconAction.vue';
 import TableRow from '@/components/dashboard/TableRow.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
-import { index as projectsIndex } from '@/routes/admin/projects/index';
+import { index as globalCaseStudiesIndex } from '@/routes/admin/case-studies/index';
 import {
     create as caseStudiesCreate,
     destroy as caseStudiesDestroy,
     edit as caseStudiesEdit,
     show as caseStudiesShow,
 } from '@/routes/admin/projects/case-studies/index';
-import { index as globalCaseStudiesIndex } from '@/routes/admin/case-studies/index';
+import { index as projectsIndex } from '@/routes/admin/projects/index';
 
 type UserBrief = {
     id: number;

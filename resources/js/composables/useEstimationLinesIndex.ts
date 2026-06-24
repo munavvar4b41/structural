@@ -1,4 +1,5 @@
-import { computed, type ComputedRef, type Ref } from 'vue';
+import { computed   } from 'vue';
+import type {ComputedRef, Ref} from 'vue';
 import { depthFirstEstimationLines } from '@/lib/estimationLinesOrder';
 import {
     buildEditableMinutesIndex,

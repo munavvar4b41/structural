@@ -151,7 +151,7 @@ const buttonClass = computed(() => {
     const sizeClass = props.showLabel ? '' : 'h-8 flex-1 w-full';
     
     if (isRunningForThisTask.value) {
-        return `gap-1.5 border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20 ${sizeClass}`;
+        return `gap-1.5 border-success/40 bg-success/10 text-success hover:bg-success/20 ${sizeClass}`;
     }
 
     return `gap-1.5 ${sizeClass}`;

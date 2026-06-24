@@ -7,15 +7,15 @@ import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
 import FormMultiSelect from '@/components/FormMultiSelect.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
 import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
-import { requiresPhaseSelection } from '@/lib/requirementPhaseOptions';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
+import { requiresPhaseSelection } from '@/lib/requirementPhaseOptions';
 import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import {
     index as requirementsIndex,
@@ -388,11 +388,11 @@ onMounted(() => {
                                         class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                                     <div class="min-w-0 flex-1 flex flex-col justify-center">
                                         <span v-if="task.estimation_source === 'transferred'"
-                                            class="mb-0.5 w-fit rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200">
+                                            class="mb-0.5 w-fit rounded bg-success/15 px-1.5 py-0.5 text-xs font-medium text-success">
                                             From estimation
                                         </span>
                                         <span v-else-if="task.estimation_source === 'ad_hoc'"
-                                            class="mb-0.5 w-fit rounded bg-sky-500/15 px-1.5 py-0.5 text-xs font-medium text-sky-800 dark:text-sky-200">
+                                            class="mb-0.5 w-fit rounded bg-info/15 px-1.5 py-0.5 text-xs font-medium text-info">
                                             New task
                                         </span>
                                         <Button variant="link"

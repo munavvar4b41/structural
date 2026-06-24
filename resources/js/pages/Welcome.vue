@@ -2,8 +2,8 @@
 import { Head, Link } from '@inertiajs/vue3';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import { Button } from '@/components/ui/button';
-import { index as careersIndex } from '@/routes/careers/index';
 import { dashboard, login, register } from '@/routes';
+import { index as careersIndex } from '@/routes/careers/index';
 
 withDefaults(
     defineProps<{

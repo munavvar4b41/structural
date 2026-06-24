@@ -9,18 +9,18 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md",
+          "bg-gradient-to-b from-primary to-primary/90 text-primary-foreground hover:from-primary/95 hover:to-primary/85 hover:shadow-md hover:shadow-primary/20",
         destructive:
           "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
-          "border border-border/80 bg-background/80 hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+          "border border-border/80 bg-background/80 hover:bg-accent hover:text-accent-foreground hover:border-primary/30 dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost:
-          "shadow-none hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+          "shadow-none hover:bg-accent hover:text-accent-foreground active:bg-primary/10 dark:hover:bg-accent/50",
         link: "shadow-none text-primary underline-offset-4 hover:underline !whitespace-normal",
         glass:
-          "glass-panel border-0 text-foreground shadow-lg hover:shadow-xl hover:-translate-y-0.5",
+          "glass-panel border border-primary/10 text-foreground shadow-lg hover:shadow-xl hover:-translate-y-0.5",
       },
       size: {
         "default": "h-10 px-5 py-2 has-[>svg]:px-4",

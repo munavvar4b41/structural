@@ -22,11 +22,11 @@
         {{-- Inline style to set the HTML background color based on our theme in app.css --}}
         <style>
             html {
-                background-color: hsl(240 5% 96%);
+                background-color: hsl(30 30% 97%);
             }
 
             html.dark {
-                background-color: hsl(240 6% 10%);
+                background-color: hsl(22 12% 10%);
             }
         </style>
 

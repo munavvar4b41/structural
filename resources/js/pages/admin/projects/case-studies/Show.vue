@@ -4,17 +4,17 @@ import { computed, ref } from 'vue';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import TableIconAction from '@/components/TableIconAction.vue';
 import RichTextViewer from '@/components/RichTextViewer.vue';
-import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
-import { show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
+import TableIconAction from '@/components/TableIconAction.vue';
+import { show as attachmentShow } from '@/routes/admin/case-studies/attachments/index';
+import { index as globalCaseStudiesIndex } from '@/routes/admin/case-studies/index';
 import { index as projectCaseStudiesIndex } from '@/routes/admin/projects/case-studies/index';
 import {
     destroy as caseStudiesDestroy,
     edit as caseStudiesEdit,
 } from '@/routes/admin/projects/case-studies/index';
-import { index as globalCaseStudiesIndex } from '@/routes/admin/case-studies/index';
-import { show as attachmentShow } from '@/routes/admin/case-studies/attachments/index';
+import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
+import { show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
 
 type UserBrief = {
     id: number;

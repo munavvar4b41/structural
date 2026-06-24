@@ -7,12 +7,12 @@ import DataTablePagination from '@/components/dashboard/DataTablePagination.vue'
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import TableIconAction from '@/components/TableIconAction.vue';
 import TableRow from '@/components/dashboard/TableRow.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import { routerReloadOnly } from '@/composables/useServerFilters';
-import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
+import { index as globalCaseStudiesIndex } from '@/routes/admin/case-studies/index';
 import {
     create as caseStudiesCreate,
     destroy as caseStudiesDestroy,
@@ -20,7 +20,7 @@ import {
     index as projectCaseStudiesIndex,
     show as caseStudiesShow,
 } from '@/routes/admin/projects/case-studies/index';
-import { index as globalCaseStudiesIndex } from '@/routes/admin/case-studies/index';
+import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 
 type UserBrief = {
     id: number;

@@ -2,15 +2,14 @@
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { Plus, Send } from 'lucide-vue-next';
 import { computed, nextTick, ref, toRef, watch } from 'vue';
-import RequirementEstimationAnalyticsCards, {
-    type EstimationAnalytics,
-} from '@/components/requirements/RequirementEstimationAnalyticsCards.vue';
-import EstimationLinesTable from '@/components/requirements/EstimationLinesTable.vue';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import InputError from '@/components/InputError.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import InputError from '@/components/InputError.vue';
+import EstimationLinesTable from '@/components/requirements/EstimationLinesTable.vue';
+import RequirementEstimationAnalyticsCards from '@/components/requirements/RequirementEstimationAnalyticsCards.vue';
+import type {EstimationAnalytics} from '@/components/requirements/RequirementEstimationAnalyticsCards.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -25,10 +24,11 @@ import { Label } from '@/components/ui/label';
 import { useEstimationDisplayLines } from '@/composables/useEstimationDisplayLines';
 import { useEstimationLineCollapse } from '@/composables/useEstimationLineCollapse';
 import {
-    useEstimationLinesIndex,
-    type EstimationLineEditable,
-    type EstimationLineReadonly,
+    useEstimationLinesIndex
+    
+    
 } from '@/composables/useEstimationLinesIndex';
+import type {EstimationLineEditable, EstimationLineReadonly} from '@/composables/useEstimationLinesIndex';
 import {
     depthFirstEstimationLines,
     insertIndexAfterSubtree,
@@ -38,14 +38,10 @@ import {
     filterEditableEstimationLinesByPhase,
     filterReadonlyEstimationLinesByPhase,
 } from '@/lib/filterEstimationLinesByPhase';
-import { buildPhaseFilterOptions } from '@/lib/requirementPhaseOptions';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { generateUuid } from '@/lib/generateUuid';
+import { buildPhaseFilterOptions } from '@/lib/requirementPhaseOptions';
 import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
-import {
-    index as requirementsIndex,
-    show as requirementsShow,
-} from '@/routes/admin/projects/requirements/index';
 import {
     approve,
     lines,
@@ -57,6 +53,10 @@ import {
     submit,
     transfer,
 } from '@/routes/admin/projects/requirements/estimation/index';
+import {
+    index as requirementsIndex,
+    show as requirementsShow,
+} from '@/routes/admin/projects/requirements/index';
 
 type UserBrief = {
     id: number;
@@ -491,11 +491,11 @@ const statusBadgeClass = computed(() => {
     const status = props.estimation?.status ?? '';
 
     if (status === 'approved' || status === 'transferred') {
-        return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300';
+        return 'bg-success/15 text-success';
     }
 
     if (status === 'pending_approval') {
-        return 'bg-amber-500/15 text-amber-800 dark:text-amber-200';
+        return 'bg-warning/15 text-warning';
     }
 
     if (status === 'changes_requested' || status === 'rejected') {
@@ -542,7 +542,7 @@ const statusBadgeClass = computed(() => {
 
         <template v-if="estimation !== null">
             <div v-if="estimation.review_notes"
-                class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+                class="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm">
                 <p class="font-medium">Review notes</p>
                 <p class="mt-1 whitespace-pre-wrap text-muted-foreground">
                     {{ estimation.review_notes }}

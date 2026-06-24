@@ -8,14 +8,15 @@ import ProjectTagController from '@/actions/App/Http/Controllers/Admin/ProjectTa
 import TaskTimeEntryController from '@/actions/App/Http/Controllers/Admin/TaskTimeEntryController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import InputError from '@/components/InputError.vue';
 import RichTextEditor from '@/components/RichTextEditor.vue';
-import FormSelect from '@/components/FormSelect.vue';
-import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import TableIconAction from '@/components/TableIconAction.vue';
 import TypeaheadInput from '@/components/TypeaheadInput.vue';
 import { Badge } from '@/components/ui/badge';
@@ -31,26 +32,25 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
-import { requiresPhaseSelection } from '@/lib/requirementPhaseOptions';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
-import { edit as projectsEdit, index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
+import { requiresPhaseSelection } from '@/lib/requirementPhaseOptions';
+import { emptyTipTapDocumentJson } from '@/lib/tiptapDocument';
 import {
-    index as requirementsIndex,
-    show as requirementsShow,
-} from '@/routes/admin/projects/requirements/index';
+    create as caseStudiesCreate,
+    index as projectCaseStudiesIndex,
+    show as caseStudiesShow,
+} from '@/routes/admin/projects/case-studies/index';
+import { edit as projectsEdit, index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import {
     create as proposalsCreate,
     index as proposalsIndex,
     show as proposalsShow,
 } from '@/routes/admin/projects/proposals/index';
 import {
-    create as caseStudiesCreate,
-    index as projectCaseStudiesIndex,
-    show as caseStudiesShow,
-} from '@/routes/admin/projects/case-studies/index';
+    index as requirementsIndex,
+    show as requirementsShow,
+} from '@/routes/admin/projects/requirements/index';
 import { index as projectTasksIndex, create as projectTasksCreate, show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserBrief = {
     id: number;

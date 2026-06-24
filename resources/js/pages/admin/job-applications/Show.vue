@@ -4,15 +4,15 @@ import JobApplicationController from '@/actions/App/Http/Controllers/Admin/JobAp
 import JobApplicationResumeController from '@/actions/App/Http/Controllers/Admin/JobApplicationResumeController';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import TableIconAction from '@/components/TableIconAction.vue';
 import InputError from '@/components/InputError.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { show as jobApplicationsShow } from '@/routes/admin/job-applications/index';
 import {
     applications as jobPostingsApplications,
     index as jobPostingsIndex,
 } from '@/routes/admin/job-postings/index';
-import { show as jobApplicationsShow } from '@/routes/admin/job-applications/index';
 
 type Application = {
     id: number;

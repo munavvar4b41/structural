@@ -8,8 +8,8 @@ import DataTablePagination from '@/components/dashboard/DataTablePagination.vue'
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
 import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
@@ -178,7 +178,7 @@ const deleteDescription = computed(() => {
                             <TableIconAction
                                 icon="pencil"
                                 label="Edit"
-                                :href="jobPostingsEdit(posting.id)"
+                                :href="jobPostingsEdit.url(posting.id)"
                             />
                             <TableIconAction
                                 icon="trash"

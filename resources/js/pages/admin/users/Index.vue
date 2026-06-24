@@ -4,12 +4,15 @@ import { computed, ref, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import DataTablePagination from '@/components/dashboard/DataTablePagination.vue';
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
@@ -18,9 +21,6 @@ import {
     edit as usersEdit,
     index as usersIndex,
 } from '@/routes/admin/users/index';
-import TableIconAction from '@/components/TableIconAction.vue';
-import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserRow = {
     id: number;
@@ -230,7 +230,7 @@ function roleLabel(role: string): string {
                             <TableIconAction
                                 icon="pencil"
                                 label="Edit"
-                                :href="usersEdit(row.id)"
+                                :href="usersEdit.url(row.id)"
                             />
                             <TableIconAction
                                 icon="trash"

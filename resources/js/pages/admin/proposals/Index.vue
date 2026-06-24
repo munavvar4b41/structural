@@ -8,8 +8,10 @@ import DataTablePagination from '@/components/dashboard/DataTablePagination.vue'
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -17,8 +19,6 @@ import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilt
 import { index as projectsIndex } from '@/routes/admin/projects/index';
 import { create as proposalsCreate, edit as proposalsEdit, show as proposalsShow } from '@/routes/admin/projects/proposals/index';
 import { index as globalProposalsIndex } from '@/routes/admin/proposals/index';
-import TableIconAction from '@/components/TableIconAction.vue';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserBrief = {
     id: number;
