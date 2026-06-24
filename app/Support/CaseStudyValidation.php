@@ -18,10 +18,7 @@ final class CaseStudyValidation
     {
         return [
             'client_issue',
-            'business_impact',
-            'solution_discovery',
             'proposed_solution',
-            'implementation',
             'resolution',
             'workload_reduction_details',
         ];

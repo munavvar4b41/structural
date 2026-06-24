@@ -41,10 +41,7 @@ type CaseStudyDetail = {
     title: string;
     summary: string | null;
     client_issue: string | null;
-    business_impact: string | null;
-    solution_discovery: string | null;
     proposed_solution: string | null;
-    implementation: string | null;
     resolution: string | null;
     workload_reduction_details: string | null;
     workload_hours_saved: string | number | null;
@@ -200,44 +197,24 @@ function executeDelete(): void {
 
         <GlassCard class="flex flex-col gap-6 p-6">
             <h2 class="text-lg font-semibold">The client problem</h2>
-            <section class="grid gap-2">
-                <h3 class="text-sm font-medium text-muted-foreground">Client issue</h3>
-                <RichTextViewer v-if="case_study.client_issue" :json="case_study.client_issue" />
-                <p v-else class="text-sm text-muted-foreground">Not documented.</p>
-            </section>
-            <section class="grid gap-2">
-                <h3 class="text-sm font-medium text-muted-foreground">Business impact</h3>
-                <RichTextViewer v-if="case_study.business_impact" :json="case_study.business_impact" />
-                <p v-else class="text-sm text-muted-foreground">Not documented.</p>
-            </section>
+            <RichTextViewer v-if="case_study.client_issue" :json="case_study.client_issue" />
+            <p v-else class="text-sm text-muted-foreground">Not documented.</p>
         </GlassCard>
 
         <GlassCard class="flex flex-col gap-6 p-6">
             <h2 class="text-lg font-semibold">Our solution</h2>
-            <section class="grid gap-2">
-                <h3 class="text-sm font-medium text-muted-foreground">How we found it</h3>
-                <RichTextViewer v-if="case_study.solution_discovery" :json="case_study.solution_discovery" />
-                <p v-else class="text-sm text-muted-foreground">Not documented.</p>
-            </section>
-            <section class="grid gap-2">
-                <h3 class="text-sm font-medium text-muted-foreground">What we proposed</h3>
-                <RichTextViewer v-if="case_study.proposed_solution" :json="case_study.proposed_solution" />
-                <p v-else class="text-sm text-muted-foreground">Not documented.</p>
-            </section>
+            <RichTextViewer v-if="case_study.proposed_solution" :json="case_study.proposed_solution" />
+            <p v-else class="text-sm text-muted-foreground">Not documented.</p>
         </GlassCard>
 
         <GlassCard class="flex flex-col gap-6 p-6">
             <h2 class="text-lg font-semibold">Implementation and results</h2>
-            <section class="grid gap-2">
-                <h3 class="text-sm font-medium text-muted-foreground">How we implemented it</h3>
-                <RichTextViewer v-if="case_study.implementation" :json="case_study.implementation" />
-                <p v-else class="text-sm text-muted-foreground">Not documented.</p>
-            </section>
-            <section class="grid gap-2">
-                <h3 class="text-sm font-medium text-muted-foreground">How it resolved the issue</h3>
-                <RichTextViewer v-if="case_study.resolution" :json="case_study.resolution" />
-                <p v-else class="text-sm text-muted-foreground">Not documented.</p>
-            </section>
+            <RichTextViewer v-if="case_study.resolution" :json="case_study.resolution" />
+            <p v-else class="text-sm text-muted-foreground">Not documented.</p>
+        </GlassCard>
+
+        <GlassCard class="flex flex-col gap-6 p-6">
+            <h2 class="text-lg font-semibold">Workload impact</h2>
             <section v-if="workloadSummary" class="grid gap-2">
                 <h3 class="text-sm font-medium text-muted-foreground">Workload reduction</h3>
                 <p class="text-sm font-medium">{{ workloadSummary }}</p>
@@ -250,37 +227,38 @@ function executeDelete(): void {
                 />
                 <p v-else class="text-sm text-muted-foreground">Not documented.</p>
             </section>
-            <section v-if="case_study.attachments.length > 0" class="grid gap-4">
-                <h3 class="text-sm font-medium text-muted-foreground">Attachments</h3>
-                <div v-if="imageAttachments.length > 0" class="grid gap-4 sm:grid-cols-2">
+        </GlassCard>
+
+        <GlassCard v-if="case_study.attachments.length > 0" class="flex flex-col gap-4 p-6">
+            <h2 class="text-lg font-semibold">Attachments</h2>
+            <div v-if="imageAttachments.length > 0" class="grid gap-4 sm:grid-cols-2">
+                <a
+                    v-for="attachment in imageAttachments"
+                    :key="attachment.id"
+                    :href="attachmentUrl(attachment.id)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="overflow-hidden rounded-lg border border-border/60"
+                >
+                    <img
+                        :src="attachmentUrl(attachment.id)"
+                        :alt="attachment.original_name"
+                        class="max-h-64 w-full object-cover"
+                    />
+                </a>
+            </div>
+            <ul v-if="documentAttachments.length > 0" class="grid gap-2">
+                <li v-for="attachment in documentAttachments" :key="attachment.id">
                     <a
-                        v-for="attachment in imageAttachments"
-                        :key="attachment.id"
                         :href="attachmentUrl(attachment.id)"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="overflow-hidden rounded-lg border border-border/60"
+                        class="text-sm font-medium hover:underline"
                     >
-                        <img
-                            :src="attachmentUrl(attachment.id)"
-                            :alt="attachment.original_name"
-                            class="max-h-64 w-full object-cover"
-                        />
+                        {{ attachment.original_name }}
                     </a>
-                </div>
-                <ul v-if="documentAttachments.length > 0" class="grid gap-2">
-                    <li v-for="attachment in documentAttachments" :key="attachment.id">
-                        <a
-                            :href="attachmentUrl(attachment.id)"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="text-sm font-medium hover:underline"
-                        >
-                            {{ attachment.original_name }}
-                        </a>
-                    </li>
-                </ul>
-            </section>
+                </li>
+            </ul>
         </GlassCard>
     </div>
 </template>

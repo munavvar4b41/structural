@@ -33,10 +33,7 @@ type CaseStudyEdit = {
     title: string;
     summary: string | null;
     client_issue: string | null;
-    business_impact: string | null;
-    solution_discovery: string | null;
     proposed_solution: string | null;
-    implementation: string | null;
     resolution: string | null;
     workload_reduction_details: string | null;
     workload_hours_saved: string | number | null;

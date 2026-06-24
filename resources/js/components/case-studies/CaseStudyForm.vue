@@ -38,10 +38,7 @@ type CaseStudyFormData = {
     title: string;
     summary: string;
     client_issue: string;
-    business_impact: string;
-    solution_discovery: string;
     proposed_solution: string;
-    implementation: string;
     resolution: string;
     workload_reduction_details: string;
     workload_hours_saved: string;
@@ -62,10 +59,7 @@ const props = defineProps<{
         title: string;
         summary: string | null;
         client_issue: string | null;
-        business_impact: string | null;
-        solution_discovery: string | null;
         proposed_solution: string | null;
-        implementation: string | null;
         resolution: string | null;
         workload_reduction_details: string | null;
         workload_hours_saved: string | number | null;
@@ -88,10 +82,7 @@ const form = useForm<CaseStudyFormData>({
     title: props.initial?.title ?? '',
     summary: props.initial?.summary ?? '',
     client_issue: props.initial?.client_issue ?? emptyTipTapDocumentJson(),
-    business_impact: props.initial?.business_impact ?? emptyTipTapDocumentJson(),
-    solution_discovery: props.initial?.solution_discovery ?? emptyTipTapDocumentJson(),
     proposed_solution: props.initial?.proposed_solution ?? emptyTipTapDocumentJson(),
-    implementation: props.initial?.implementation ?? emptyTipTapDocumentJson(),
     resolution: props.initial?.resolution ?? emptyTipTapDocumentJson(),
     workload_reduction_details: props.initial?.workload_reduction_details ?? emptyTipTapDocumentJson(),
     workload_hours_saved:
@@ -200,40 +191,25 @@ function submit(): void {
         <GlassCard class="flex flex-col gap-6 p-6">
             <h2 class="text-lg font-semibold">The client problem</h2>
             <div class="grid gap-2">
-                <Label>Client issue</Label>
+                <Label>Client issue and business impact</Label>
                 <RichTextEditor v-model="form.client_issue" input-name="client_issue" />
                 <InputError :message="form.errors.client_issue" />
-            </div>
-            <div class="grid gap-2">
-                <Label>Business impact</Label>
-                <RichTextEditor v-model="form.business_impact" input-name="business_impact" />
-                <InputError :message="form.errors.business_impact" />
             </div>
         </GlassCard>
 
         <GlassCard class="flex flex-col gap-6 p-6">
-            <h2 class="text-lg font-semibold">Finding the solution</h2>
+            <h2 class="text-lg font-semibold">Our solution</h2>
             <div class="grid gap-2">
-                <Label>How we found the solution</Label>
-                <RichTextEditor v-model="form.solution_discovery" input-name="solution_discovery" />
-                <InputError :message="form.errors.solution_discovery" />
-            </div>
-            <div class="grid gap-2">
-                <Label>Proposed solution</Label>
+                <Label>How we found it and what we proposed</Label>
                 <RichTextEditor v-model="form.proposed_solution" input-name="proposed_solution" />
                 <InputError :message="form.errors.proposed_solution" />
             </div>
         </GlassCard>
 
         <GlassCard class="flex flex-col gap-6 p-6">
-            <h2 class="text-lg font-semibold">Delivery</h2>
+            <h2 class="text-lg font-semibold">Implementation and results</h2>
             <div class="grid gap-2">
-                <Label>Implementation</Label>
-                <RichTextEditor v-model="form.implementation" input-name="implementation" />
-                <InputError :message="form.errors.implementation" />
-            </div>
-            <div class="grid gap-2">
-                <Label>Resolution</Label>
+                <Label>How we implemented it and how it resolved the issue</Label>
                 <RichTextEditor v-model="form.resolution" input-name="resolution" />
                 <InputError :message="form.errors.resolution" />
             </div>

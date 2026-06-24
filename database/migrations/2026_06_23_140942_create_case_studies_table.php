@@ -19,10 +19,7 @@ return new class extends Migration
             $table->string('title');
             $table->text('summary')->nullable();
             $table->text('client_issue')->nullable();
-            $table->text('business_impact')->nullable();
-            $table->text('solution_discovery')->nullable();
             $table->text('proposed_solution')->nullable();
-            $table->text('implementation')->nullable();
             $table->text('resolution')->nullable();
             $table->text('workload_reduction_details')->nullable();
             $table->decimal('workload_hours_saved', 8, 2)->nullable();
