@@ -221,7 +221,13 @@ class ProjectRequirementController extends Controller
         return Inertia::render('admin/projects/requirements/Create', [
             'project' => $this->projectSummary($project),
             'canManageProject' => $actor->can('update', $project),
+            'can_assign_reviewer' => $actor->can('assignReviewerOnCreate', [ProjectRequirement::class, $project]),
             'assignable_responsibles' => $this->assignableResponsibleUsers($project)->map(fn (User $u): array => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+            ])->all(),
+            'assignable_staff' => $this->assignableStaff($project)->map(fn (User $u): array => [
                 'id' => $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
@@ -245,6 +251,7 @@ class ProjectRequirementController extends Controller
             'project_id' => $project->id,
             'created_by_user_id' => $actor->id,
             'responsible_user_id' => $responsibleId,
+            'reviewer_user_id' => $request->validated('reviewer_user_id'),
             'title' => $request->validated('title'),
             'description' => $request->validated('description'),
             'max_generated_phase' => (int) $request->validated('max_generated_phase'),

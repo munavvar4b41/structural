@@ -36,6 +36,11 @@ class ProjectRequirementPolicy
         return true;
     }
 
+    public function assignReviewerOnCreate(User $actor, Project $project): bool
+    {
+        return $this->create($actor, $project);
+    }
+
     public function update(User $actor, ProjectRequirement $requirement): bool
     {
         if ($actor->role === UserRole::Staff) {

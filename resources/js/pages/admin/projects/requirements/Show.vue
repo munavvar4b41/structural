@@ -377,23 +377,28 @@ defineOptions({
     <div class="flex flex-col gap-8">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <PageHeader :title="requirement.title" :description="`Project ${project.name}`" />
-            <div class="flex flex-wrap gap-2">
-                <Button v-if="can_update" as-child>
-                    <Link :href="requirementsEdit.url({
+            <div class="flex flex-wrap gap-1">
+                <TableIconAction
+                    v-if="can_update"
+                    icon="pencil"
+                    label="Edit requirement"
+                    :href="requirementsEdit.url({
                         project: project.id,
                         requirement: requirement.id,
-                    })
-                        ">
-                        Edit
-                    </Link>
-                </Button>
-                <Button v-if="can_mark_reviewed" type="button" variant="secondary" @click="reviewDialogOpen = true">
-                    {{ requirement.review_understanding ? 'Update review understanding' : 'Submit review understanding'
-                    }}
-                </Button>
-                <Button variant="outline" as-child>
-                    <Link :href="requirementsIndex.url(project.id)">Back to list</Link>
-                </Button>
+                    })"
+                />
+                <TableIconAction
+                    v-if="can_mark_reviewed"
+                    variant="secondary"
+                    icon="file-text"
+                    :label="requirement.review_understanding ? 'Update review understanding' : 'Submit review understanding'"
+                    @click="reviewDialogOpen = true"
+                />
+                <TableIconAction
+                    icon="arrow-left"
+                    label="Back to list"
+                    :href="requirementsIndex.url(project.id)"
+                />
             </div>
         </div>
 
@@ -471,9 +476,11 @@ defineOptions({
                     </div>
                     <div class="flex min-h-0 flex-1 flex-col gap-4">
                         <div v-if="olderMessagesHref" class="flex shrink-0 justify-center border-b border-border pb-3">
-                            <Button variant="outline" size="sm" as-child>
-                                <Link :href="olderMessagesHref">Load older messages</Link>
-                            </Button>
+                            <TableIconAction
+                                icon="chevrons-up"
+                                label="Load older messages"
+                                :href="olderMessagesHref"
+                            />
                         </div>
                         <div ref="chatScrollEl"
                             class="min-h-32 min-w-0 flex-1 space-y-3 overflow-y-auto rounded-xl border border-input bg-muted/20 p-3 text-sm lg:max-h-[min(32rem,calc(100vh-14rem))]">
@@ -508,7 +515,12 @@ defineOptions({
                                     )
                                         " placeholder="Ask for clarification or share context…" />
                                 <InputError :message="errors.body" />
-                                <Button type="submit" :disabled="processing" class="w-fit">Send</Button>
+                                <TableIconAction
+                                    type="submit"
+                                    icon="send"
+                                    label="Send message"
+                                    :disabled="processing"
+                                />
                             </Form>
                         </div>
                         <p v-else class="shrink-0 text-xs text-muted-foreground">
@@ -529,19 +541,15 @@ defineOptions({
                                 Plan work for this requirement before creating tasks.
                             </p>
                         </div>
-                        <Button v-if="can_open_estimation" as-child>
-                            <Link :href="estimationShow.url({
+                        <TableIconAction
+                            v-if="can_open_estimation"
+                            icon="calculator"
+                            :label="can_create_estimation ? 'Start estimation' : 'Manage estimation'"
+                            :href="estimationShow.url({
                                 project: project.id,
                                 requirement: requirement.id,
-                            })
-                                ">
-                                {{
-                                    can_create_estimation
-                                        ? 'Start estimation'
-                                        : 'Manage estimation'
-                                }}
-                            </Link>
-                        </Button>
+                            })"
+                        />
                     </div>
                 </GlassCard>
 
@@ -564,9 +572,12 @@ defineOptions({
                                     class="min-w-[10rem]" v-model="taskPhaseFilter" :options="taskPhaseFilterOptions"
                                     placeholder="Any phase" none-label="Any phase" exclude-from-submit />
                             </div>
-                            <Button v-if="can_create_tasks" as-child class="shrink-0">
-                                <Link :href="createTaskHref">Add task</Link>
-                            </Button>
+                            <TableIconAction
+                                v-if="can_create_tasks"
+                                icon="plus"
+                                label="Add task"
+                                :href="createTaskHref"
+                            />
                         </div>
                     </div>
                     <div class="md:overflow-x-auto">
@@ -602,19 +613,9 @@ defineOptions({
                                                     class="mb-0.5 inline-block rounded bg-sky-500/15 px-1.5 py-0.5 text-xs font-medium text-sky-800 dark:text-sky-200">
                                                     New task
                                                 </span>
-                                                <Button variant="link"
-                                                    class="h-auto w-full min-w-0 justify-start p-0 font-medium text-foreground"
-                                                    as-child>
-                                                    <Link
-                                                        class="block text-left text-foreground line-clamp-2 break-words hover:underline"
-                                                        :title="task.title" :href="projectTasksShow.url({
-                                                            project: project.id,
-                                                            task: task.id,
-                                                        })
-                                                            ">
-                                                        {{ task.title }}
-                                                    </Link>
-                                                </Button>
+                                                <p class="font-medium text-foreground line-clamp-2 break-words" :title="task.title">
+                                                    {{ task.title }}
+                                                </p>
                                                 <span v-if="task.children_count > 0"
                                                     class="mt-0.5 block text-xs text-muted-foreground">
                                                     ({{ task.children_count }} subtasks)
@@ -636,6 +637,14 @@ defineOptions({
                                     </td>
                                     <td data-label="Actions" class="px-4 py-3 text-right">
                                         <div class="flex justify-end gap-1">
+                                            <TableIconAction
+                                                icon="eye"
+                                                label="View task"
+                                                :href="projectTasksShow.url({
+                                                    project: project.id,
+                                                    task: task.id,
+                                                })"
+                                            />
                                             <TableIconAction
                                                 v-if="task.can_update"
                                                 icon="external-link"
@@ -698,7 +707,12 @@ defineOptions({
                             requirement: requirement.id,
                         })
                             " class="flex flex-col gap-3" v-slot="{ processing }">
-                            <Button type="submit" :disabled="processing">Confirm understanding</Button>
+                            <TableIconAction
+                                type="submit"
+                                icon="check-circle"
+                                label="Confirm understanding"
+                                :disabled="processing"
+                            />
                         </Form>
                     </div>
                 </GlassCard>

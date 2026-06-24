@@ -4,8 +4,8 @@ import JobApplicationController from '@/actions/App/Http/Controllers/Admin/JobAp
 import JobApplicationResumeController from '@/actions/App/Http/Controllers/Admin/JobApplicationResumeController';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import InputError from '@/components/InputError.vue';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import {
@@ -86,21 +86,24 @@ function formatDate(iso: string): string {
         <PageHeader :title="application.candidate_name"
             :description="`Application for ${application.job_posting.title}`">
             <template #actions>
-                <div class="flex flex-wrap gap-2">
-                    <Button v-if="application.can_advance && application.next_stage_label" @click="advanceApplication">
-                        Advance to {{ application.next_stage_label }}
-                    </Button>
-                    <Button variant="outline" as-child>
-                        <a :href="JobApplicationResumeController.show.url(application.id)" target="_blank"
-                            rel="noopener noreferrer">
-                            Download resume
-                        </a>
-                    </Button>
-                    <Button variant="outline" as-child>
-                        <Link :href="jobPostingsApplications(application.job_posting.id)">
-                            Back to list
-                        </Link>
-                    </Button>
+                <div class="flex flex-wrap gap-1">
+                    <TableIconAction
+                        v-if="application.can_advance && application.next_stage_label"
+                        icon="arrow-right"
+                        :label="`Advance to ${application.next_stage_label}`"
+                        @click="advanceApplication"
+                    />
+                    <TableIconAction
+                        icon="download"
+                        label="Download resume"
+                        external
+                        :href="JobApplicationResumeController.show.url(application.id)"
+                    />
+                    <TableIconAction
+                        icon="arrow-left"
+                        label="Back to list"
+                        :href="jobPostingsApplications(application.job_posting.id)"
+                    />
                 </div>
             </template>
         </PageHeader>
@@ -205,9 +208,13 @@ function formatDate(iso: string): string {
                         )" />
                         <InputError :message="rejectForm.errors.rejection_reason" />
                     </div>
-                    <Button variant="destructive" :disabled="rejectForm.processing" @click="submitReject">
-                        Reject application
-                    </Button>
+                    <TableIconAction
+                        icon="x"
+                        label="Reject application"
+                        destructive
+                        :disabled="rejectForm.processing"
+                        @click="submitReject"
+                    />
                 </div>
             </GlassCard>
         </div>

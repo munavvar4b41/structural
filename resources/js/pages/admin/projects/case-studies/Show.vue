@@ -4,8 +4,8 @@ import { computed, ref } from 'vue';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import RichTextViewer from '@/components/RichTextViewer.vue';
-import { Button } from '@/components/ui/button';
 import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import { show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
 import { index as projectCaseStudiesIndex } from '@/routes/admin/projects/case-studies/index';
@@ -131,22 +131,28 @@ function executeDelete(): void {
     <div class="flex flex-col gap-8">
         <PageHeader :title="case_study.title" :description="case_study.summary ?? undefined">
             <template #actions>
-                <div class="flex flex-wrap gap-2">
-                    <Button v-if="can_update" variant="outline" as-child>
-                        <Link :href="caseStudiesEdit.url({
+                <div class="flex flex-wrap gap-1">
+                    <TableIconAction
+                        v-if="can_update"
+                        icon="pencil"
+                        label="Edit case study"
+                        :href="caseStudiesEdit.url({
                             project: project.id,
                             case_study: case_study.id,
-                        })
-                            ">
-                            Edit
-                        </Link>
-                    </Button>
-                    <Button v-if="can_delete" variant="destructive" @click="deleteDialogOpen = true">
-                        Delete
-                    </Button>
-                    <Button variant="outline" as-child>
-                        <Link :href="globalCaseStudiesIndex.url()">All case studies</Link>
-                    </Button>
+                        })"
+                    />
+                    <TableIconAction
+                        v-if="can_delete"
+                        icon="trash"
+                        label="Delete case study"
+                        destructive
+                        @click="deleteDialogOpen = true"
+                    />
+                    <TableIconAction
+                        icon="list"
+                        label="All case studies"
+                        :href="globalCaseStudiesIndex.url()"
+                    />
                 </div>
             </template>
         </PageHeader>

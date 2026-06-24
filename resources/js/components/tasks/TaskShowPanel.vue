@@ -793,21 +793,33 @@ function onChecklistAddSuccess(): void {
     <div class="flex flex-col gap-8">
         <div class="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <PageHeader v-if="!embedded" :title="task.title" :description="`Project ${project.name}`" />
-            <div class="flex flex-wrap gap-2" :class="{ 'w-full': embedded }">
-                <Button v-if="task.can_submit_task_completion" variant="secondary" type="button"
-                    @click="submitForCompletion()">
-                    Submit for completion
-                </Button>
-                <Button v-if="task.can_confirm_task_completion" type="button" @click="confirmCompletionOpen = true">
-                    Confirm completion
-                </Button>
+            <div class="flex flex-wrap gap-1" :class="{ 'w-full': embedded }">
+                <TableIconAction
+                    v-if="task.can_submit_task_completion"
+                    variant="secondary"
+                    icon="check-circle"
+                    label="Submit for completion"
+                    @click="submitForCompletion()"
+                />
+                <TableIconAction
+                    v-if="task.can_confirm_task_completion"
+                    icon="check"
+                    label="Confirm completion"
+                    @click="confirmCompletionOpen = true"
+                />
                 <TaskTimerButton v-if="time_tracking.can_track" :project-id="project.id" :task-id="task.id"
                     size="default" :reload-props-on-mutation="['time_tracking']" />
-                <Button v-if="!embedded" variant="outline" as-child>
-                    <Link :href="projectTasksIndex.url(project.id)">Back to task list</Link>
-                </Button>
-                <Button v-if="task.can_update" variant="outline" as-child>
-                    <Link :href="projectTasksEdit.url({
+                <TableIconAction
+                    v-if="!embedded"
+                    icon="list"
+                    label="Back to task list"
+                    :href="projectTasksIndex.url(project.id)"
+                />
+                <TableIconAction
+                    v-if="task.can_update"
+                    icon="pencil"
+                    label="Edit task"
+                    :href="projectTasksEdit.url({
                         project: project.id,
                         task: task.id,
                     }, {
@@ -817,14 +829,15 @@ function onChecklistAddSuccess(): void {
                                 task: task.id,
                             }),
                         },
-                    })">
-                        Edit task
-                    </Link>
-                </Button>
-                <Button v-if="task.can_delete" variant="outline" class="text-destructive hover:bg-destructive/10"
-                    type="button" @click="deleteDialogOpen = true">
-                    Delete
-                </Button>
+                    })"
+                />
+                <TableIconAction
+                    v-if="task.can_delete"
+                    icon="trash"
+                    label="Delete task"
+                    destructive
+                    @click="deleteDialogOpen = true"
+                />
             </div>
         </div>
 
@@ -1043,9 +1056,12 @@ function onChecklistAddSuccess(): void {
                         Start a timer or log past work. Totals reflect closed entries only.
                     </p>
                 </div>
-                <Button type="button" variant="outline" size="sm" @click="openManualDialog">
-                    Log time
-                </Button>
+                <TableIconAction
+                    type="button"
+                    icon="timer"
+                    label="Log time"
+                    @click="openManualDialog"
+                />
             </div>
             <div class="grid gap-6">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -1262,17 +1278,14 @@ function onChecklistAddSuccess(): void {
         <GlassCard v-if="case_studies.length > 0 || can_create_case_study">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3">
                 <h2 class="text-sm font-semibold">Case studies</h2>
-                <Button v-if="can_create_case_study" size="sm" variant="outline" as-child>
-                    <Link
-                        :href="
-                            caseStudiesCreate.url(project.id, {
-                                query: { project_task_id: task.id },
-                            })
-                        "
-                    >
-                        Add case study
-                    </Link>
-                </Button>
+                <TableIconAction
+                    v-if="can_create_case_study"
+                    icon="plus"
+                    label="Add case study"
+                    :href="caseStudiesCreate.url(project.id, {
+                        query: { project_task_id: task.id },
+                    })"
+                />
             </div>
             <div class="divide-y divide-border/60">
                 <div
@@ -1286,18 +1299,14 @@ function onChecklistAddSuccess(): void {
                             {{ caseStudy.summary }}
                         </p>
                     </div>
-                    <Button variant="ghost" size="sm" as-child>
-                        <Link
-                            :href="
-                                caseStudiesShow.url({
-                                    project: project.id,
-                                    case_study: caseStudy.id,
-                                })
-                            "
-                        >
-                            View
-                        </Link>
-                    </Button>
+                    <TableIconAction
+                        icon="eye"
+                        label="View case study"
+                        :href="caseStudiesShow.url({
+                            project: project.id,
+                            case_study: caseStudy.id,
+                        })"
+                    />
                 </div>
                 <p v-if="case_studies.length === 0" class="px-4 py-6 text-center text-sm text-muted-foreground">
                     No case studies linked to this task yet.

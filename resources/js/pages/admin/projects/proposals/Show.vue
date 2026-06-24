@@ -7,6 +7,7 @@ import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue'
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import RichTextViewer from '@/components/RichTextViewer.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -265,20 +266,30 @@ defineOptions({
     <div class="flex flex-col gap-6">
         <PageHeader :title="proposal.title" :description="`Proposal for ${project.name}`">
             <template #actions>
-                <Badge :variant="statusBadgeVariant(proposal.status)">{{ proposal.status_label }}</Badge>
-                <Button v-if="can_update" as-child>
-                    <Link :href="proposalsEdit.url({
-                        project: project.id,
-                        proposal: proposal.id,
-                    })
-                        ">
-                        Edit
-                    </Link>
-                </Button>
-                <Button v-if="can_delete" variant="destructive" @click="deleteDialogOpen = true">Delete</Button>
-                <Button variant="outline" as-child>
-                    <Link :href="proposalsIndex.url(project.id)">All proposals</Link>
-                </Button>
+                <div class="flex flex-wrap items-center gap-1">
+                    <Badge :variant="statusBadgeVariant(proposal.status)">{{ proposal.status_label }}</Badge>
+                    <TableIconAction
+                        v-if="can_update"
+                        icon="pencil"
+                        label="Edit proposal"
+                        :href="proposalsEdit.url({
+                            project: project.id,
+                            proposal: proposal.id,
+                        })"
+                    />
+                    <TableIconAction
+                        v-if="can_delete"
+                        icon="trash"
+                        label="Delete proposal"
+                        destructive
+                        @click="deleteDialogOpen = true"
+                    />
+                    <TableIconAction
+                        icon="list"
+                        label="All proposals"
+                        :href="proposalsIndex.url(project.id)"
+                    />
+                </div>
             </template>
         </PageHeader>
 
@@ -337,18 +348,36 @@ defineOptions({
                     </div>
                 </div>
 
-                <div class="mt-6 flex flex-wrap gap-2">
-                    <Button v-if="can_submit" @click="submitProposal">Submit for review</Button>
+                <div class="mt-6 flex flex-wrap items-end gap-1">
+                    <TableIconAction
+                        v-if="can_submit"
+                        icon="send"
+                        label="Submit for review"
+                        @click="submitProposal"
+                    />
                     <template v-if="can_confirm">
-                        <div class="flex w-full flex-col gap-2 sm:w-auto">
-                            <Input v-model="confirmNotes" placeholder="Optional review notes" />
-                            <Button @click="confirmProposal">Confirm</Button>
+                        <div class="flex w-full flex-wrap items-end gap-2 sm:w-auto">
+                            <Input v-model="confirmNotes" placeholder="Optional review notes" class="min-w-[12rem] flex-1" />
+                            <TableIconAction
+                                icon="check-circle"
+                                label="Confirm proposal"
+                                @click="confirmProposal"
+                            />
                         </div>
                     </template>
-                    <Button v-if="can_reject" variant="destructive" @click="rejectDialogOpen = true">
-                        Reject
-                    </Button>
-                    <Button v-if="can_reopen" variant="outline" @click="reopenProposal">Reopen</Button>
+                    <TableIconAction
+                        v-if="can_reject"
+                        icon="x"
+                        label="Reject proposal"
+                        destructive
+                        @click="rejectDialogOpen = true"
+                    />
+                    <TableIconAction
+                        v-if="can_reopen"
+                        icon="rotate-ccw"
+                        label="Reopen proposal"
+                        @click="reopenProposal"
+                    />
                 </div>
             </GlassCard>
 
@@ -361,9 +390,11 @@ defineOptions({
                 </div>
                 <div class="flex min-h-0 flex-1 flex-col gap-4">
                     <div v-if="olderMessagesHref" class="flex shrink-0 justify-center border-b border-border pb-3">
-                        <Button variant="outline" size="sm" as-child>
-                            <Link :href="olderMessagesHref">Load older messages</Link>
-                        </Button>
+                        <TableIconAction
+                            icon="chevrons-up"
+                            label="Load older messages"
+                            :href="olderMessagesHref"
+                        />
                     </div>
                     <div ref="chatScrollEl"
                         class="min-h-32 min-w-0 flex-1 space-y-3 overflow-y-auto rounded-xl border border-input bg-muted/20 p-3 text-sm lg:max-h-[min(32rem,calc(100vh-14rem))]">
@@ -394,7 +425,12 @@ defineOptions({
                             )
                                 " placeholder="Share context or ask a question…" />
                             <InputError :message="errors.body" />
-                            <Button type="submit" :disabled="processing" class="w-fit">Send</Button>
+                            <TableIconAction
+                                type="submit"
+                                icon="send"
+                                label="Send message"
+                                :disabled="processing"
+                            />
                         </Form>
                     </div>
                     <p v-else class="shrink-0 text-xs text-muted-foreground">

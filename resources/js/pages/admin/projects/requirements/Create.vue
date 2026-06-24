@@ -33,16 +33,26 @@ type AssignableUser = {
 const props = defineProps<{
     project: ProjectSummary;
     canManageProject: boolean;
+    can_assign_reviewer: boolean;
     assignable_responsibles: AssignableUser[];
+    assignable_staff: AssignableUser[];
 }>();
 
 const descriptionJson = ref(emptyTipTapDocumentJson());
 
 const responsibleUserId = ref('');
+const reviewerUserId = ref('');
 const maxGeneratedPhase = ref('1');
 
 const responsibleOptions = computed(() =>
     props.assignable_responsibles.map((u) => ({
+        value: String(u.id),
+        label: `${u.name} (${u.email})`,
+    })),
+);
+
+const reviewerOptions = computed(() =>
+    props.assignable_staff.map((u) => ({
         value: String(u.id),
         label: `${u.name} (${u.email})`,
     })),
@@ -117,6 +127,24 @@ defineOptions({
                         </p>
                         <InputError :message="errors.responsible_user_id" />
                     </div>
+                </div>
+            </GlassCard>
+
+            <GlassCard v-if="can_assign_reviewer" class="p-6">
+                <div class="mb-6 space-y-1">
+                    <h2 class="text-lg font-semibold">Reviewer</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Assign a staff member on this project to review the requirement
+                    </p>
+                </div>
+                <div class="grid gap-2">
+                    <Label for="reviewer_user_id">Reviewer (staff)</Label>
+                    <FormSelect id="reviewer_user_id" name="reviewer_user_id" v-model="reviewerUserId" none-label="None"
+                        placeholder="None" :options="reviewerOptions" />
+                    <p v-if="assignable_staff.length === 0" class="text-xs text-muted-foreground">
+                        No staff on this project's teams yet.
+                    </p>
+                    <InputError :message="errors.reviewer_user_id" />
                 </div>
             </GlassCard>
 
