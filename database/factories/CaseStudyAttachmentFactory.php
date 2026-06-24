@@ -19,6 +19,7 @@ class CaseStudyAttachmentFactory extends Factory
     {
         return [
             'case_study_id' => CaseStudy::factory(),
+            'title' => fake()->sentence(3),
             'path' => 'case-studies/'.fake()->uuid().'.pdf',
             'original_name' => fake()->word().'.pdf',
             'mime' => 'application/pdf',

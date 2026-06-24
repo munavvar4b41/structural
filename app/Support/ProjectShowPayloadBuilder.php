@@ -225,8 +225,9 @@ class ProjectShowPayloadBuilder
         return [
             'id' => $caseStudy->id,
             'title' => $caseStudy->title,
-            'summary_preview' => $caseStudy->summary !== null && $caseStudy->summary !== ''
-                ? $caseStudy->summary
+            'summary_preview' => ($overviewPreview = TipTapDocument::previewFromStored($caseStudy->overview)) !== null
+                && $overviewPreview !== ''
+                ? $overviewPreview
                 : TipTapDocument::previewFromStored($caseStudy->client_issue),
             'created_at' => $caseStudy->created_at?->toIso8601String(),
             'creator' => $this->userBrief($caseStudy->creator),

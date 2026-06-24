@@ -13,6 +13,29 @@ use Illuminate\Support\Str;
 final class CaseStudyAttachmentStorage
 {
     /**
+     * @param  list<array{title: string, file: UploadedFile}>  $documents
+     */
+    public function storeManyDocuments(CaseStudy $caseStudy, array $documents): void
+    {
+        $sortOrder = (int) $caseStudy->attachments()->max('sort_order');
+
+        foreach ($documents as $document) {
+            $file = $document['file'] ?? null;
+            if (! $file instanceof UploadedFile) {
+                continue;
+            }
+
+            $sortOrder++;
+            $this->storeOne(
+                $caseStudy,
+                $file,
+                $sortOrder,
+                trim((string) ($document['title'] ?? '')),
+            );
+        }
+    }
+
+    /**
      * @param  list<UploadedFile>  $files
      */
     public function storeMany(CaseStudy $caseStudy, array $files): void
@@ -29,8 +52,12 @@ final class CaseStudyAttachmentStorage
         }
     }
 
-    public function storeOne(CaseStudy $caseStudy, UploadedFile $file, int $sortOrder): CaseStudyAttachment
-    {
+    public function storeOne(
+        CaseStudy $caseStudy,
+        UploadedFile $file,
+        int $sortOrder,
+        ?string $title = null,
+    ): CaseStudyAttachment {
         $extension = $file->getClientOriginalExtension() ?: $file->extension() ?: 'bin';
         $path = $file->storeAs(
             'case-studies/'.$caseStudy->id,
@@ -39,8 +66,12 @@ final class CaseStudyAttachmentStorage
         );
 
         $mime = (string) $file->getMimeType();
+        $displayTitle = $title !== null && $title !== ''
+            ? $title
+            : $file->getClientOriginalName();
 
         return $caseStudy->attachments()->create([
+            'title' => $displayTitle,
             'path' => $path,
             'original_name' => $file->getClientOriginalName(),
             'mime' => $mime,

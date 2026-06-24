@@ -22,25 +22,20 @@ type TaskOption = {
     label: string;
 };
 
-type WorkloadPeriodOption = {
-    value: string;
-    label: string;
-};
-
 type CaseStudyEdit = {
     id: number;
     project_task_id: number | null;
     title: string;
-    summary: string | null;
+    overview: string | null;
     client_issue: string | null;
-    proposed_solution: string | null;
-    resolution: string | null;
-    workload_reduction_details: string | null;
-    workload_hours_saved: string | number | null;
-    workload_percentage_reduction: string | number | null;
-    workload_period: string | null;
+    our_solution: string | null;
+    implementation: string | null;
+    other_details: string | null;
+    result_and_impact: string | null;
+    conclusion: string | null;
     attachments: {
         id: number;
+        title: string | null;
         original_name: string;
         mime: string;
         type: string;
@@ -51,7 +46,6 @@ const props = defineProps<{
     project: ProjectSummary;
     case_study: CaseStudyEdit;
     task_options: TaskOption[];
-    workload_period_options: WorkloadPeriodOption[];
 }>();
 
 defineOptions({
@@ -103,7 +97,6 @@ defineOptions({
         <CaseStudyForm
             :project="project"
             :task-options="task_options"
-            :workload-period-options="workload_period_options"
             :case-study-id="case_study.id"
             :initial="case_study"
             submit-label="Save changes"

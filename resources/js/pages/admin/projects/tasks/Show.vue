@@ -18,7 +18,7 @@ defineProps<{
     case_studies: {
         id: number;
         title: string;
-        summary: string | null;
+        summary_preview: string | null;
         created_at: string | null;
     }[];
     can_create_case_study: boolean;

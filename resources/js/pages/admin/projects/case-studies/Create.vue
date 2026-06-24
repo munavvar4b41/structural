@@ -22,15 +22,9 @@ type TaskOption = {
     label: string;
 };
 
-type WorkloadPeriodOption = {
-    value: string;
-    label: string;
-};
-
 const props = defineProps<{
     project: ProjectSummary;
     task_options: TaskOption[];
-    workload_period_options: WorkloadPeriodOption[];
     preselected_task_id: number | null;
 }>();
 
@@ -61,7 +55,6 @@ defineOptions({
         <CaseStudyForm
             :project="project"
             :task-options="task_options"
-            :workload-period-options="workload_period_options"
             :preselected-task-id="preselected_task_id"
             submit-label="Create case study"
         />

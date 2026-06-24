@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Enums\WorkloadPeriod;
 use App\Models\CaseStudy;
 use App\Models\Project;
 use App\Models\ProjectTask;
@@ -24,14 +23,13 @@ class CaseStudyFactory extends Factory
             'project_task_id' => null,
             'created_by_user_id' => User::factory(),
             'title' => fake()->sentence(4),
-            'summary' => fake()->sentence(),
+            'overview' => $this->tipTapDocument(fake()->paragraph()),
             'client_issue' => $this->tipTapDocument(fake()->paragraph()),
-            'proposed_solution' => $this->tipTapDocument(fake()->paragraph()),
-            'resolution' => $this->tipTapDocument(fake()->paragraph()),
-            'workload_reduction_details' => $this->tipTapDocument(fake()->paragraph()),
-            'workload_hours_saved' => fake()->randomFloat(2, 1, 40),
-            'workload_percentage_reduction' => fake()->randomFloat(2, 5, 80),
-            'workload_period' => fake()->randomElement(WorkloadPeriod::cases()),
+            'our_solution' => $this->tipTapDocument(fake()->paragraph()),
+            'implementation' => $this->tipTapDocument(fake()->paragraph()),
+            'other_details' => $this->tipTapDocument(fake()->paragraph()),
+            'result_and_impact' => $this->tipTapDocument(fake()->paragraph()),
+            'conclusion' => $this->tipTapDocument(fake()->paragraph()),
         ];
     }
 

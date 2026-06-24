@@ -2,7 +2,6 @@
 
 namespace App\Support;
 
-use App\Enums\WorkloadPeriod;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -17,10 +16,13 @@ final class CaseStudyValidation
     public static function richTextFieldNames(): array
     {
         return [
+            'overview',
             'client_issue',
-            'proposed_solution',
-            'resolution',
-            'workload_reduction_details',
+            'our_solution',
+            'implementation',
+            'other_details',
+            'result_and_impact',
+            'conclusion',
         ];
     }
 
@@ -33,13 +35,10 @@ final class CaseStudyValidation
 
         $rules = [
             'title' => ['required', 'string', 'max:255'],
-            'summary' => ['nullable', 'string', 'max:2000'],
             'project_task_id' => ['nullable', 'integer', Rule::in($taskIds)],
-            'workload_hours_saved' => ['nullable', 'numeric', 'min:0', 'max:99999.99'],
-            'workload_percentage_reduction' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'workload_period' => ['nullable', 'string', Rule::enum(WorkloadPeriod::class)],
-            'attachments' => ['nullable', 'array'],
-            'attachments.*' => ['file', 'mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx', 'max:10240'],
+            'documents' => ['nullable', 'array'],
+            'documents.*.title' => ['required_with:documents.*.file', 'nullable', 'string', 'max:255'],
+            'documents.*.file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx', 'max:10240'],
         ];
 
         foreach (self::richTextFieldNames() as $field) {
@@ -85,18 +84,6 @@ final class CaseStudyValidation
                     ],
                 ]);
             }
-        }
-
-        if ($request->has('workload_hours_saved') && $request->input('workload_hours_saved') === '') {
-            $merge['workload_hours_saved'] = null;
-        }
-
-        if ($request->has('workload_percentage_reduction') && $request->input('workload_percentage_reduction') === '') {
-            $merge['workload_percentage_reduction'] = null;
-        }
-
-        if ($request->has('workload_period') && $request->input('workload_period') === '') {
-            $merge['workload_period'] = null;
         }
     }
 }

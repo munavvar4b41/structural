@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('case_study_attachments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('case_study_id')->constrained()->cascadeOnDelete();
+            $table->string('title')->nullable();
             $table->string('path');
             $table->string('original_name');
             $table->string('mime');

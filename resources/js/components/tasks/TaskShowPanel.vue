@@ -55,7 +55,7 @@ import type {
 type CaseStudyBrief = {
     id: number;
     title: string;
-    summary: string | null;
+    summary_preview: string | null;
     created_at: string | null;
 };
 
@@ -1295,8 +1295,8 @@ function onChecklistAddSuccess(): void {
                 >
                     <div>
                         <p class="font-medium">{{ caseStudy.title }}</p>
-                        <p v-if="caseStudy.summary" class="text-sm text-muted-foreground">
-                            {{ caseStudy.summary }}
+                        <p v-if="caseStudy.summary_preview" class="text-sm text-muted-foreground">
+                            {{ caseStudy.summary_preview }}
                         </p>
                     </div>
                     <TableIconAction

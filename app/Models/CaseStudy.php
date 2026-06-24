@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\WorkloadPeriod;
 use Database\Factories\CaseStudyFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,31 +14,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'project_task_id',
     'created_by_user_id',
     'title',
-    'summary',
+    'overview',
     'client_issue',
-    'proposed_solution',
-    'resolution',
-    'workload_reduction_details',
-    'workload_hours_saved',
-    'workload_percentage_reduction',
-    'workload_period',
+    'our_solution',
+    'implementation',
+    'other_details',
+    'result_and_impact',
+    'conclusion',
 ])]
 class CaseStudy extends Model
 {
     /** @use HasFactory<CaseStudyFactory> */
     use HasFactory;
-
-    /**
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'workload_hours_saved' => 'decimal:2',
-            'workload_percentage_reduction' => 'decimal:2',
-            'workload_period' => WorkloadPeriod::class,
-        ];
-    }
 
     public function project(): BelongsTo
     {

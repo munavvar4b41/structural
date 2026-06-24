@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Enums\WorkloadPeriod;
 use App\Models\CaseStudy;
 use App\Models\CaseStudyAttachment;
 use App\Models\Project;
@@ -103,15 +102,14 @@ class CaseStudyManagementTest extends TestCase
         $this->actingAs($head)
             ->post(route('admin.projects.case-studies.store', $project), [
                 'title' => 'Reduced manual reporting',
-                'summary' => 'Saved hours every week',
                 'project_task_id' => $task->id,
+                'overview' => $this->tipTapJson('Saved hours every week'),
                 'client_issue' => $this->tipTapJson('Manual exports took hours and delayed client decisions'),
-                'proposed_solution' => $this->tipTapJson('Mapped the workflow and proposed an automated dashboard'),
-                'resolution' => $this->tipTapJson('Built scheduled exports and reports now run automatically'),
-                'workload_reduction_details' => $this->tipTapJson('Team spends less time exporting'),
-                'workload_hours_saved' => 12.5,
-                'workload_percentage_reduction' => 40,
-                'workload_period' => WorkloadPeriod::PerWeek->value,
+                'our_solution' => $this->tipTapJson('Mapped the workflow and proposed an automated dashboard'),
+                'implementation' => $this->tipTapJson('Built scheduled exports'),
+                'other_details' => $this->tipTapJson('Legacy spreadsheets were retired'),
+                'result_and_impact' => $this->tipTapJson('Reports now run automatically'),
+                'conclusion' => $this->tipTapJson('Team spends less time exporting'),
             ])
             ->assertRedirect();
 
@@ -157,8 +155,8 @@ class CaseStudyManagementTest extends TestCase
             'created_by_user_id' => $head->id,
             'title' => 'Show page case study',
             'client_issue' => $this->tipTapJson('Client issue text'),
-            'proposed_solution' => $this->tipTapJson('Proposed fix'),
-            'resolution' => $this->tipTapJson('Issue resolved'),
+            'our_solution' => $this->tipTapJson('Proposed fix'),
+            'conclusion' => $this->tipTapJson('Issue resolved'),
         ]);
 
         $this->actingAs($head)
@@ -168,13 +166,13 @@ class CaseStudyManagementTest extends TestCase
                 ->component('admin/projects/case-studies/Show')
                 ->where('case_study.title', 'Show page case study')
                 ->where('case_study.client_issue', $caseStudy->client_issue)
-                ->where('case_study.proposed_solution', $caseStudy->proposed_solution)
-                ->where('case_study.resolution', $caseStudy->resolution)
+                ->where('case_study.our_solution', $caseStudy->our_solution)
+                ->where('case_study.conclusion', $caseStudy->conclusion)
                 ->where('can_update', true)
                 ->where('can_delete', true));
     }
 
-    public function test_store_with_attachments_and_authorized_download(): void
+    public function test_store_with_titled_documents_and_authorized_download(): void
     {
         Storage::fake('local');
 
@@ -185,7 +183,12 @@ class CaseStudyManagementTest extends TestCase
         $this->actingAs($head)
             ->post(route('admin.projects.case-studies.store', $project), [
                 'title' => 'Case study with files',
-                'attachments' => [$file],
+                'documents' => [
+                    [
+                        'title' => 'Workflow diagram',
+                        'file' => $file,
+                    ],
+                ],
             ])
             ->assertRedirect();
 
@@ -195,6 +198,7 @@ class CaseStudyManagementTest extends TestCase
 
         $attachment = $caseStudy->attachments->first();
         $this->assertNotNull($attachment);
+        $this->assertSame('Workflow diagram', $attachment->title);
         Storage::disk('local')->assertExists($attachment->path);
 
         $this->actingAs($head)

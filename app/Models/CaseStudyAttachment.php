@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'case_study_id',
+    'title',
     'path',
     'original_name',
     'mime',

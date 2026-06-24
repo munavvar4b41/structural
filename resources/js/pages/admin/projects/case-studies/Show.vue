@@ -31,6 +31,7 @@ type ProjectSummary = {
 
 type Attachment = {
     id: number;
+    title: string | null;
     original_name: string;
     mime: string;
     type: string;
@@ -40,15 +41,13 @@ type Attachment = {
 type CaseStudyDetail = {
     id: number;
     title: string;
-    summary: string | null;
+    overview: string | null;
     client_issue: string | null;
-    proposed_solution: string | null;
-    resolution: string | null;
-    workload_reduction_details: string | null;
-    workload_hours_saved: string | number | null;
-    workload_percentage_reduction: string | number | null;
-    workload_period: string | null;
-    workload_period_label: string | null;
+    our_solution: string | null;
+    implementation: string | null;
+    other_details: string | null;
+    result_and_impact: string | null;
+    conclusion: string | null;
     created_at: string | null;
     creator: UserBrief;
     task: { id: number; title: string } | null;
@@ -75,27 +74,6 @@ defineOptions({
 
 const deleteDialogOpen = ref(false);
 
-const workloadSummary = computed((): string | null => {
-    const parts: string[] = [];
-    const hours = props.case_study.workload_hours_saved;
-    const percent = props.case_study.workload_percentage_reduction;
-    const period = props.case_study.workload_period_label;
-
-    if (hours !== null && hours !== '') {
-        parts.push(`${hours} hours saved`);
-    }
-
-    if (percent !== null && percent !== '') {
-        parts.push(`${percent}% reduction`);
-    }
-
-    if (period !== null && period !== '') {
-        parts.push(period.toLowerCase());
-    }
-
-    return parts.length > 0 ? parts.join(' · ') : null;
-});
-
 const imageAttachments = computed(() =>
     props.case_study.attachments.filter((attachment) => attachment.type === 'image'),
 );
@@ -103,6 +81,10 @@ const imageAttachments = computed(() =>
 const documentAttachments = computed(() =>
     props.case_study.attachments.filter((attachment) => attachment.type === 'document'),
 );
+
+function attachmentLabel(attachment: Attachment): string {
+    return attachment.title ?? attachment.original_name;
+}
 
 function attachmentUrl(attachmentId: number): string {
     return attachmentShow.url({
@@ -122,24 +104,29 @@ function executeDelete(): void {
 </script>
 
 <template>
-
     <Head :title="`${case_study.title} · Case study`" />
 
-    <ConfirmDestructiveDialog v-model:open="deleteDialogOpen" title="Delete case study?"
-        :description="`Delete &quot;${case_study.title}&quot;? This cannot be undone.`" @confirm="executeDelete" />
+    <ConfirmDestructiveDialog
+        v-model:open="deleteDialogOpen"
+        title="Delete case study?"
+        :description="`Delete &quot;${case_study.title}&quot;? This cannot be undone.`"
+        @confirm="executeDelete"
+    />
 
     <div class="flex flex-col gap-8">
-        <PageHeader :title="case_study.title" :description="case_study.summary ?? undefined">
+        <PageHeader :title="case_study.title">
             <template #actions>
                 <div class="flex flex-wrap gap-1">
                     <TableIconAction
                         v-if="can_update"
                         icon="pencil"
                         label="Edit case study"
-                        :href="caseStudiesEdit.url({
-                            project: project.id,
-                            case_study: case_study.id,
-                        })"
+                        :href="
+                            caseStudiesEdit.url({
+                                project: project.id,
+                                case_study: case_study.id,
+                            })
+                        "
                     />
                     <TableIconAction
                         v-if="can_delete"
@@ -170,11 +157,15 @@ function executeDelete(): void {
                 <div v-if="case_study.task">
                     <dt class="text-sm text-muted-foreground">Related task</dt>
                     <dd class="font-medium">
-                        <Link :href="projectTasksShow.url({
-                            project: project.id,
-                            task: case_study.task.id,
-                        })
-                            " class="hover:underline">
+                        <Link
+                            :href="
+                                projectTasksShow.url({
+                                    project: project.id,
+                                    task: case_study.task.id,
+                                })
+                            "
+                            class="hover:underline"
+                        >
                             {{ case_study.task.title }}
                         </Link>
                     </dd>
@@ -193,52 +184,77 @@ function executeDelete(): void {
         </GlassCard>
 
         <GlassCard class="flex flex-col gap-6 p-6">
-            <h2 class="text-lg font-semibold">The client problem</h2>
+            <h2 class="text-lg font-semibold">Overview</h2>
+            <RichTextViewer v-if="case_study.overview" :json="case_study.overview" />
+            <p v-else class="text-sm text-muted-foreground">Not documented.</p>
+        </GlassCard>
+
+        <GlassCard class="flex flex-col gap-6 p-6">
+            <h2 class="text-lg font-semibold">Client issue or challenge</h2>
             <RichTextViewer v-if="case_study.client_issue" :json="case_study.client_issue" />
             <p v-else class="text-sm text-muted-foreground">Not documented.</p>
         </GlassCard>
 
         <GlassCard class="flex flex-col gap-6 p-6">
             <h2 class="text-lg font-semibold">Our solution</h2>
-            <RichTextViewer v-if="case_study.proposed_solution" :json="case_study.proposed_solution" />
+            <RichTextViewer v-if="case_study.our_solution" :json="case_study.our_solution" />
             <p v-else class="text-sm text-muted-foreground">Not documented.</p>
         </GlassCard>
 
         <GlassCard class="flex flex-col gap-6 p-6">
-            <h2 class="text-lg font-semibold">Implementation and results</h2>
-            <RichTextViewer v-if="case_study.resolution" :json="case_study.resolution" />
+            <h2 class="text-lg font-semibold">Implementation</h2>
+            <RichTextViewer v-if="case_study.implementation" :json="case_study.implementation" />
             <p v-else class="text-sm text-muted-foreground">Not documented.</p>
         </GlassCard>
 
         <GlassCard class="flex flex-col gap-6 p-6">
-            <h2 class="text-lg font-semibold">Workload impact</h2>
-            <section v-if="workloadSummary" class="grid gap-2">
-                <h3 class="text-sm font-medium text-muted-foreground">Workload reduction</h3>
-                <p class="text-sm font-medium">{{ workloadSummary }}</p>
-            </section>
-            <section class="grid gap-2">
-                <h3 class="text-sm font-medium text-muted-foreground">Workload reduction details</h3>
-                <RichTextViewer v-if="case_study.workload_reduction_details"
-                    :json="case_study.workload_reduction_details" />
-                <p v-else class="text-sm text-muted-foreground">Not documented.</p>
-            </section>
+            <h2 class="text-lg font-semibold">Other details</h2>
+            <RichTextViewer v-if="case_study.other_details" :json="case_study.other_details" />
+            <p v-else class="text-sm text-muted-foreground">Not documented.</p>
+        </GlassCard>
+
+        <GlassCard class="flex flex-col gap-6 p-6">
+            <h2 class="text-lg font-semibold">Result and impact</h2>
+            <RichTextViewer v-if="case_study.result_and_impact" :json="case_study.result_and_impact" />
+            <p v-else class="text-sm text-muted-foreground">Not documented.</p>
+        </GlassCard>
+
+        <GlassCard class="flex flex-col gap-6 p-6">
+            <h2 class="text-lg font-semibold">Conclusion</h2>
+            <RichTextViewer v-if="case_study.conclusion" :json="case_study.conclusion" />
+            <p v-else class="text-sm text-muted-foreground">Not documented.</p>
         </GlassCard>
 
         <GlassCard v-if="case_study.attachments.length > 0" class="flex flex-col gap-4 p-6">
-            <h2 class="text-lg font-semibold">Attachments</h2>
+            <h2 class="text-lg font-semibold">Documents</h2>
             <div v-if="imageAttachments.length > 0" class="grid gap-4 sm:grid-cols-2">
-                <a v-for="attachment in imageAttachments" :key="attachment.id" :href="attachmentUrl(attachment.id)"
-                    target="_blank" rel="noopener noreferrer"
-                    class="overflow-hidden rounded-lg border border-border/60">
-                    <img :src="attachmentUrl(attachment.id)" :alt="attachment.original_name"
-                        class="max-h-64 w-full object-cover" />
+                <a
+                    v-for="attachment in imageAttachments"
+                    :key="attachment.id"
+                    :href="attachmentUrl(attachment.id)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="overflow-hidden rounded-lg border border-border/60"
+                >
+                    <img
+                        :src="attachmentUrl(attachment.id)"
+                        :alt="attachmentLabel(attachment)"
+                        class="max-h-64 w-full object-cover"
+                    />
+                    <p class="border-t border-border/60 px-3 py-2 text-sm font-medium">
+                        {{ attachmentLabel(attachment) }}
+                    </p>
                 </a>
             </div>
             <ul v-if="documentAttachments.length > 0" class="grid gap-2">
                 <li v-for="attachment in documentAttachments" :key="attachment.id">
-                    <a :href="attachmentUrl(attachment.id)" target="_blank" rel="noopener noreferrer"
-                        class="text-sm font-medium hover:underline">
-                        {{ attachment.original_name }}
+                    <a
+                        :href="attachmentUrl(attachment.id)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-sm font-medium hover:underline"
+                    >
+                        {{ attachmentLabel(attachment) }}
                     </a>
                 </li>
             </ul>

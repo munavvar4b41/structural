@@ -17,14 +17,13 @@ return new class extends Migration
             $table->foreignId('project_task_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('created_by_user_id')->constrained('users')->restrictOnDelete();
             $table->string('title');
-            $table->text('summary')->nullable();
+            $table->text('overview')->nullable();
             $table->text('client_issue')->nullable();
-            $table->text('proposed_solution')->nullable();
-            $table->text('resolution')->nullable();
-            $table->text('workload_reduction_details')->nullable();
-            $table->decimal('workload_hours_saved', 8, 2)->nullable();
-            $table->decimal('workload_percentage_reduction', 5, 2)->nullable();
-            $table->string('workload_period')->nullable();
+            $table->text('our_solution')->nullable();
+            $table->text('implementation')->nullable();
+            $table->text('other_details')->nullable();
+            $table->text('result_and_impact')->nullable();
+            $table->text('conclusion')->nullable();
             $table->timestamps();
 
             $table->index(['project_id', 'created_at']);

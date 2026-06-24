@@ -223,7 +223,7 @@ class ProjectTaskShowPayloadBuilder
     }
 
     /**
-     * @return list<array{id: int, title: string, summary: string|null, created_at: string|null}>
+     * @return list<array{id: int, title: string, summary_preview: string|null, created_at: string|null}>
      */
     private function caseStudiesProps(ProjectTask $task, User $actor): array
     {
@@ -233,11 +233,14 @@ class ProjectTaskShowPayloadBuilder
 
         return $task->caseStudies()
             ->orderByDesc('created_at')
-            ->get(['id', 'title', 'summary', 'created_at'])
+            ->get(['id', 'title', 'overview', 'client_issue', 'created_at'])
             ->map(static fn (CaseStudy $caseStudy): array => [
                 'id' => $caseStudy->id,
                 'title' => $caseStudy->title,
-                'summary' => $caseStudy->summary,
+                'summary_preview' => ($overviewPreview = TipTapDocument::previewFromStored($caseStudy->overview)) !== null
+                    && $overviewPreview !== ''
+                    ? $overviewPreview
+                    : TipTapDocument::previewFromStored($caseStudy->client_issue),
                 'created_at' => $caseStudy->created_at?->toIso8601String(),
             ])
             ->all();

@@ -21,56 +21,53 @@ type TaskOption = {
     label: string;
 };
 
-type WorkloadPeriodOption = {
-    value: string;
-    label: string;
-};
-
 type ExistingAttachment = {
     id: number;
+    title: string | null;
     original_name: string;
     mime: string;
     type: string;
 };
 
+type DocumentRow = {
+    title: string;
+    file: File | null;
+};
+
 type CaseStudyFormData = {
     project_task_id: string;
     title: string;
-    summary: string;
+    overview: string;
     client_issue: string;
-    proposed_solution: string;
-    resolution: string;
-    workload_reduction_details: string;
-    workload_hours_saved: string;
-    workload_percentage_reduction: string;
-    workload_period: string;
-    attachments: File[];
+    our_solution: string;
+    implementation: string;
+    other_details: string;
+    result_and_impact: string;
+    conclusion: string;
+    documents: DocumentRow[];
     remove_attachment_ids: number[];
 };
 
 const props = defineProps<{
     project: ProjectSummary;
     taskOptions: TaskOption[];
-    workloadPeriodOptions: WorkloadPeriodOption[];
     preselectedTaskId?: number | null;
     caseStudyId?: number;
     initial?: Partial<{
         project_task_id: number | null;
         title: string;
-        summary: string | null;
+        overview: string | null;
         client_issue: string | null;
-        proposed_solution: string | null;
-        resolution: string | null;
-        workload_reduction_details: string | null;
-        workload_hours_saved: string | number | null;
-        workload_percentage_reduction: string | number | null;
-        workload_period: string | null;
+        our_solution: string | null;
+        implementation: string | null;
+        other_details: string | null;
+        result_and_impact: string | null;
+        conclusion: string | null;
         attachments: ExistingAttachment[];
     }>;
     submitLabel: string;
 }>();
 
-const fileInput = ref<HTMLInputElement | null>(null);
 const existingAttachments = ref<ExistingAttachment[]>(props.initial?.attachments ?? []);
 
 const form = useForm<CaseStudyFormData>({
@@ -80,22 +77,14 @@ const form = useForm<CaseStudyFormData>({
           ? String(props.preselectedTaskId)
           : '',
     title: props.initial?.title ?? '',
-    summary: props.initial?.summary ?? '',
+    overview: props.initial?.overview ?? emptyTipTapDocumentJson(),
     client_issue: props.initial?.client_issue ?? emptyTipTapDocumentJson(),
-    proposed_solution: props.initial?.proposed_solution ?? emptyTipTapDocumentJson(),
-    resolution: props.initial?.resolution ?? emptyTipTapDocumentJson(),
-    workload_reduction_details: props.initial?.workload_reduction_details ?? emptyTipTapDocumentJson(),
-    workload_hours_saved:
-        props.initial?.workload_hours_saved !== null && props.initial?.workload_hours_saved !== undefined
-            ? String(props.initial.workload_hours_saved)
-            : '',
-    workload_percentage_reduction:
-        props.initial?.workload_percentage_reduction !== null &&
-        props.initial?.workload_percentage_reduction !== undefined
-            ? String(props.initial.workload_percentage_reduction)
-            : '',
-    workload_period: props.initial?.workload_period ?? '',
-    attachments: [],
+    our_solution: props.initial?.our_solution ?? emptyTipTapDocumentJson(),
+    implementation: props.initial?.implementation ?? emptyTipTapDocumentJson(),
+    other_details: props.initial?.other_details ?? emptyTipTapDocumentJson(),
+    result_and_impact: props.initial?.result_and_impact ?? emptyTipTapDocumentJson(),
+    conclusion: props.initial?.conclusion ?? emptyTipTapDocumentJson(),
+    documents: [],
     remove_attachment_ids: [],
 });
 
@@ -106,16 +95,21 @@ const taskSelectOptions = computed(() =>
     })),
 );
 
-const workloadPeriodSelectOptions = computed(() =>
-    props.workloadPeriodOptions.map((option) => ({
-        value: option.value,
-        label: option.label,
-    })),
-);
+function addDocumentRow(): void {
+    form.documents.push({ title: '', file: null });
+}
 
-function onFilesChange(event: Event): void {
+function removeDocumentRow(index: number): void {
+    form.documents.splice(index, 1);
+}
+
+function onDocumentFileChange(index: number, event: Event): void {
     const target = event.target as HTMLInputElement;
-    form.attachments = target.files ? Array.from(target.files) : [];
+    form.documents[index].file = target.files?.[0] ?? null;
+}
+
+function attachmentLabel(attachment: ExistingAttachment): string {
+    return attachment.title ?? attachment.original_name;
 }
 
 function toggleRemoveAttachment(id: number, checked: boolean): void {
@@ -135,12 +129,14 @@ function submit(): void {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
-            form.attachments = [];
-            if (fileInput.value) {
-                fileInput.value.value = '';
-            }
+            form.documents = [];
         },
     };
+
+    form.transform((data) => ({
+        ...data,
+        documents: data.documents.filter((document) => document.file !== null),
+    }));
 
     if (props.caseStudyId !== undefined) {
         form.post(
@@ -164,16 +160,12 @@ function submit(): void {
 <template>
     <form class="flex flex-col gap-8" @submit.prevent="submit">
         <GlassCard class="flex flex-col gap-6 p-6">
-            <h2 class="text-lg font-semibold">Overview</h2>
+            <h2 class="text-lg font-semibold">Details</h2>
             <div class="grid gap-2">
                 <Label for="title">Title</Label>
                 <Input id="title" v-model="form.title" required />
+                <p class="text-xs text-muted-foreground">Short name used in lists and navigation.</p>
                 <InputError :message="form.errors.title" />
-            </div>
-            <div class="grid gap-2">
-                <Label for="summary">Summary</Label>
-                <Input id="summary" v-model="form.summary" placeholder="Short preview for lists" />
-                <InputError :message="form.errors.summary" />
             </div>
             <div class="grid gap-2">
                 <Label for="project_task_id">Related task (optional)</Label>
@@ -189,78 +181,79 @@ function submit(): void {
         </GlassCard>
 
         <GlassCard class="flex flex-col gap-6 p-6">
-            <h2 class="text-lg font-semibold">The client problem</h2>
-            <div class="grid gap-2">
-                <Label>Client issue and business impact</Label>
-                <RichTextEditor v-model="form.client_issue" input-name="client_issue" />
-                <InputError :message="form.errors.client_issue" />
+            <div>
+                <h2 class="text-lg font-semibold">Overview</h2>
+                <p class="text-sm text-muted-foreground">High-level summary of the case study.</p>
             </div>
+            <RichTextEditor v-model="form.overview" input-name="overview" />
+            <InputError :message="form.errors.overview" />
         </GlassCard>
 
         <GlassCard class="flex flex-col gap-6 p-6">
-            <h2 class="text-lg font-semibold">Our solution</h2>
-            <div class="grid gap-2">
-                <Label>How we found it and what we proposed</Label>
-                <RichTextEditor v-model="form.proposed_solution" input-name="proposed_solution" />
-                <InputError :message="form.errors.proposed_solution" />
+            <div>
+                <h2 class="text-lg font-semibold">Client issue or challenge</h2>
+                <p class="text-sm text-muted-foreground">The problem the client faced and why it mattered.</p>
             </div>
+            <RichTextEditor v-model="form.client_issue" input-name="client_issue" />
+            <InputError :message="form.errors.client_issue" />
         </GlassCard>
 
         <GlassCard class="flex flex-col gap-6 p-6">
-            <h2 class="text-lg font-semibold">Implementation and results</h2>
-            <div class="grid gap-2">
-                <Label>How we implemented it and how it resolved the issue</Label>
-                <RichTextEditor v-model="form.resolution" input-name="resolution" />
-                <InputError :message="form.errors.resolution" />
+            <div>
+                <h2 class="text-lg font-semibold">Our solution</h2>
+                <p class="text-sm text-muted-foreground">The approach and solution proposed.</p>
             </div>
+            <RichTextEditor v-model="form.our_solution" input-name="our_solution" />
+            <InputError :message="form.errors.our_solution" />
         </GlassCard>
 
         <GlassCard class="flex flex-col gap-6 p-6">
-            <h2 class="text-lg font-semibold">Workload impact</h2>
-            <div class="grid gap-4 sm:grid-cols-3">
-                <div class="grid gap-2">
-                    <Label for="workload_hours_saved">Hours saved</Label>
-                    <Input id="workload_hours_saved" v-model="form.workload_hours_saved" type="number" min="0" step="0.01" />
-                    <InputError :message="form.errors.workload_hours_saved" />
+            <div>
+                <h2 class="text-lg font-semibold">Implementation</h2>
+                <p class="text-sm text-muted-foreground">How the solution was built and delivered.</p>
+            </div>
+            <RichTextEditor v-model="form.implementation" input-name="implementation" />
+            <InputError :message="form.errors.implementation" />
+        </GlassCard>
+
+        <GlassCard class="flex flex-col gap-6 p-6">
+            <div>
+                <h2 class="text-lg font-semibold">Other details</h2>
+                <p class="text-sm text-muted-foreground">Supporting context, constraints, or notes.</p>
+            </div>
+            <RichTextEditor v-model="form.other_details" input-name="other_details" />
+            <InputError :message="form.errors.other_details" />
+        </GlassCard>
+
+        <GlassCard class="flex flex-col gap-6 p-6">
+            <div>
+                <h2 class="text-lg font-semibold">Result and impact</h2>
+                <p class="text-sm text-muted-foreground">Outcomes, metrics, and business impact.</p>
+            </div>
+            <RichTextEditor v-model="form.result_and_impact" input-name="result_and_impact" />
+            <InputError :message="form.errors.result_and_impact" />
+        </GlassCard>
+
+        <GlassCard class="flex flex-col gap-6 p-6">
+            <div>
+                <h2 class="text-lg font-semibold">Conclusion</h2>
+                <p class="text-sm text-muted-foreground">Final takeaways and closing summary.</p>
+            </div>
+            <RichTextEditor v-model="form.conclusion" input-name="conclusion" />
+            <InputError :message="form.errors.conclusion" />
+        </GlassCard>
+
+        <GlassCard class="flex flex-col gap-6 p-6">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">Documents</h2>
+                    <p class="text-sm text-muted-foreground">Add labeled files; each row needs a title and upload.</p>
                 </div>
-                <div class="grid gap-2">
-                    <Label for="workload_percentage_reduction">Reduction (%)</Label>
-                    <Input
-                        id="workload_percentage_reduction"
-                        v-model="form.workload_percentage_reduction"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                    />
-                    <InputError :message="form.errors.workload_percentage_reduction" />
-                </div>
-                <div class="grid gap-2">
-                    <Label for="workload_period">Period</Label>
-                    <FormSelect
-                        id="workload_period"
-                        v-model="form.workload_period"
-                        :options="workloadPeriodSelectOptions"
-                        placeholder="Select period"
-                        none-label="Not specified"
-                    />
-                    <InputError :message="form.errors.workload_period" />
-                </div>
+                <Button type="button" variant="outline" @click="addDocumentRow">Add document</Button>
             </div>
-            <div class="grid gap-2">
-                <Label>Workload reduction details</Label>
-                <RichTextEditor
-                    v-model="form.workload_reduction_details"
-                    input-name="workload_reduction_details"
-                />
-                <InputError :message="form.errors.workload_reduction_details" />
-            </div>
-        </GlassCard>
 
-        <GlassCard class="flex flex-col gap-6 p-6">
-            <h2 class="text-lg font-semibold">Attachments</h2>
             <div v-if="existingAttachments.length > 0" class="grid gap-2">
-                <p class="text-sm text-muted-foreground">Existing files</p>
+                <p class="text-sm text-muted-foreground">Existing documents</p>
                 <label
                     v-for="attachment in existingAttachments"
                     :key="attachment.id"
@@ -271,23 +264,36 @@ function submit(): void {
                         :checked="form.remove_attachment_ids.includes(attachment.id)"
                         @change="toggleRemoveAttachment(attachment.id, ($event.target as HTMLInputElement).checked)"
                     />
-                    <span>{{ attachment.original_name }}</span>
+                    <span>{{ attachmentLabel(attachment) }}</span>
                 </label>
             </div>
-            <div class="grid gap-2">
-                <Label for="attachments">Add images or documents</Label>
-                <Input
-                    id="attachments"
-                    ref="fileInput"
-                    type="file"
-                    multiple
-                    accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx"
-                    @change="onFilesChange"
-                />
-                <p class="text-xs text-muted-foreground">Up to 10 MB per file. JPG, PNG, GIF, WEBP, PDF, DOC, DOCX, XLS, XLSX.</p>
-                <InputError :message="form.errors.attachments" />
-                <InputError :message="form.errors['attachments.0']" />
+
+            <div v-for="(document, index) in form.documents" :key="index" class="grid gap-4 rounded-lg border border-border/60 p-4">
+                <div class="flex items-center justify-between gap-2">
+                    <p class="text-sm font-medium">Document {{ index + 1 }}</p>
+                    <Button type="button" variant="ghost" size="sm" @click="removeDocumentRow(index)">
+                        Remove
+                    </Button>
+                </div>
+                <div class="grid gap-2">
+                    <Label :for="`document-title-${index}`">Document title</Label>
+                    <Input :id="`document-title-${index}`" v-model="document.title" />
+                    <InputError :message="form.errors[`documents.${index}.title`]" />
+                </div>
+                <div class="grid gap-2">
+                    <Label :for="`document-file-${index}`">File</Label>
+                    <Input
+                        :id="`document-file-${index}`"
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx"
+                        @change="onDocumentFileChange(index, $event)"
+                    />
+                    <InputError :message="form.errors[`documents.${index}.file`]" />
+                </div>
             </div>
+
+            <p class="text-xs text-muted-foreground">Up to 10 MB per file. JPG, PNG, GIF, WEBP, PDF, DOC, DOCX, XLS, XLSX.</p>
+            <InputError :message="form.errors.documents" />
         </GlassCard>
 
         <div class="flex gap-2">

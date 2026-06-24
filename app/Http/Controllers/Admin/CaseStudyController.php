@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\WorkloadPeriod;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreCaseStudyRequest;
 use App\Http\Requests\Admin\UpdateCaseStudyRequest;
@@ -59,7 +58,7 @@ class CaseStudyController extends Controller
                 $term = '%'.addcslashes($search, '%_\\').'%';
                 $query->where(static function ($query) use ($term): void {
                     $query->where('title', 'like', $term)
-                        ->orWhere('summary', 'like', $term);
+                        ->orWhereRaw('overview LIKE ?', [$term]);
                 });
             })
             ->with(['creator', 'task:id,title', 'project:id,name,code'])
@@ -106,7 +105,7 @@ class CaseStudyController extends Controller
                 $term = '%'.addcslashes($search, '%_\\').'%';
                 $query->where(static function ($query) use ($term): void {
                     $query->where('title', 'like', $term)
-                        ->orWhere('summary', 'like', $term);
+                        ->orWhereRaw('overview LIKE ?', [$term]);
                 });
             })
             ->orderByDesc('created_at')
@@ -144,7 +143,6 @@ class CaseStudyController extends Controller
         return Inertia::render('admin/projects/case-studies/Create', [
             'project' => $this->projectSummary($project),
             'task_options' => $this->taskOptions($project),
-            'workload_period_options' => $this->workloadPeriodOptions(),
             'preselected_task_id' => $taskId,
         ]);
     }
@@ -161,17 +159,16 @@ class CaseStudyController extends Controller
             'project_task_id' => $validated['project_task_id'] ?? null,
             'created_by_user_id' => $actor->id,
             'title' => $validated['title'],
-            'summary' => $validated['summary'] ?? null,
+            'overview' => $validated['overview'] ?? null,
             'client_issue' => $validated['client_issue'] ?? null,
-            'proposed_solution' => $validated['proposed_solution'] ?? null,
-            'resolution' => $validated['resolution'] ?? null,
-            'workload_reduction_details' => $validated['workload_reduction_details'] ?? null,
-            'workload_hours_saved' => $validated['workload_hours_saved'] ?? null,
-            'workload_percentage_reduction' => $validated['workload_percentage_reduction'] ?? null,
-            'workload_period' => $validated['workload_period'] ?? null,
+            'our_solution' => $validated['our_solution'] ?? null,
+            'implementation' => $validated['implementation'] ?? null,
+            'other_details' => $validated['other_details'] ?? null,
+            'result_and_impact' => $validated['result_and_impact'] ?? null,
+            'conclusion' => $validated['conclusion'] ?? null,
         ]);
 
-        $this->storeUploadedAttachments($caseStudy, $request->file('attachments', []));
+        $this->attachmentStorage->storeManyDocuments($caseStudy, $this->uploadedDocuments($request));
 
         return to_route('admin.projects.case-studies.show', [$project, $caseStudy])
             ->with('toast', __('Case study created.'));
@@ -206,7 +203,6 @@ class CaseStudyController extends Controller
             'project' => $this->projectSummary($project),
             'case_study' => $this->caseStudyEditPayload($caseStudy),
             'task_options' => $this->taskOptions($project),
-            'workload_period_options' => $this->workloadPeriodOptions(),
         ]);
     }
 
@@ -219,14 +215,13 @@ class CaseStudyController extends Controller
         $caseStudy->update([
             'project_task_id' => $validated['project_task_id'] ?? null,
             'title' => $validated['title'],
-            'summary' => $validated['summary'] ?? null,
+            'overview' => $validated['overview'] ?? null,
             'client_issue' => $validated['client_issue'] ?? null,
-            'proposed_solution' => $validated['proposed_solution'] ?? null,
-            'resolution' => $validated['resolution'] ?? null,
-            'workload_reduction_details' => $validated['workload_reduction_details'] ?? null,
-            'workload_hours_saved' => $validated['workload_hours_saved'] ?? null,
-            'workload_percentage_reduction' => $validated['workload_percentage_reduction'] ?? null,
-            'workload_period' => $validated['workload_period'] ?? null,
+            'our_solution' => $validated['our_solution'] ?? null,
+            'implementation' => $validated['implementation'] ?? null,
+            'other_details' => $validated['other_details'] ?? null,
+            'result_and_impact' => $validated['result_and_impact'] ?? null,
+            'conclusion' => $validated['conclusion'] ?? null,
         ]);
 
         $removeIds = $validated['remove_attachment_ids'] ?? [];
@@ -234,7 +229,7 @@ class CaseStudyController extends Controller
             $this->attachmentStorage->deleteMany($caseStudy, array_map(intval(...), $removeIds));
         }
 
-        $this->storeUploadedAttachments($caseStudy, $request->file('attachments', []));
+        $this->attachmentStorage->storeManyDocuments($caseStudy, $this->uploadedDocuments($request));
 
         return to_route('admin.projects.case-studies.show', [$project, $caseStudy])
             ->with('toast', __('Case study updated.'));
@@ -258,16 +253,33 @@ class CaseStudyController extends Controller
     }
 
     /**
-     * @param  array<int, UploadedFile|null>|UploadedFile|null  $files
+     * @return list<array{title: string, file: UploadedFile}>
      */
-    private function storeUploadedAttachments(CaseStudy $caseStudy, array|UploadedFile|null $files): void
+    private function uploadedDocuments(Request $request): array
     {
-        if ($files === null) {
-            return;
+        $inputDocuments = $request->input('documents', []);
+        if (! is_array($inputDocuments)) {
+            return [];
         }
 
-        $uploads = is_array($files) ? array_values(array_filter($files)) : [$files];
-        $this->attachmentStorage->storeMany($caseStudy, $uploads);
+        $documents = [];
+        foreach ($inputDocuments as $index => $document) {
+            if (! is_array($document)) {
+                continue;
+            }
+
+            $file = $request->file("documents.{$index}.file");
+            if (! $file instanceof UploadedFile) {
+                continue;
+            }
+
+            $documents[] = [
+                'title' => trim((string) ($document['title'] ?? '')),
+                'file' => $file,
+            ];
+        }
+
+        return $documents;
     }
 
     /**
@@ -299,29 +311,17 @@ class CaseStudyController extends Controller
     }
 
     /**
-     * @return list<array{value: string, label: string}>
-     */
-    private function workloadPeriodOptions(): array
-    {
-        return array_map(
-            static fn (WorkloadPeriod $period): array => [
-                'value' => $period->value,
-                'label' => $period->label(),
-            ],
-            WorkloadPeriod::cases(),
-        );
-    }
-
-    /**
      * @return array<string, mixed>
      */
     private function caseStudyRow(CaseStudy $caseStudy, User $actor): array
     {
+        $overviewPreview = TipTapDocument::previewFromStored($caseStudy->overview);
+
         return [
             'id' => $caseStudy->id,
             'title' => $caseStudy->title,
-            'summary_preview' => $caseStudy->summary !== null && $caseStudy->summary !== ''
-                ? $caseStudy->summary
+            'summary_preview' => $overviewPreview !== null && $overviewPreview !== ''
+                ? $overviewPreview
                 : TipTapDocument::previewFromStored($caseStudy->client_issue),
             'created_at' => $caseStudy->created_at?->toIso8601String(),
             'creator' => $this->userBrief($caseStudy->creator),
@@ -347,15 +347,13 @@ class CaseStudyController extends Controller
         return [
             'id' => $caseStudy->id,
             'title' => $caseStudy->title,
-            'summary' => $caseStudy->summary,
+            'overview' => $caseStudy->overview,
             'client_issue' => $caseStudy->client_issue,
-            'proposed_solution' => $caseStudy->proposed_solution,
-            'resolution' => $caseStudy->resolution,
-            'workload_reduction_details' => $caseStudy->workload_reduction_details,
-            'workload_hours_saved' => $caseStudy->workload_hours_saved,
-            'workload_percentage_reduction' => $caseStudy->workload_percentage_reduction,
-            'workload_period' => $caseStudy->workload_period?->value,
-            'workload_period_label' => $caseStudy->workload_period?->label(),
+            'our_solution' => $caseStudy->our_solution,
+            'implementation' => $caseStudy->implementation,
+            'other_details' => $caseStudy->other_details,
+            'result_and_impact' => $caseStudy->result_and_impact,
+            'conclusion' => $caseStudy->conclusion,
             'created_at' => $caseStudy->created_at?->toIso8601String(),
             'creator' => $this->userBrief($caseStudy->creator),
             'task' => $caseStudy->task ? [
@@ -364,6 +362,7 @@ class CaseStudyController extends Controller
             ] : null,
             'attachments' => $caseStudy->attachments->map(static fn ($attachment): array => [
                 'id' => $attachment->id,
+                'title' => $attachment->title,
                 'original_name' => $attachment->original_name,
                 'mime' => $attachment->mime,
                 'type' => $attachment->type->value,
@@ -381,16 +380,16 @@ class CaseStudyController extends Controller
             'id' => $caseStudy->id,
             'project_task_id' => $caseStudy->project_task_id,
             'title' => $caseStudy->title,
-            'summary' => $caseStudy->summary,
+            'overview' => $caseStudy->overview,
             'client_issue' => $caseStudy->client_issue,
-            'proposed_solution' => $caseStudy->proposed_solution,
-            'resolution' => $caseStudy->resolution,
-            'workload_reduction_details' => $caseStudy->workload_reduction_details,
-            'workload_hours_saved' => $caseStudy->workload_hours_saved,
-            'workload_percentage_reduction' => $caseStudy->workload_percentage_reduction,
-            'workload_period' => $caseStudy->workload_period?->value,
+            'our_solution' => $caseStudy->our_solution,
+            'implementation' => $caseStudy->implementation,
+            'other_details' => $caseStudy->other_details,
+            'result_and_impact' => $caseStudy->result_and_impact,
+            'conclusion' => $caseStudy->conclusion,
             'attachments' => $caseStudy->attachments->map(static fn ($attachment): array => [
                 'id' => $attachment->id,
+                'title' => $attachment->title,
                 'original_name' => $attachment->original_name,
                 'mime' => $attachment->mime,
                 'type' => $attachment->type->value,
