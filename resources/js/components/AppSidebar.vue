@@ -160,27 +160,6 @@ const navGroups = computed((): NavGroup[] => {
 
     pushGroup(groups, 'Reviews', reviewItems);
 
-    const organizationItems: NavItem[] = [];
-
-    if (user?.can_manage_users) {
-        organizationItems.push(
-            {
-                title: 'Users',
-                href: adminUsersIndex(),
-                icon: Users,
-                activeMatch: 'prefix',
-            },
-            {
-                title: 'Teams',
-                href: adminTeamsIndex(),
-                icon: Users,
-                activeMatch: 'prefix',
-            },
-        );
-    }
-
-    pushGroup(groups, 'Organization', organizationItems);
-
     const peopleItems: NavItem[] = [];
 
     if (user?.role !== 'client') {
@@ -215,6 +194,27 @@ const navGroups = computed((): NavGroup[] => {
     }
 
     pushGroup(groups, 'Careers', careersItems);
+
+    const organizationItems: NavItem[] = [];
+
+    if (user?.can_manage_users) {
+        organizationItems.push(
+            {
+                title: 'Users',
+                href: adminUsersIndex(),
+                icon: Users,
+                activeMatch: 'prefix',
+            },
+            {
+                title: 'Teams',
+                href: adminTeamsIndex(),
+                icon: Users,
+                activeMatch: 'prefix',
+            },
+        );
+    }
+
+    pushGroup(groups, 'Organization', organizationItems);
 
     const settingsItems: NavItem[] = [];
 

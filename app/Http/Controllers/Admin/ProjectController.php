@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreProjectRequest;
 use App\Http\Requests\Admin\UpdateProjectRequest;
+use App\Models\CaseStudy;
 use App\Models\Project;
 use App\Models\Team;
 use App\Models\User;
@@ -149,6 +150,7 @@ class ProjectController extends Controller
                 'leads' => $leadFilterOptions,
             ],
             'show_lead_filter' => $actor->role->canViewAllProjects(),
+            'can_view_case_studies' => $actor->can('viewAny', CaseStudy::class),
         ]);
     }
 

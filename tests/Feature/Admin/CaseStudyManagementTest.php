@@ -63,6 +63,15 @@ class CaseStudyManagementTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_client_cannot_view_project_case_studies_index(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $this->actingAs($client)
+            ->get(route('admin.projects.case-studies.index', $project))
+            ->assertForbidden();
+    }
+
     public function test_team_head_can_view_global_case_studies_index(): void
     {
         extract($this->projectWithTeamHead());

@@ -8,6 +8,7 @@ import RichTextViewer from '@/components/RichTextViewer.vue';
 import { Button } from '@/components/ui/button';
 import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import { show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
+import { index as projectCaseStudiesIndex } from '@/routes/admin/projects/case-studies/index';
 import {
     destroy as caseStudiesDestroy,
     edit as caseStudiesEdit,
@@ -66,7 +67,7 @@ defineOptions({
         breadcrumbs: [
             { title: 'Projects', href: projectsIndex.url() },
             { title: pageProps.project.name, href: projectsShow.url(pageProps.project.id) },
-            { title: 'Case studies', href: globalCaseStudiesIndex.url() },
+            { title: 'Case studies', href: projectCaseStudiesIndex.url(pageProps.project.id) },
             { title: pageProps.case_study.title, href: '#' },
         ],
     }),
@@ -121,28 +122,22 @@ function executeDelete(): void {
 </script>
 
 <template>
+
     <Head :title="`${case_study.title} · Case study`" />
 
-    <ConfirmDestructiveDialog
-        v-model:open="deleteDialogOpen"
-        title="Delete case study?"
-        :description="`Delete &quot;${case_study.title}&quot;? This cannot be undone.`"
-        @confirm="executeDelete"
-    />
+    <ConfirmDestructiveDialog v-model:open="deleteDialogOpen" title="Delete case study?"
+        :description="`Delete &quot;${case_study.title}&quot;? This cannot be undone.`" @confirm="executeDelete" />
 
     <div class="flex flex-col gap-8">
         <PageHeader :title="case_study.title" :description="case_study.summary ?? undefined">
             <template #actions>
                 <div class="flex flex-wrap gap-2">
                     <Button v-if="can_update" variant="outline" as-child>
-                        <Link
-                            :href="
-                                caseStudiesEdit.url({
-                                    project: project.id,
-                                    case_study: case_study.id,
-                                })
-                            "
-                        >
+                        <Link :href="caseStudiesEdit.url({
+                            project: project.id,
+                            case_study: case_study.id,
+                        })
+                            ">
                             Edit
                         </Link>
                     </Button>
@@ -169,15 +164,11 @@ function executeDelete(): void {
                 <div v-if="case_study.task">
                     <dt class="text-sm text-muted-foreground">Related task</dt>
                     <dd class="font-medium">
-                        <Link
-                            :href="
-                                projectTasksShow.url({
-                                    project: project.id,
-                                    task: case_study.task.id,
-                                })
-                            "
-                            class="hover:underline"
-                        >
+                        <Link :href="projectTasksShow.url({
+                            project: project.id,
+                            task: case_study.task.id,
+                        })
+                            " class="hover:underline">
                             {{ case_study.task.title }}
                         </Link>
                     </dd>
@@ -221,10 +212,8 @@ function executeDelete(): void {
             </section>
             <section class="grid gap-2">
                 <h3 class="text-sm font-medium text-muted-foreground">Workload reduction details</h3>
-                <RichTextViewer
-                    v-if="case_study.workload_reduction_details"
-                    :json="case_study.workload_reduction_details"
-                />
+                <RichTextViewer v-if="case_study.workload_reduction_details"
+                    :json="case_study.workload_reduction_details" />
                 <p v-else class="text-sm text-muted-foreground">Not documented.</p>
             </section>
         </GlassCard>
@@ -232,29 +221,17 @@ function executeDelete(): void {
         <GlassCard v-if="case_study.attachments.length > 0" class="flex flex-col gap-4 p-6">
             <h2 class="text-lg font-semibold">Attachments</h2>
             <div v-if="imageAttachments.length > 0" class="grid gap-4 sm:grid-cols-2">
-                <a
-                    v-for="attachment in imageAttachments"
-                    :key="attachment.id"
-                    :href="attachmentUrl(attachment.id)"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="overflow-hidden rounded-lg border border-border/60"
-                >
-                    <img
-                        :src="attachmentUrl(attachment.id)"
-                        :alt="attachment.original_name"
-                        class="max-h-64 w-full object-cover"
-                    />
+                <a v-for="attachment in imageAttachments" :key="attachment.id" :href="attachmentUrl(attachment.id)"
+                    target="_blank" rel="noopener noreferrer"
+                    class="overflow-hidden rounded-lg border border-border/60">
+                    <img :src="attachmentUrl(attachment.id)" :alt="attachment.original_name"
+                        class="max-h-64 w-full object-cover" />
                 </a>
             </div>
             <ul v-if="documentAttachments.length > 0" class="grid gap-2">
                 <li v-for="attachment in documentAttachments" :key="attachment.id">
-                    <a
-                        :href="attachmentUrl(attachment.id)"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="text-sm font-medium hover:underline"
-                    >
+                    <a :href="attachmentUrl(attachment.id)" target="_blank" rel="noopener noreferrer"
+                        class="text-sm font-medium hover:underline">
                         {{ attachment.original_name }}
                     </a>
                 </li>

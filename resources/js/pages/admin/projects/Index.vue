@@ -20,6 +20,7 @@ import {
     show as projectsShow,
 } from '@/routes/admin/projects/index';
 import { index as projectRequirementsIndex } from '@/routes/admin/projects/requirements/index';
+import { index as projectCaseStudiesIndex } from '@/routes/admin/projects/case-studies/index';
 import { index as projectTasksIndex } from '@/routes/admin/projects/tasks/index';
 import TableRow from '@/components/dashboard/TableRow.vue';
 
@@ -62,6 +63,7 @@ type Props = {
         leads: { value: number; label: string }[];
     };
     show_lead_filter: boolean;
+    can_view_case_studies: boolean;
 };
 
 defineOptions({
@@ -201,6 +203,7 @@ const deleteProjectDescription = computed(() => {
                     <DataTableTh>Teams</DataTableTh>
                     <DataTableTh>Requirements</DataTableTh>
                     <DataTableTh>Tasks</DataTableTh>
+                    <DataTableTh v-if="can_view_case_studies">Case studies</DataTableTh>
                     <DataTableTh v-if="canManageProjects" class="text-right">Actions</DataTableTh>
                 </tr>
             </thead>
@@ -217,7 +220,7 @@ const deleteProjectDescription = computed(() => {
                     <DataTableTd label="Client">
                         <span>
                             <template v-if="project.client_user">
-                                {{ project.client_user.name }} <br/>
+                                {{ project.client_user.name }} <br />
                                 <span class="text-xs">({{ project.client_user.email }})</span>
                             </template>
                             <template v-else>—</template>
@@ -234,6 +237,11 @@ const deleteProjectDescription = computed(() => {
                     <DataTableTd label="Tasks">
                         <Button variant="link" class="h-auto p-0 w-fit md:w-full" as-child>
                             <Link :href="projectTasksIndex.url(project.id)">View</Link>
+                        </Button>
+                    </DataTableTd>
+                    <DataTableTd v-if="can_view_case_studies" label="Case studies">
+                        <Button variant="link" class="h-auto p-0 w-fit md:w-full" as-child>
+                            <Link :href="projectCaseStudiesIndex.url(project.id)">View</Link>
                         </Button>
                     </DataTableTd>
                     <DataTableTd v-if="canManageProjects" label="Actions" class="text-left md:text-right">

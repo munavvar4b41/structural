@@ -92,6 +92,7 @@ class CaseStudyController extends Controller
 
     public function index(Request $request, Project $project): Response
     {
+        $this->authorize('viewAny', CaseStudy::class);
         $this->authorize('view', $project);
 
         $actor = $request->user();

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\CaseStudy;
 use App\Models\Project;
 use App\Models\ProjectMetadata;
 use App\Models\ProjectRequirement;
@@ -40,6 +41,11 @@ class ProjectShowTest extends TestCase
         ]);
         ProjectRequirement::factory()->create(['project_id' => $project->id]);
         $task = ProjectTask::factory()->create(['project_id' => $project->id]);
+        CaseStudy::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $teamHead->id,
+            'title' => 'Reporting automation',
+        ]);
         TaskTimeEntry::factory()->create([
             'project_id' => $project->id,
             'project_task_id' => $task->id,
@@ -55,10 +61,13 @@ class ProjectShowTest extends TestCase
                 ->has('tags', 1)
                 ->has('metadata', 1)
                 ->has('requirements')
+                ->has('case_studies', 1)
                 ->has('tasks')
                 ->has('time_entries')
                 ->where('can_create_requirements', true)
                 ->where('can_create_tasks', true)
+                ->where('can_view_case_studies', true)
+                ->where('can_create_case_studies', true)
                 ->where('can_manage_tags_metadata', true)
                 ->where('working_hours.start', '09:00')
                 ->where('working_hours.end', '17:00'));
@@ -116,6 +125,8 @@ class ProjectShowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('admin/projects/Show')
-                ->where('can_manage_tags_metadata', false));
+                ->where('can_manage_tags_metadata', false)
+                ->where('can_view_case_studies', false)
+                ->has('case_studies', 0));
     }
 }

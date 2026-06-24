@@ -56,7 +56,8 @@ class ProjectManagementTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('admin/projects/Index')
-                ->has('projects.data', 2));
+                ->has('projects.data', 2)
+                ->where('can_view_case_studies', true));
     }
 
     public function test_super_admin_can_list_and_view_all_projects_regardless_of_team(): void
@@ -247,7 +248,8 @@ class ProjectManagementTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('admin/projects/Index')
                 ->has('projects.data', 1)
-                ->where('projects.data.0.name', 'Alpha Build'));
+                ->where('projects.data.0.name', 'Alpha Build')
+                ->where('can_view_case_studies', false));
     }
 
     public function test_deleting_project_detaches_related_teams(): void

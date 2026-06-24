@@ -42,6 +42,11 @@ import {
     index as proposalsIndex,
     show as proposalsShow,
 } from '@/routes/admin/projects/proposals/index';
+import {
+    create as caseStudiesCreate,
+    index as projectCaseStudiesIndex,
+    show as caseStudiesShow,
+} from '@/routes/admin/projects/case-studies/index';
 import { index as projectTasksIndex, create as projectTasksCreate, show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
 import TableRow from '@/components/dashboard/TableRow.vue';
 
@@ -102,6 +107,15 @@ type ProposalRow = {
     creator: UserBrief;
 };
 
+type CaseStudyRow = {
+    id: number;
+    title: string;
+    summary_preview: string | null;
+    created_at: string | null;
+    creator: UserBrief;
+    task: { id: number; title: string } | null;
+};
+
 type TaskRow = {
     id: number;
     title: string;
@@ -154,6 +168,10 @@ const props = defineProps<{
     proposals: ProposalRow[];
     proposals_total: number;
     can_create_proposals: boolean;
+    case_studies: CaseStudyRow[];
+    case_studies_total: number;
+    can_create_case_studies: boolean;
+    can_view_case_studies: boolean;
     tasks: TaskRow[];
     tasks_total: number;
     time_entries: TimeEntryRow[];
@@ -481,6 +499,9 @@ watch(timeEntryOpen, (open) => {
                 <Button variant="outline" as-child>
                     <Link :href="proposalsIndex.url(project.id)">All proposals</Link>
                 </Button>
+                <Button v-if="can_view_case_studies" variant="outline" as-child>
+                    <Link :href="projectCaseStudiesIndex.url(project.id)">All case studies</Link>
+                </Button>
                 <Button variant="outline" as-child>
                     <Link :href="projectTasksIndex.url(project.id)">All tasks</Link>
                 </Button>
@@ -602,7 +623,8 @@ watch(timeEntryOpen, (open) => {
                     <TableRow v-for="row in requirements" :key="row.id">
                         <DataTableTd label="Title" class="align-top">
                             <div class="font-medium">{{ row.title }}</div>
-                            <p v-if="row.description_preview" class="hidden md:block mt-1 line-clamp-2 text-xs text-muted-foreground">
+                            <p v-if="row.description_preview"
+                                class="hidden md:block mt-1 line-clamp-2 text-xs text-muted-foreground">
                                 {{ row.description_preview }}
                             </p>
                         </DataTableTd>
@@ -655,7 +677,8 @@ watch(timeEntryOpen, (open) => {
                     <TableRow v-for="row in proposals" :key="row.id">
                         <DataTableTd label="Title" class="align-top">
                             <div class="font-medium">{{ row.title }}</div>
-                            <p v-if="row.description_preview" class="hidden md:block mt-1 line-clamp-2 text-xs text-muted-foreground">
+                            <p v-if="row.description_preview"
+                                class="hidden md:block mt-1 line-clamp-2 text-xs text-muted-foreground">
                                 {{ row.description_preview }}
                             </p>
                         </DataTableTd>
@@ -672,6 +695,58 @@ watch(timeEntryOpen, (open) => {
                                     proposal: row.id,
                                 })
                                     ">
+                                    View
+                                </Link>
+                            </Button>
+                        </DataTableTd>
+                    </TableRow>
+                </tbody>
+            </DataTable>
+        </section>
+
+        <section v-if="can_view_case_studies" class="flex flex-col gap-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">Case studies</h2>
+                    <p class="text-sm text-muted-foreground">
+                        Showing {{ case_studies.length }} of {{ case_studies_total }} case studies.
+                    </p>
+                </div>
+                <Button v-if="can_create_case_studies" as-child>
+                    <Link :href="caseStudiesCreate.url(project.id)">Add case study</Link>
+                </Button>
+            </div>
+
+            <DataTable>
+                <thead>
+                    <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
+                        <DataTableTh>Title</DataTableTh>
+                        <DataTableTh>Task</DataTableTh>
+                        <DataTableTh>Creator</DataTableTh>
+                        <DataTableTh class="text-right">Actions</DataTableTh>
+                    </tr>
+                </thead>
+                <tbody>
+                    <TableRow v-for="row in case_studies" :key="row.id">
+                        <DataTableTd label="Title" class="align-top">
+                            <div class="font-medium">{{ row.title }}</div>
+                            <p v-if="row.summary_preview"
+                                class="hidden md:block mt-1 line-clamp-2 text-xs text-muted-foreground">
+                                {{ row.summary_preview }}
+                            </p>
+                        </DataTableTd>
+                        <DataTableTd label="Task" class="text-muted-foreground">
+                            {{ row.task?.title ?? '—' }}
+                        </DataTableTd>
+                        <DataTableTd label="Creator" class="text-muted-foreground">
+                            {{ row.creator?.name ?? '—' }}
+                        </DataTableTd>
+                        <DataTableTd label="Actions" class="text-left md:text-right">
+                            <Button variant="ghost" size="sm" as-child>
+                                <Link :href="caseStudiesShow.url({
+                                    project: project.id,
+                                    case_study: row.id,
+                                })">
                                     View
                                 </Link>
                             </Button>
