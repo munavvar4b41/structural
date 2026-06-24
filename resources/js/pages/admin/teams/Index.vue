@@ -17,6 +17,8 @@ import {
     edit as teamsEdit,
     index as teamsIndex,
 } from '@/routes/admin/teams/index';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import TableRow from '@/components/dashboard/TableRow.vue';
 
 type TeamRow = {
@@ -138,17 +140,26 @@ const deleteTeamDescription = computed(() => {
                         {{ team.users_count }}
                     </DataTableTd>
                     <DataTableTd label="Actions" class="text-left md:text-right">
-                        <div class="flex gap-2 justify-start md:justify-end">
-                            <Button variant="outline" size="sm" as-child>
-                                <Link :href="teamsEdit(team.id)">Edit</Link>
-                            </Button>
-                            <Button variant="outline" size="sm" class="text-destructive hover:bg-destructive/10"
-                                type="button" @click="openDeleteDialog(team)">
-                                Delete
-                            </Button>
+                        <div class="flex gap-1 justify-start md:justify-end">
+                            <TableIconAction
+                                icon="pencil"
+                                label="Edit"
+                                :href="teamsEdit(team.id)"
+                            />
+                            <TableIconAction
+                                icon="trash"
+                                label="Delete"
+                                destructive
+                                @click="openDeleteDialog(team)"
+                            />
                         </div>
                     </DataTableTd>
                 </TableRow>
+                <DataTableEmptyRow
+                    v-if="teams.data.length === 0"
+                    :colspan="4"
+                    message="No teams match this filter."
+                />
             </tbody>
         </DataTable>
 

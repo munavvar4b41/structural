@@ -22,6 +22,8 @@ import {
 import { index as projectRequirementsIndex } from '@/routes/admin/projects/requirements/index';
 import { index as projectCaseStudiesIndex } from '@/routes/admin/projects/case-studies/index';
 import { index as projectTasksIndex } from '@/routes/admin/projects/tasks/index';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import TableRow from '@/components/dashboard/TableRow.vue';
 
 type ClientUserSummary = {
@@ -73,6 +75,20 @@ defineOptions({
 });
 
 const props = defineProps<Props>();
+
+const projectTableColspan = computed(() => {
+    let columns = 6;
+
+    if (props.can_view_case_studies) {
+        columns += 1;
+    }
+
+    if (props.canManageProjects) {
+        columns += 1;
+    }
+
+    return columns;
+});
 
 const deleteDialogOpen = ref(false);
 const projectPendingDelete = ref<ProjectRow | null>(null);
@@ -230,32 +246,50 @@ const deleteProjectDescription = computed(() => {
                         {{ project.teams_count }}
                     </DataTableTd>
                     <DataTableTd label="Requirements">
-                        <Button variant="link" class="h-auto p-0 w-fit md:w-full" as-child>
-                            <Link :href="projectRequirementsIndex.url(project.id)">View</Link>
-                        </Button>
+                        <TableIconAction
+                            variant="link"
+                            icon="eye"
+                            label="View requirements"
+                            :href="projectRequirementsIndex.url(project.id)"
+                        />
                     </DataTableTd>
                     <DataTableTd label="Tasks">
-                        <Button variant="link" class="h-auto p-0 w-fit md:w-full" as-child>
-                            <Link :href="projectTasksIndex.url(project.id)">View</Link>
-                        </Button>
+                        <TableIconAction
+                            variant="link"
+                            icon="eye"
+                            label="View tasks"
+                            :href="projectTasksIndex.url(project.id)"
+                        />
                     </DataTableTd>
                     <DataTableTd v-if="can_view_case_studies" label="Case studies">
-                        <Button variant="link" class="h-auto p-0 w-fit md:w-full" as-child>
-                            <Link :href="projectCaseStudiesIndex.url(project.id)">View</Link>
-                        </Button>
+                        <TableIconAction
+                            variant="link"
+                            icon="eye"
+                            label="View case studies"
+                            :href="projectCaseStudiesIndex.url(project.id)"
+                        />
                     </DataTableTd>
                     <DataTableTd v-if="canManageProjects" label="Actions" class="text-left md:text-right">
-                        <div class="flex gap-2 justify-start md:justify-end">
-                            <Button variant="outline" size="sm" as-child>
-                                <Link :href="projectsEdit(project.id)">Edit</Link>
-                            </Button>
-                            <Button variant="outline" size="sm" class="text-destructive hover:bg-destructive/10"
-                                type="button" @click="openDeleteDialog(project)">
-                                Delete
-                            </Button>
+                        <div class="flex gap-1 justify-start md:justify-end">
+                            <TableIconAction
+                                icon="pencil"
+                                label="Edit"
+                                :href="projectsEdit(project.id)"
+                            />
+                            <TableIconAction
+                                icon="trash"
+                                label="Delete"
+                                destructive
+                                @click="openDeleteDialog(project)"
+                            />
                         </div>
                     </DataTableTd>
                 </TableRow>
+                <DataTableEmptyRow
+                    v-if="projects.data.length === 0"
+                    :colspan="projectTableColspan"
+                    message="No projects match this filter."
+                />
             </tbody>
         </DataTable>
 

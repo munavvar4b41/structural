@@ -9,6 +9,7 @@ import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -290,10 +291,12 @@ const filteredLeaveRequests = computed(() => {
                             </DataTableTd>
                             <DataTableTd label="Status">{{ row.status_label }}</DataTableTd>
                             <DataTableTd label="Actions" class="text-left md:text-right">
-                                <Button v-if="row.status === 'pending'" type="button" variant="outline" size="sm"
-                                    @click="cancelRequest(row)">
-                                    Cancel
-                                </Button>
+                                <TableIconAction
+                                    v-if="row.status === 'pending'"
+                                    icon="x"
+                                    label="Cancel"
+                                    @click="cancelRequest(row)"
+                                />
                             </DataTableTd>
                         </TableRow>
                         <tr v-if="filteredLeaveRequests.length === 0">

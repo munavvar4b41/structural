@@ -13,6 +13,7 @@ import RequirementPhaseSettingsCard, {
     type RequirementPhaseSettings,
 } from '@/components/requirements/RequirementPhaseSettingsCard.vue';
 import RichTextEditor from '@/components/RichTextEditor.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import RichTextViewer from '@/components/RichTextViewer.vue';
 import FormSelect from '@/components/FormSelect.vue';
 import { Badge } from '@/components/ui/badge';
@@ -634,20 +635,22 @@ defineOptions({
                                         {{ formatTaskMinutes(task.estimated_minutes) }}
                                     </td>
                                     <td data-label="Actions" class="px-4 py-3 text-right">
-                                        <div class="flex justify-end gap-2">
-                                            <Button v-if="task.can_update" variant="outline" size="sm" as-child>
-                                                <Link :href="projectTasksIndex.url(project.id, {
+                                        <div class="flex justify-end gap-1">
+                                            <TableIconAction
+                                                v-if="task.can_update"
+                                                icon="external-link"
+                                                label="Manage on list"
+                                                :href="projectTasksIndex.url(project.id, {
                                                     query: { task_filter: 'linked' },
-                                                })
-                                                    ">
-                                                    Manage on list
-                                                </Link>
-                                            </Button>
-                                            <Button v-if="task.can_delete" variant="outline" size="sm"
-                                                class="text-destructive hover:bg-destructive/10" type="button"
-                                                @click="openTaskDelete(task)">
-                                                Delete
-                                            </Button>
+                                                })"
+                                            />
+                                            <TableIconAction
+                                                v-if="task.can_delete"
+                                                icon="trash"
+                                                label="Delete"
+                                                destructive
+                                                @click="openTaskDelete(task)"
+                                            />
                                         </div>
                                     </td>
                                 </tr>

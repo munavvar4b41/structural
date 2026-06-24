@@ -18,6 +18,8 @@ import {
     edit as usersEdit,
     index as usersIndex,
 } from '@/routes/admin/users/index';
+import TableIconAction from '@/components/TableIconAction.vue';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserRow = {
@@ -224,17 +226,26 @@ function roleLabel(role: string): string {
                         {{ roleLabel(row.role) }}
                     </DataTableTd>
                     <DataTableTd label="Actions" class="text-left md:text-right">
-                        <div class="flex gap-2 justify-start md:justify-end">
-                            <Button variant="outline" size="sm" as-child>
-                                <Link :href="usersEdit(row.id)">Edit</Link>
-                            </Button>
-                            <Button variant="outline" size="sm" class="text-destructive hover:bg-destructive/10"
-                                type="button" @click="openDeleteDialog(row)">
-                                Delete
-                            </Button>
+                        <div class="flex gap-1 justify-start md:justify-end">
+                            <TableIconAction
+                                icon="pencil"
+                                label="Edit"
+                                :href="usersEdit(row.id)"
+                            />
+                            <TableIconAction
+                                icon="trash"
+                                label="Delete"
+                                destructive
+                                @click="openDeleteDialog(row)"
+                            />
                         </div>
                     </DataTableTd>
                 </TableRow>
+                <DataTableEmptyRow
+                    v-if="users.data.length === 0"
+                    :colspan="4"
+                    message="No users match this filter."
+                />
             </tbody>
         </DataTable>
 

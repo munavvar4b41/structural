@@ -42,6 +42,7 @@ import { index as adminProposalsIndex } from '@/routes/admin/proposals/index';
 import { index as adminRequirementsIndex } from '@/routes/admin/requirements/index';
 import { index as adminTaskRatingsReportIndex } from '@/routes/admin/task-ratings-report/index';
 import { index as adminEstimationReviewsIndex } from '@/routes/admin/estimation-reviews/index';
+import { index as adminUnderstandingReviewsIndex } from '@/routes/admin/understanding-reviews/index';
 import { index as adminTaskReviewsIndex } from '@/routes/admin/task-reviews/index';
 import { index as adminTasksIndex } from '@/routes/admin/tasks/index';
 import { index as adminTeamsIndex } from '@/routes/admin/teams/index';
@@ -147,6 +148,11 @@ const navGroups = computed((): NavGroup[] => {
             title: 'Estimation reviews',
             href: adminEstimationReviewsIndex(),
             icon: Calculator,
+        });
+        reviewItems.push({
+            title: 'Understanding reviews',
+            href: adminUnderstandingReviewsIndex(),
+            icon: FileText,
         });
     }
 

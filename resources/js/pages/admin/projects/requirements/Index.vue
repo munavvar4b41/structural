@@ -20,6 +20,7 @@ import {
     index as requirementsIndex,
     show as requirementsShow,
 } from '@/routes/admin/projects/requirements/index';
+import TableIconAction from '@/components/TableIconAction.vue';
 import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserBrief = {
@@ -268,29 +269,34 @@ const deleteRequirementDescription = computed(() => {
                         </div>
                     </DataTableTd>
                     <DataTableTd label="Actions" class="text-left md:text-right">
-                        <div class="flex gap-2 justify-start md:justify-end">
-                            <Button variant="ghost" size="sm" as-child>
-                                <Link :href="requirementsShow.url({
+                        <div class="flex gap-1 justify-start md:justify-end">
+                            <TableIconAction
+                                variant="ghost"
+                                icon="eye"
+                                label="View"
+                                :href="requirementsShow.url({
                                     project: project.id,
                                     requirement: row.id,
-                                })
-                                    ">
-                                    View
-                                </Link>
-                            </Button>
-                            <Button v-if="row.can_update" variant="ghost" size="sm" as-child>
-                                <Link :href="requirementsEdit.url({
+                                })"
+                            />
+                            <TableIconAction
+                                v-if="row.can_update"
+                                variant="ghost"
+                                icon="pencil"
+                                label="Edit"
+                                :href="requirementsEdit.url({
                                     project: project.id,
                                     requirement: row.id,
-                                })
-                                    ">
-                                    Edit
-                                </Link>
-                            </Button>
-                            <Button v-if="row.can_delete" variant="ghost" size="sm" class="text-destructive"
-                                type="button" @click="openDeleteDialog(row)">
-                                Delete
-                            </Button>
+                                })"
+                            />
+                            <TableIconAction
+                                v-if="row.can_delete"
+                                variant="ghost"
+                                icon="trash"
+                                label="Delete"
+                                destructive
+                                @click="openDeleteDialog(row)"
+                            />
                         </div>
                     </DataTableTd>
                 </TableRow>

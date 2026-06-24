@@ -17,6 +17,7 @@ import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilt
 import { index as projectsIndex } from '@/routes/admin/projects/index';
 import { create as proposalsCreate, edit as proposalsEdit, show as proposalsShow } from '@/routes/admin/projects/proposals/index';
 import { index as globalProposalsIndex } from '@/routes/admin/proposals/index';
+import TableIconAction from '@/components/TableIconAction.vue';
 import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserBrief = {
@@ -267,29 +268,34 @@ function statusBadgeVariant(status: string): 'default' | 'secondary' | 'destruct
                         {{ row.created_at ? new Date(row.created_at).toLocaleString() : '—' }}
                     </DataTableTd>
                     <DataTableTd label="Actions" class="text-left md:text-right">
-                        <div class="flex gap-2 justify-start md:justify-end">
-                            <Button variant="ghost" size="sm" as-child>
-                                <Link :href="proposalsShow.url({
+                        <div class="flex gap-1 justify-start md:justify-end">
+                            <TableIconAction
+                                variant="ghost"
+                                icon="eye"
+                                label="View"
+                                :href="proposalsShow.url({
                                     project: row.project.id,
                                     proposal: row.id,
-                                })
-                                    ">
-                                    View
-                                </Link>
-                            </Button>
-                            <Button v-if="row.can_update" variant="ghost" size="sm" as-child>
-                                <Link :href="proposalsEdit.url({
+                                })"
+                            />
+                            <TableIconAction
+                                v-if="row.can_update"
+                                variant="ghost"
+                                icon="pencil"
+                                label="Edit"
+                                :href="proposalsEdit.url({
                                     project: row.project.id,
                                     proposal: row.id,
-                                })
-                                    ">
-                                    Edit
-                                </Link>
-                            </Button>
-                            <Button v-if="row.can_delete" variant="ghost" size="sm" class="text-destructive"
-                                @click="openDeleteDialog(row)">
-                                Delete
-                            </Button>
+                                })"
+                            />
+                            <TableIconAction
+                                v-if="row.can_delete"
+                                variant="ghost"
+                                icon="trash"
+                                label="Delete"
+                                destructive
+                                @click="openDeleteDialog(row)"
+                            />
                         </div>
                     </DataTableTd>
                 </TableRow>

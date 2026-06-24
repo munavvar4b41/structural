@@ -29,6 +29,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { index as projectsIndex } from '@/routes/admin/projects/index';
 import { index as taskReviewsIndex } from '@/routes/admin/task-reviews/index';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserBrief = {
@@ -205,7 +207,7 @@ function submittedLabel(at: string | null): string {
                 </div>
             </CardHeader>
             <CardContent>
-                <DataTable v-if="filteredTasks.length > 0">
+                <DataTable>
                     <thead>
                         <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
                             <DataTableTh>Task</DataTableTh>
@@ -232,21 +234,30 @@ function submittedLabel(at: string | null): string {
                                 </span>
                             </DataTableTd>
                             <DataTableTd label="Actions" class="text-left md:text-right">
-                                <div class="flex flex-wrap justify-start md:justify-end gap-2">
-                                    <Button variant="outline" size="sm" as-child>
-                                        <Link :href="row.task_show_url">Open task</Link>
-                                    </Button>
-                                    <Button size="sm" type="button" @click="openConfirm(row)">
-                                        Confirm & rate
-                                    </Button>
+                                <div class="flex flex-wrap justify-start md:justify-end gap-1">
+                                    <TableIconAction
+                                        icon="eye"
+                                        label="Open task"
+                                        :href="row.task_show_url"
+                                    />
+                                    <TableIconAction
+                                        icon="check-circle"
+                                        label="Confirm & rate"
+                                        variant="default"
+                                        @click="openConfirm(row)"
+                                    />
                                 </div>
                             </DataTableTd>
                         </TableRow>
+                        <DataTableEmptyRow
+                            v-if="filteredTasks.length === 0"
+                            :colspan="5"
+                            :message="tasks.length === 0
+                                ? 'No tasks awaiting review.'
+                                : 'No tasks match your filters.'"
+                        />
                     </tbody>
                 </DataTable>
-                <div v-else class="text-sm text-muted-foreground">
-                    {{ tasks.length === 0 ? 'No tasks awaiting review.' : 'No tasks match your filters.' }}
-                </div>
             </CardContent>
         </Card>
     </div>

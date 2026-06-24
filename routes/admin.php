@@ -32,6 +32,7 @@ use App\Http\Controllers\Admin\TaskTimeEntryController;
 use App\Http\Controllers\Admin\TaskTimerController;
 use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\TimeReportController;
+use App\Http\Controllers\Admin\UnderstandingReviewController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Middleware\EnsureCanManageCompanySettings;
 use App\Http\Middleware\EnsureCanManageUsers;
@@ -96,6 +97,7 @@ Route::delete('case-studies/{caseStudy}/attachments/{attachment}', [CaseStudyAtt
 Route::get('requirements', [RequirementController::class, 'index'])->name('requirements.index');
 Route::get('task-reviews', [TaskCompletionReviewController::class, 'index'])->name('task-reviews.index');
 Route::get('estimation-reviews', [EstimationReviewController::class, 'index'])->name('estimation-reviews.index');
+Route::get('understanding-reviews', [UnderstandingReviewController::class, 'index'])->name('understanding-reviews.index');
 Route::get('task-ratings-report', [TaskRatingReportController::class, 'index'])->name('task-ratings-report.index');
 Route::get('suggestions', [SuggestionController::class, 'index'])->name('suggestions.index');
 Route::resource('projects', ProjectController::class);

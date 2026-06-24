@@ -10,6 +10,7 @@ import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import FormMultiSelect from '@/components/FormMultiSelect.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
@@ -440,13 +441,19 @@ onMounted(() => {
                                 {{ formatTaskMinutes(task.estimated_minutes) }}
                             </td>
                             <td data-label="Actions" class="px-4 py-3 text-right">
-                                <div class="flex flex-wrap justify-end gap-2">
-                                    <Button v-if="task.can_submit_task_completion" variant="secondary" size="sm"
-                                        type="button" @click="submitForCompletionFromList(task)">
-                                        Submit for completion
-                                    </Button>
-                                    <Button v-if="task.can_update" variant="outline" size="sm" as-child>
-                                        <Link :href="projectTasksEdit.url({
+                                <div class="flex flex-wrap justify-end gap-1">
+                                    <TableIconAction
+                                        v-if="task.can_submit_task_completion"
+                                        variant="secondary"
+                                        icon="check-circle"
+                                        label="Submit for completion"
+                                        @click="submitForCompletionFromList(task)"
+                                    />
+                                    <TableIconAction
+                                        v-if="task.can_update"
+                                        icon="pencil"
+                                        label="Edit"
+                                        :href="projectTasksEdit.url({
                                             project: project.id,
                                             task: task.id,
                                         }, {
@@ -461,15 +468,15 @@ onMounted(() => {
                                                     }),
                                                 }),
                                             },
-                                        })">
-                                            Edit
-                                        </Link>
-                                    </Button>
-                                    <Button v-if="task.can_delete" variant="outline" size="sm"
-                                        class="text-destructive hover:bg-destructive/10" type="button"
-                                        @click="openDeleteDialog(task)">
-                                        Delete
-                                    </Button>
+                                        })"
+                                    />
+                                    <TableIconAction
+                                        v-if="task.can_delete"
+                                        icon="trash"
+                                        label="Delete"
+                                        destructive
+                                        @click="openDeleteDialog(task)"
+                                    />
                                 </div>
                             </td>
                         </tr>

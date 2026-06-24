@@ -15,6 +15,8 @@ import PageHeader from '@/components/dashboard/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import RichTextEditor from '@/components/RichTextEditor.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import TypeaheadInput from '@/components/TypeaheadInput.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -245,6 +247,10 @@ const entryPendingDelete = ref<TimeEntryRow | null>(null);
 const showPhaseColumn = computed(() =>
     props.requirement_options.some((requirement) => requiresPhaseSelection(requirement.max_generated_phase)),
 );
+
+const projectTasksTableColspan = computed(() => (showPhaseColumn.value ? 6 : 5));
+
+const metadataTableColspan = computed(() => (props.can_manage_tags_metadata ? 3 : 2));
 
 const taskSelectOptions = computed(() =>
     props.task_options.map((t) => ({ value: String(t.value), label: t.label })),
@@ -568,7 +574,7 @@ watch(timeEntryOpen, (open) => {
                 </Button>
             </div>
 
-            <DataTable v-if="metadata.length > 0">
+            <DataTable>
                 <thead>
                     <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
                         <DataTableTh>Key</DataTableTh>
@@ -581,20 +587,30 @@ watch(timeEntryOpen, (open) => {
                         <DataTableTd label="Key" class="font-medium">{{ row.key }}</DataTableTd>
                         <DataTableTd label="Value" class="text-muted-foreground">{{ row.value }}</DataTableTd>
                         <DataTableTd v-if="can_manage_tags_metadata" label="Actions" class="text-left md:text-right">
-                            <div class="flex gap-2 justify-start md:justify-end">
-                                <Button variant="ghost" size="sm" type="button" @click="openMetadataEdit(row)">
-                                    Edit
-                                </Button>
-                                <Button variant="ghost" size="sm" type="button" class="text-destructive"
-                                    @click="removeMetadata(row)">
-                                    Remove
-                                </Button>
+                            <div class="flex gap-1 justify-start md:justify-end">
+                                <TableIconAction
+                                    variant="ghost"
+                                    icon="pencil"
+                                    label="Edit"
+                                    @click="openMetadataEdit(row)"
+                                />
+                                <TableIconAction
+                                    variant="ghost"
+                                    icon="trash"
+                                    label="Remove"
+                                    destructive
+                                    @click="removeMetadata(row)"
+                                />
                             </div>
                         </DataTableTd>
                     </TableRow>
+                    <DataTableEmptyRow
+                        v-if="metadata.length === 0"
+                        :colspan="metadataTableColspan"
+                        message="No metadata yet."
+                    />
                 </tbody>
             </DataTable>
-            <p v-else class="text-sm text-muted-foreground">No metadata yet.</p>
         </GlassCard>
 
         <section class="flex flex-col gap-4">
@@ -637,16 +653,22 @@ watch(timeEntryOpen, (open) => {
                             <span v-else>—</span>
                         </DataTableTd>
                         <DataTableTd label="Actions" class="text-left md:text-right">
-                            <Button variant="ghost" size="sm" as-child>
-                                <Link :href="requirementsShow.url({
+                            <TableIconAction
+                                variant="ghost"
+                                icon="eye"
+                                label="View"
+                                :href="requirementsShow.url({
                                     project: project.id,
                                     requirement: row.id,
-                                })">
-                                    View
-                                </Link>
-                            </Button>
+                                })"
+                            />
                         </DataTableTd>
                     </TableRow>
+                    <DataTableEmptyRow
+                        v-if="requirements.length === 0"
+                        :colspan="4"
+                        message="No requirements yet."
+                    />
                 </tbody>
             </DataTable>
         </section>
@@ -689,17 +711,22 @@ watch(timeEntryOpen, (open) => {
                             {{ row.creator?.name ?? '—' }}
                         </DataTableTd>
                         <DataTableTd label="Actions" class="text-left md:text-right">
-                            <Button variant="ghost" size="sm" as-child>
-                                <Link :href="proposalsShow.url({
+                            <TableIconAction
+                                variant="ghost"
+                                icon="eye"
+                                label="View"
+                                :href="proposalsShow.url({
                                     project: project.id,
                                     proposal: row.id,
-                                })
-                                    ">
-                                    View
-                                </Link>
-                            </Button>
+                                })"
+                            />
                         </DataTableTd>
                     </TableRow>
+                    <DataTableEmptyRow
+                        v-if="proposals.length === 0"
+                        :colspan="4"
+                        message="No proposals yet."
+                    />
                 </tbody>
             </DataTable>
         </section>
@@ -742,16 +769,22 @@ watch(timeEntryOpen, (open) => {
                             {{ row.creator?.name ?? '—' }}
                         </DataTableTd>
                         <DataTableTd label="Actions" class="text-left md:text-right">
-                            <Button variant="ghost" size="sm" as-child>
-                                <Link :href="caseStudiesShow.url({
+                            <TableIconAction
+                                variant="ghost"
+                                icon="eye"
+                                label="View"
+                                :href="caseStudiesShow.url({
                                     project: project.id,
                                     case_study: row.id,
-                                })">
-                                    View
-                                </Link>
-                            </Button>
+                                })"
+                            />
                         </DataTableTd>
                     </TableRow>
+                    <DataTableEmptyRow
+                        v-if="case_studies.length === 0"
+                        :colspan="4"
+                        message="No case studies yet."
+                    />
                 </tbody>
             </DataTable>
         </section>
@@ -801,16 +834,22 @@ watch(timeEntryOpen, (open) => {
                         </DataTableTd>
                         <DataTableTd label="Estimate">{{ formatTaskMinutes(row.estimated_minutes) }}</DataTableTd>
                         <DataTableTd label="Actions" class="text-left md:text-right">
-                            <Button variant="ghost" size="sm" as-child>
-                                <Link :href="projectTasksShow.url({
+                            <TableIconAction
+                                variant="ghost"
+                                icon="eye"
+                                label="View"
+                                :href="projectTasksShow.url({
                                     project: project.id,
                                     task: row.id,
-                                })">
-                                    View
-                                </Link>
-                            </Button>
+                                })"
+                            />
                         </DataTableTd>
                     </TableRow>
+                    <DataTableEmptyRow
+                        v-if="tasks.length === 0"
+                        :colspan="projectTasksTableColspan"
+                        message="No tasks yet."
+                    />
                 </tbody>
             </DataTable>
         </section>
@@ -849,18 +888,30 @@ watch(timeEntryOpen, (open) => {
                         </DataTableTd>
                         <DataTableTd label="Duration">{{ formatDuration(row.duration_seconds) }}</DataTableTd>
                         <DataTableTd label="Actions" class="text-left md:text-right">
-                            <div class="flex gap-2 justify-start md:justify-end">
-                                <Button v-if="row.can_update" variant="ghost" size="sm" type="button"
-                                    @click="openEditEntry(row)">
-                                    Edit
-                                </Button>
-                                <Button v-if="row.can_delete" variant="ghost" size="sm" type="button"
-                                    class="text-destructive" @click="openEntryDelete(row)">
-                                    Delete
-                                </Button>
+                            <div class="flex gap-1 justify-start md:justify-end">
+                                <TableIconAction
+                                    v-if="row.can_update"
+                                    variant="ghost"
+                                    icon="pencil"
+                                    label="Edit"
+                                    @click="openEditEntry(row)"
+                                />
+                                <TableIconAction
+                                    v-if="row.can_delete"
+                                    variant="ghost"
+                                    icon="trash"
+                                    label="Delete"
+                                    destructive
+                                    @click="openEntryDelete(row)"
+                                />
                             </div>
                         </DataTableTd>
                     </TableRow>
+                    <DataTableEmptyRow
+                        v-if="time_entries.length === 0"
+                        :colspan="5"
+                        message="No time entries yet."
+                    />
                 </tbody>
             </DataTable>
         </section>

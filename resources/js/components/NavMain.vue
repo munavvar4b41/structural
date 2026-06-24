@@ -6,6 +6,7 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import type { NavGroup, NavItem } from '@/types';
@@ -14,6 +15,7 @@ defineProps<{
     groups: NavGroup[];
 }>();
 
+const { isMobile, setOpenMobile } = useSidebar();
 const { isCurrentUrl, isCurrentOrParentUrl } = useCurrentUrl();
 
 function isNavItemActive(item: NavItem): boolean {
@@ -22,6 +24,12 @@ function isNavItemActive(item: NavItem): boolean {
     }
 
     return isCurrentUrl(item.href);
+}
+
+function handleNavClick(): void {
+    if (isMobile.value) {
+        setOpenMobile(false);
+    }
 }
 </script>
 
@@ -41,7 +49,7 @@ function isNavItemActive(item: NavItem): boolean {
                     :is-active="isNavItemActive(item)"
                     :tooltip="item.title"
                 >
-                    <Link :href="item.href">
+                    <Link :href="item.href" @click="handleNavClick">
                         <component :is="item.icon" />
                         <span>{{ item.title }}</span>
                     </Link>

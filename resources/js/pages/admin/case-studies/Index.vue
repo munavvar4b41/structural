@@ -7,6 +7,7 @@ import DataTablePagination from '@/components/dashboard/DataTablePagination.vue'
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import TableRow from '@/components/dashboard/TableRow.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import FormSelect from '@/components/FormSelect.vue';
@@ -228,40 +229,34 @@ const deleteDescription = computed(() => {
                         {{ row.created_at ? new Date(row.created_at).toLocaleString() : '—' }}
                     </DataTableTd>
                     <DataTableTd label="Actions" class="text-left md:text-right">
-                        <div class="flex justify-start gap-2 md:justify-end">
-                            <Button variant="ghost" size="sm" as-child>
-                                <Link
-                                    :href="
-                                        caseStudiesShow.url({
-                                            project: row.project.id,
-                                            case_study: row.id,
-                                        })
-                                    "
-                                >
-                                    View
-                                </Link>
-                            </Button>
-                            <Button v-if="row.can_update" variant="ghost" size="sm" as-child>
-                                <Link
-                                    :href="
-                                        caseStudiesEdit.url({
-                                            project: row.project.id,
-                                            case_study: row.id,
-                                        })
-                                    "
-                                >
-                                    Edit
-                                </Link>
-                            </Button>
-                            <Button
+                        <div class="flex justify-start gap-1 md:justify-end">
+                            <TableIconAction
+                                variant="ghost"
+                                icon="eye"
+                                label="View"
+                                :href="caseStudiesShow.url({
+                                    project: row.project.id,
+                                    case_study: row.id,
+                                })"
+                            />
+                            <TableIconAction
+                                v-if="row.can_update"
+                                variant="ghost"
+                                icon="pencil"
+                                label="Edit"
+                                :href="caseStudiesEdit.url({
+                                    project: row.project.id,
+                                    case_study: row.id,
+                                })"
+                            />
+                            <TableIconAction
                                 v-if="row.can_delete"
                                 variant="ghost"
-                                size="sm"
-                                class="text-destructive"
+                                icon="trash"
+                                label="Delete"
+                                destructive
                                 @click="openDeleteDialog(row)"
-                            >
-                                Delete
-                            </Button>
+                            />
                         </div>
                     </DataTableTd>
                 </TableRow>

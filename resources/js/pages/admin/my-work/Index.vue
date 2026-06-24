@@ -5,6 +5,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
 import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin/TaskCompletionReviewController';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
@@ -521,7 +522,7 @@ onMounted(() => {
 
                 <div v-show="!isSectionCollapsed(col.status)" :id="sectionContentId(col.status)"
                     class="flex flex-col gap-3">
-                    <DataTable v-if="col.tasks.length > 0">
+                    <DataTable>
                         <thead>
                             <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
                                 <DataTableTh class="w-10" />
@@ -615,13 +616,13 @@ onMounted(() => {
                                     </div>
                                 </DataTableTd>
                             </TableRow>
+                            <DataTableEmptyRow
+                                v-if="col.tasks.length === 0"
+                                :colspan="7"
+                                message="No tasks — drop here to move"
+                            />
                         </tbody>
                     </DataTable>
-
-                    <p v-else
-                        class="min-h-[4rem] rounded-xl border border-dashed border-border/80 px-2 py-6 text-center text-xs text-muted-foreground">
-                        No tasks — drop here to move
-                    </p>
 
                     <Button v-if="col.tasks.length > 0 && col.meta.current_page < col.meta.last_page" variant="outline"
                         size="sm" class="w-full max-w-xs text-xs" type="button" @click="loadMoreColumn(col)">
