@@ -154,7 +154,7 @@ const deleteDescription = computed(() => {
             </thead>
             <tbody>
                 <TableRow v-for="row in case_studies.data" :key="row.id">
-                    <DataTableTd label="Title" class="align-top">
+                    <DataTableTd label="Title" class="align-middle">
                         <div class="font-medium">{{ row.title }}</div>
                         <p
                             v-if="row.summary_preview"

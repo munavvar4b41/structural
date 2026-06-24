@@ -621,7 +621,7 @@ watch(timeEntryOpen, (open) => {
                 </thead>
                 <tbody>
                     <TableRow v-for="row in requirements" :key="row.id">
-                        <DataTableTd label="Title" class="align-top">
+                        <DataTableTd label="Title" class="align-middle">
                             <div class="font-medium">{{ row.title }}</div>
                             <p v-if="row.description_preview"
                                 class="hidden md:block mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -675,7 +675,7 @@ watch(timeEntryOpen, (open) => {
                 </thead>
                 <tbody>
                     <TableRow v-for="row in proposals" :key="row.id">
-                        <DataTableTd label="Title" class="align-top">
+                        <DataTableTd label="Title" class="align-middle">
                             <div class="font-medium">{{ row.title }}</div>
                             <p v-if="row.description_preview"
                                 class="hidden md:block mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -728,7 +728,7 @@ watch(timeEntryOpen, (open) => {
                 </thead>
                 <tbody>
                     <TableRow v-for="row in case_studies" :key="row.id">
-                        <DataTableTd label="Title" class="align-top">
+                        <DataTableTd label="Title" class="align-middle">
                             <div class="font-medium">{{ row.title }}</div>
                             <p v-if="row.summary_preview"
                                 class="hidden md:block mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -782,7 +782,7 @@ watch(timeEntryOpen, (open) => {
                 </thead>
                 <tbody>
                     <TableRow v-for="row in tasks" :key="row.id">
-                        <DataTableTd label="Title" class="align-top">
+                        <DataTableTd label="Title" class="align-middle">
                             <div class="flex items-start gap-1 font-medium">
                                 <CornerDownRight v-if="row.tree_depth > 0"
                                     class="mt-0.5 size-4 shrink-0 text-muted-foreground" />

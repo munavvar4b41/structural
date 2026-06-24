@@ -567,7 +567,7 @@ onMounted(() => {
                                 <DataTableTd label="Estimate" class="align-top text-muted-foreground">
                                     {{ formatTaskMinutes(task.estimated_minutes) }}
                                 </DataTableTd>
-                                <DataTableTd label="Status" class="align-top">
+                                <DataTableTd label="Status" class="align-middle">
                                     <FormSelect :id="`list-st-${task.id}`" :name="`list-status-${task.id}`"
                                         class="min-w-[9rem] text-xs" :model-value="task.status" required
                                         placeholder="Status" :options="statusSelectOptionsForTask(task)"

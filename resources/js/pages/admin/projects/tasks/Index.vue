@@ -379,7 +379,7 @@ onMounted(() => {
                     </thead>
                     <tbody>
                         <tr v-for="task in tasks" :key="task.id" class="border-b border-border/60 last:border-0">
-                            <td data-label="Title" class="max-w-0 px-4 py-3 align-middle" :style="{
+                            <td data-label="Title" class="px-4 py-3 align-middle" :style="{
                                 paddingLeft: `calc(0.75rem + ${task.tree_depth} * 1.25rem)`,
                             }">
                                 <div class="flex min-w-0 items-center gap-1.5">

@@ -207,7 +207,7 @@ function statusBadgeVariant(status: string): 'default' | 'secondary' | 'destruct
             </thead>
             <tbody>
                 <TableRow v-for="row in proposals.data" :key="row.id">
-                    <DataTableTd label="Title" class="align-top">
+                    <DataTableTd label="Title" class="align-middle">
                         <div class="font-medium">{{ row.title }}</div>
                         <p v-if="row.description_preview" class="hidden md:block mt-1 line-clamp-2 text-xs text-muted-foreground">
                             {{ row.description_preview }}

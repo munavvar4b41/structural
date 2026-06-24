@@ -338,11 +338,11 @@ const projectChartOptions = computed(() => ({
                     </thead>
                     <tbody>
                         <TableRow v-for="row in per_day" :key="row.date">
-                            <DataTableTd label="Date" class="align-top">{{ formatDateLabel(row.date) }}</DataTableTd>
-                            <DataTableTd label="Total" class="align-top font-medium tabular-nums">
+                            <DataTableTd label="Date" class="align-middle">{{ formatDateLabel(row.date) }}</DataTableTd>
+                            <DataTableTd label="Total" class="align-middle font-medium tabular-nums">
                                 {{ formatSeconds(row.total_seconds) }}
                             </DataTableTd>
-                            <DataTableTd label="Projects" class="align-top text-muted-foreground">
+                            <DataTableTd label="Projects" class="align-middle text-muted-foreground">
                                 <ul class="grid gap-1">
                                     <li v-for="p in row.projects" :key="p.project_id">
                                         <span class="font-medium text-foreground">
