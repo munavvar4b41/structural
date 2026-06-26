@@ -74,32 +74,25 @@ defineOptions({
 </script>
 
 <template>
+
     <Head :title="`Edit ${case_study.title}`" />
 
     <div class="flex flex-col gap-8">
         <PageHeader title="Edit case study" :description="case_study.title">
             <template #actions>
                 <Button variant="outline" as-child>
-                    <Link
-                        :href="
-                            caseStudiesShow.url({
-                                project: project.id,
-                                case_study: case_study.id,
-                            })
-                        "
-                    >
+                    <Link :href="caseStudiesShow.url({
+                        project: project.id,
+                        case_study: case_study.id,
+                    })
+                        ">
                         Back
                     </Link>
                 </Button>
             </template>
         </PageHeader>
 
-        <CaseStudyForm
-            :project="project"
-            :task-options="task_options"
-            :case-study-id="case_study.id"
-            :initial="case_study"
-            submit-label="Save changes"
-        />
+        <CaseStudyForm :project="project" :task-options="task_options" :case-study-id="case_study.id"
+            :initial="case_study" submit-label="Save changes" />
     </div>
 </template>

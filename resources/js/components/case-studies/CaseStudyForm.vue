@@ -74,8 +74,8 @@ const form = useForm<CaseStudyFormData>({
     project_task_id: props.initial?.project_task_id
         ? String(props.initial.project_task_id)
         : props.preselectedTaskId
-          ? String(props.preselectedTaskId)
-          : '',
+            ? String(props.preselectedTaskId)
+            : '',
     title: props.initial?.title ?? '',
     overview: props.initial?.overview ?? emptyTipTapDocumentJson(),
     client_issue: props.initial?.client_issue ?? emptyTipTapDocumentJson(),
@@ -139,15 +139,12 @@ function submit(): void {
     }));
 
     if (props.caseStudyId !== undefined) {
-        form.post(
+        form.patch(
             caseStudiesUpdate.url({
                 project: props.project.id,
                 case_study: props.caseStudyId,
             }),
-            {
-                ...options,
-                _method: 'patch',
-            },
+            options,
         );
 
         return;
@@ -169,13 +166,8 @@ function submit(): void {
             </div>
             <div class="grid gap-2">
                 <Label for="project_task_id">Related task (optional)</Label>
-                <FormSelect
-                    id="project_task_id"
-                    v-model="form.project_task_id"
-                    :options="taskSelectOptions"
-                    placeholder="No linked task"
-                    none-label="No linked task"
-                />
+                <FormSelect id="project_task_id" v-model="form.project_task_id" :options="taskSelectOptions"
+                    placeholder="No linked task" none-label="No linked task" />
                 <InputError :message="form.errors.project_task_id" />
             </div>
         </GlassCard>
@@ -253,46 +245,44 @@ function submit(): void {
             </div>
 
             <div v-if="existingAttachments.length > 0" class="grid gap-2">
-                <p class="text-sm text-muted-foreground">Existing documents</p>
-                <label
-                    v-for="attachment in existingAttachments"
-                    :key="attachment.id"
-                    class="flex items-center gap-2 text-sm"
-                >
-                    <input
-                        type="checkbox"
-                        :checked="form.remove_attachment_ids.includes(attachment.id)"
-                        @change="toggleRemoveAttachment(attachment.id, ($event.target as HTMLInputElement).checked)"
-                    />
+                <p class="text-sm text-muted-foreground">
+                    Existing documents:
+                    (<span class="text-xs text-muted-foreground">Select documents to remove</span>)
+                </p>
+                <label v-for="attachment in existingAttachments" :key="attachment.id"
+                    class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" :checked="form.remove_attachment_ids.includes(attachment.id)"
+                        @change="toggleRemoveAttachment(attachment.id, ($event.target as HTMLInputElement).checked)" />
                     <span>{{ attachmentLabel(attachment) }}</span>
                 </label>
             </div>
 
-            <div v-for="(document, index) in form.documents" :key="index" class="grid gap-4 rounded-lg border border-border/60 p-4">
+            <div v-for="(document, index) in form.documents" :key="index"
+                class="grid gap-4 rounded-lg border border-border/60 p-4">
                 <div class="flex items-center justify-between gap-2">
                     <p class="text-sm font-medium">Document {{ index + 1 }}</p>
                     <Button type="button" variant="ghost" size="sm" @click="removeDocumentRow(index)">
                         Remove
                     </Button>
                 </div>
-                <div class="grid gap-2">
-                    <Label :for="`document-title-${index}`">Document title</Label>
-                    <Input :id="`document-title-${index}`" v-model="document.title" />
-                    <InputError :message="form.errors[`documents.${index}.title`]" />
-                </div>
-                <div class="grid gap-2">
-                    <Label :for="`document-file-${index}`">File</Label>
-                    <Input
-                        :id="`document-file-${index}`"
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx"
-                        @change="onDocumentFileChange(index, $event)"
-                    />
-                    <InputError :message="form.errors[`documents.${index}.file`]" />
+                <div class="grid md:grid-cols-2 gap-2">
+                    <div class="grid gap-2 col-span-1">
+                        <Label :for="`document-title-${index}`">Document title</Label>
+                        <Input :id="`document-title-${index}`" v-model="document.title" />
+                        <InputError :message="form.errors[`documents.${index}.title`]" />
+                    </div>
+                    <div class="grid gap-2 col-span-1">
+                        <Label :for="`document-file-${index}`">File</Label>
+                        <Input :id="`document-file-${index}`" type="file"
+                            accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx"
+                            @change="onDocumentFileChange(index, $event)" />
+                        <InputError :message="form.errors[`documents.${index}.file`]" />
+                    </div>
                 </div>
             </div>
 
-            <p class="text-xs text-muted-foreground">Up to 10 MB per file. JPG, PNG, GIF, WEBP, PDF, DOC, DOCX, XLS, XLSX.</p>
+            <p class="text-xs text-muted-foreground">Up to 10 MB per file. JPG, PNG, GIF, WEBP, PDF, DOC, DOCX, XLS,
+                XLSX.</p>
             <InputError :message="form.errors.documents" />
         </GlassCard>
 
