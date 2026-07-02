@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Notifications\RequirementEstimationReviewedNotification;
 use App\Notifications\RequirementEstimationSubmittedNotification;
 use App\Notifications\RequirementEstimationTransferredNotification;
+use App\Support\CloneRequirementEstimationVersion;
 use App\Support\RequirementEstimationShowPayload;
 use App\Support\SyncRequirementEstimationLines;
 use App\Support\TransferEstimationToTasks;
@@ -30,6 +31,7 @@ class ProjectRequirementEstimationController extends Controller
     public function __construct(
         private readonly SyncRequirementEstimationLines $syncLines,
         private readonly TransferEstimationToTasks $transferEstimationToTasks,
+        private readonly CloneRequirementEstimationVersion $cloneEstimationVersion,
     ) {}
 
     public function show(Request $request, Project $project, ProjectRequirement $requirement): Response
@@ -44,6 +46,9 @@ class ProjectRequirementEstimationController extends Controller
 
         $requirement->loadMissing('project');
 
+        $compareFrom = $request->filled('compare_from') ? (int) $request->query('compare_from') : null;
+        $compareTo = $request->filled('compare_to') ? (int) $request->query('compare_to') : null;
+
         return Inertia::render('admin/projects/requirements/Estimation', array_merge(
             [
                 'project' => [
@@ -56,7 +61,14 @@ class ProjectRequirementEstimationController extends Controller
                     'title' => $requirement->title,
                 ],
             ],
-            RequirementEstimationShowPayload::forRequirement($requirement, $project, $actor),
+            RequirementEstimationShowPayload::forRequirement(
+                $requirement,
+                $project,
+                $actor,
+                null,
+                $compareFrom,
+                $compareTo,
+            ),
         ));
     }
 
@@ -174,51 +186,35 @@ class ProjectRequirementEstimationController extends Controller
         $actor = $request->user();
         abort_if(! $actor instanceof User, 403);
 
-        $newEstimation = ProjectRequirementEstimation::query()->create([
-            'project_requirement_id' => $requirement->id,
-            'version' => $this->nextVersionNumber($requirement),
-            'status' => RequirementEstimationStatus::Draft,
-            'created_by_user_id' => $actor->id,
-        ]);
+        $this->cloneEstimationVersion->clone(
+            $estimation,
+            $requirement,
+            $actor,
+            RequirementEstimationStatus::Superseded,
+        );
 
-        $oldItems = $estimation->items()->orderBy('sort_order')->get();
-        $idMap = [];
+        return $this->estimationRedirect($project, $requirement)
+            ->with('toast', __('New estimation version created. Update lines and submit when ready.'));
+    }
 
-        foreach ($oldItems as $item) {
-            $newItem = $newEstimation->items()->create([
-                'parent_estimation_item_id' => null,
-                'title' => $item->title,
-                'description' => $item->description,
-                'estimated_minutes' => $item->estimated_minutes,
-                'sort_order' => $item->sort_order,
-            ]);
-            $idMap[$item->id] = $newItem->id;
-        }
+    public function createNextVersion(
+        Request $request,
+        Project $project,
+        ProjectRequirement $requirement,
+        ProjectRequirementEstimation $estimation,
+    ): RedirectResponse {
+        $this->ensureEstimationContext($project, $requirement, $estimation);
+        $this->authorize('createNextVersion', $estimation);
 
-        foreach ($oldItems as $item) {
-            if ($item->parent_estimation_item_id === null) {
-                continue;
-            }
+        $actor = $request->user();
+        abort_if(! $actor instanceof User, 403);
 
-            $newParentId = $idMap[$item->parent_estimation_item_id] ?? null;
-            if ($newParentId === null) {
-                continue;
-            }
-
-            $newItemId = $idMap[$item->id] ?? null;
-            if ($newItemId === null) {
-                continue;
-            }
-
-            $newEstimation->items()->whereKey($newItemId)->update([
-                'parent_estimation_item_id' => $newParentId,
-            ]);
-        }
-
-        $estimation->forceFill([
-            'status' => RequirementEstimationStatus::Superseded,
-            'superseded_by_estimation_id' => $newEstimation->id,
-        ])->save();
+        $this->cloneEstimationVersion->clone(
+            $estimation,
+            $requirement,
+            $actor,
+            RequirementEstimationStatus::Rejected,
+        );
 
         return $this->estimationRedirect($project, $requirement)
             ->with('toast', __('New estimation version created. Update lines and submit when ready.'));

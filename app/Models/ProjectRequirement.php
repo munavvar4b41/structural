@@ -108,6 +108,14 @@ class ProjectRequirement extends Model
             ->first();
     }
 
+    public function latestRejectedEstimation(): ?ProjectRequirementEstimation
+    {
+        return $this->estimations()
+            ->where('status', RequirementEstimationStatus::Rejected)
+            ->orderByDesc('version')
+            ->first();
+    }
+
     public function latestApprovedOrTransferredEstimation(): ?ProjectRequirementEstimation
     {
         return $this->estimations()

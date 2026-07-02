@@ -18,14 +18,28 @@ final class RequirementEstimationShowPayload
         Project $project,
         User $actor,
         ?ProjectRequirementEstimation $estimation = null,
+        ?int $compareFromEstimationId = null,
+        ?int $compareToEstimationId = null,
     ): array {
         $estimation ??= $requirement->activeEstimation()
+            ?? $requirement->latestRejectedEstimation()
             ?? $requirement->latestApprovedOrTransferredEstimation();
+
+        $versionHistory = self::versionHistory($requirement);
+        $versionCompare = self::versionCompare(
+            $requirement,
+            $compareFromEstimationId,
+            $compareToEstimationId,
+        );
 
         $understandingConfirmed = $requirement->understanding_confirmed_at !== null;
 
-        $canManage = $understandingConfirmed
-            && $actor->can('create', [ProjectRequirementEstimation::class, $requirement]);
+        $rejectedSource = $requirement->latestRejectedEstimation();
+
+        $canManage = $understandingConfirmed && (
+            $actor->can('create', [ProjectRequirementEstimation::class, $requirement])
+            || ($rejectedSource !== null && $actor->can('createNextVersion', $rejectedSource))
+        );
 
         $approverOptions = $understandingConfirmed
             ? RequirementEstimationAssignableApprovers::approverUsers($project)
@@ -41,8 +55,13 @@ final class RequirementEstimationShowPayload
         $phaseRegistry = app(RequirementPhaseRegistry::class);
         $phaseSettings = $phaseRegistry->settingsPayload($requirement);
 
+        $sharedMeta = [
+            'version_history' => $versionHistory,
+            'version_compare' => $versionCompare,
+        ];
+
         if ($estimation === null) {
-            return [
+            return array_merge([
                 'understanding_confirmed' => $understandingConfirmed,
                 'estimation' => null,
                 'estimation_lines' => [],
@@ -53,7 +72,8 @@ final class RequirementEstimationShowPayload
                 'show_phase_column' => $phaseSettings['requires_phase_selection'],
                 'max_generated_phase' => $phaseSettings['max_generated_phase'],
                 'can_manage_estimation' => $canManage,
-                'can_create_estimation' => $canManage && $requirement->activeEstimation() === null,
+                'can_create_estimation' => $canManage && $requirement->estimations()->doesntExist(),
+                'can_create_next_version' => false,
                 'can_sync_lines' => false,
                 'can_submit' => false,
                 'can_approve' => false,
@@ -61,7 +81,7 @@ final class RequirementEstimationShowPayload
                 'can_request_changes' => false,
                 'can_request_revision' => false,
                 'can_transfer' => false,
-            ];
+            ], $sharedMeta);
         }
 
         $estimation->load([
@@ -97,7 +117,7 @@ final class RequirementEstimationShowPayload
             ];
         }
 
-        return [
+        return array_merge([
             'understanding_confirmed' => $understandingConfirmed,
             'estimation' => [
                 'id' => $estimation->id,
@@ -122,7 +142,11 @@ final class RequirementEstimationShowPayload
             'show_phase_column' => $phaseSettings['requires_phase_selection'],
             'max_generated_phase' => $phaseSettings['max_generated_phase'],
             'can_manage_estimation' => $canManage,
-            'can_create_estimation' => false,
+            'can_create_estimation' => $canManage
+                && $requirement->activeEstimation() === null
+                && $requirement->estimations()->doesntExist(),
+            'can_create_next_version' => $rejectedSource !== null
+                && $actor->can('createNextVersion', $rejectedSource),
             'can_sync_lines' => $actor->can('syncLines', $estimation),
             'can_submit' => $actor->can('submit', $estimation),
             'can_approve' => $actor->can('approve', $estimation),
@@ -130,6 +154,65 @@ final class RequirementEstimationShowPayload
             'can_request_changes' => $actor->can('requestChanges', $estimation),
             'can_request_revision' => $actor->can('requestRevision', $estimation),
             'can_transfer' => $actor->can('transfer', $estimation),
+            'next_version_source_estimation_id' => $rejectedSource?->id,
+        ], $sharedMeta);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private static function versionHistory(ProjectRequirement $requirement): array
+    {
+        return $requirement->estimations()
+            ->orderBy('version')
+            ->get(['id', 'version', 'status', 'reviewed_at', 'created_at'])
+            ->map(static fn (ProjectRequirementEstimation $row): array => [
+                'id' => $row->id,
+                'version' => $row->version,
+                'status' => $row->status->value,
+                'status_label' => $row->status->label(),
+                'reviewed_at' => $row->reviewed_at?->toIso8601String(),
+                'created_at' => $row->created_at?->toIso8601String(),
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private static function versionCompare(
+        ProjectRequirement $requirement,
+        ?int $compareFromEstimationId,
+        ?int $compareToEstimationId,
+    ): ?array {
+        if ($compareFromEstimationId === null || $compareToEstimationId === null) {
+            return null;
+        }
+
+        if ($compareFromEstimationId === $compareToEstimationId) {
+            return null;
+        }
+
+        $from = $requirement->estimations()->whereKey($compareFromEstimationId)->first();
+        $to = $requirement->estimations()->whereKey($compareToEstimationId)->first();
+
+        if ($from === null || $to === null) {
+            return null;
+        }
+
+        /** @var RequirementEstimationVersionDiff $diff */
+        $diff = app(RequirementEstimationVersionDiff::class);
+
+        return [
+            'from' => [
+                'id' => $from->id,
+                'version' => $from->version,
+            ],
+            'to' => [
+                'id' => $to->id,
+                'version' => $to->version,
+            ],
+            'diff' => $diff->compare($from, $to),
         ];
     }
 

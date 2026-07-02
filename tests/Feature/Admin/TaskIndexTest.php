@@ -126,6 +126,41 @@ class TaskIndexTest extends TestCase
                     ->contains('First project task')));
     }
 
+    public function test_task_index_orders_by_phase_then_sort_order(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        ProjectTask::factory()->forProject($project)->create([
+            'created_by_user_id' => $head->id,
+            'title' => 'Later in phase 1',
+            'phase' => 1,
+            'sort_order' => 2,
+            'status' => ProjectTaskStatus::ToDo,
+        ]);
+        ProjectTask::factory()->forProject($project)->create([
+            'created_by_user_id' => $head->id,
+            'title' => 'Phase 2 task',
+            'phase' => 2,
+            'sort_order' => 0,
+            'status' => ProjectTaskStatus::ToDo,
+        ]);
+        ProjectTask::factory()->forProject($project)->create([
+            'created_by_user_id' => $head->id,
+            'title' => 'Earlier in phase 1',
+            'phase' => 1,
+            'sort_order' => 1,
+            'status' => ProjectTaskStatus::ToDo,
+        ]);
+
+        $this->actingAs($head)
+            ->get(route('admin.tasks.index', ['project_id' => $project->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('tasks.0.title', 'Earlier in phase 1')
+                ->where('tasks.1.title', 'Later in phase 1')
+                ->where('tasks.2.title', 'Phase 2 task'));
+    }
+
     public function test_can_create_task_from_global_tasks_page_for_selected_project(): void
     {
         extract($this->projectWithTeamHead());

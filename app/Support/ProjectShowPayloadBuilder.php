@@ -60,7 +60,6 @@ class ProjectShowPayloadBuilder
         $tasksCollection = $project->tasks()
             ->with(['assignee:id,name,email', 'requirement:id,title'])
             ->withCount('children')
-            ->orderBy('title')
             ->limit(self::LIST_LIMIT)
             ->get();
 

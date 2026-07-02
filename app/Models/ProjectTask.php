@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'created_by_user_id',
     'estimated_minutes',
     'phase',
+    'sort_order',
     'display_after_at',
     'notify_at',
     'notified_at',

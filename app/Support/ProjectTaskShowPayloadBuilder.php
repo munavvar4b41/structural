@@ -31,7 +31,9 @@ class ProjectTaskShowPayloadBuilder
         $directChildren = ProjectTask::query()
             ->where('project_id', $project->id)
             ->where('parent_project_task_id', $task->id)
-            ->orderBy('title')
+            ->orderBy('phase')
+            ->orderBy('sort_order')
+            ->orderBy('id')
             ->with(['assignee:id,name,email', 'requirement:id,title'])
             ->withCount('children')
             ->get();

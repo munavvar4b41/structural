@@ -70,7 +70,9 @@ class MyWorkBoardBuilder
                 ->where('status', $status)
                 ->withCount('children')
                 ->with(['project:id,name,code,lead_user_id', 'requirement:id,title'])
-                ->orderByDesc('updated_at')
+                ->orderBy('phase')
+                ->orderBy('sort_order')
+                ->orderBy('id')
                 ->limit($limit)
                 ->get();
 

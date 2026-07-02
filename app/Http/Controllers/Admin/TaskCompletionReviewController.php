@@ -42,6 +42,9 @@ class TaskCompletionReviewController extends Controller
                 'completionSubmittedBy:id,name,email',
             ])
             ->orderByDesc('completion_submitted_at')
+            ->orderBy('phase')
+            ->orderBy('sort_order')
+            ->orderBy('id')
             ->orderByDesc('updated_at')
             ->limit(200)
             ->get()

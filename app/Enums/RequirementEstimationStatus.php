@@ -27,7 +27,7 @@ enum RequirementEstimationStatus: string
 
     public function isEditable(): bool
     {
-        return in_array($this, [self::Draft, self::ChangesRequested, self::Rejected], true);
+        return in_array($this, [self::Draft, self::ChangesRequested], true);
     }
 
     public function isActive(): bool
