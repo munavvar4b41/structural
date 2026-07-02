@@ -8,8 +8,7 @@ use Illuminate\Database\Eloquent\Collection;
 final class ProjectTaskDisplayOrder
 {
     /**
-     * Order tasks depth-first: each root, then its subtree (sorted by title at each level),
-     * then any orphan rows (e.g. missing parent) at the end.
+     * Order tasks depth-first: roots by phase then sort_order, children by sort_order.
      *
      * @param  Collection<int, ProjectTask>  $tasks
      * @return list<array{task: ProjectTask, depth: int}>
@@ -20,7 +19,10 @@ final class ProjectTaskDisplayOrder
             return [];
         }
 
-        $roots = $tasks->whereNull('parent_project_task_id')->sortBy('title')->values();
+        $roots = $tasks
+            ->whereNull('parent_project_task_id')
+            ->sort(self::rootComparator(...))
+            ->values();
 
         $result = [];
         $seen = [];
@@ -29,7 +31,7 @@ final class ProjectTaskDisplayOrder
             $result[] = ['task' => $node, 'depth' => $depth];
             $seen[$node->id] = true;
 
-            foreach ($tasks->where('parent_project_task_id', $node->id)->sortBy('title') as $child) {
+            foreach ($tasks->where('parent_project_task_id', $node->id)->sort(self::childComparator(...)) as $child) {
                 $walk($child, $depth + 1);
             }
         };
@@ -38,7 +40,7 @@ final class ProjectTaskDisplayOrder
             $walk($root, 0);
         }
 
-        foreach ($tasks->sortBy('title') as $task) {
+        foreach ($tasks->sort(self::rootComparator(...)) as $task) {
             if (! isset($seen[$task->id])) {
                 $result[] = ['task' => $task, 'depth' => 0];
                 $seen[$task->id] = true;
@@ -46,5 +48,35 @@ final class ProjectTaskDisplayOrder
         }
 
         return $result;
+    }
+
+    private static function rootComparator(ProjectTask $left, ProjectTask $right): int
+    {
+        $phaseCompare = self::phaseSortKey($left) <=> self::phaseSortKey($right);
+        if ($phaseCompare !== 0) {
+            return $phaseCompare;
+        }
+
+        $sortOrderCompare = $left->sort_order <=> $right->sort_order;
+        if ($sortOrderCompare !== 0) {
+            return $sortOrderCompare;
+        }
+
+        return $left->id <=> $right->id;
+    }
+
+    private static function childComparator(ProjectTask $left, ProjectTask $right): int
+    {
+        $sortOrderCompare = $left->sort_order <=> $right->sort_order;
+        if ($sortOrderCompare !== 0) {
+            return $sortOrderCompare;
+        }
+
+        return $left->id <=> $right->id;
+    }
+
+    private static function phaseSortKey(ProjectTask $task): int
+    {
+        return $task->phase ?? PHP_INT_MAX;
     }
 }

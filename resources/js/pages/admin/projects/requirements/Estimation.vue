@@ -8,6 +8,7 @@ import PageHeader from '@/components/dashboard/PageHeader.vue';
 import FormSelect from '@/components/FormSelect.vue';
 import InputError from '@/components/InputError.vue';
 import EstimationLinesTable from '@/components/requirements/EstimationLinesTable.vue';
+import EstimationVersionCompare from '@/components/requirements/EstimationVersionCompare.vue';
 import RequirementEstimationAnalyticsCards from '@/components/requirements/RequirementEstimationAnalyticsCards.vue';
 import type {EstimationAnalytics} from '@/components/requirements/RequirementEstimationAnalyticsCards.vue';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,7 @@ import { index as projectsIndex, show as projectsShow } from '@/routes/admin/pro
 import {
     approve,
     lines,
+    nextVersion,
     reject,
     requestChanges,
     requestRevision,
@@ -91,6 +93,8 @@ const props = defineProps<{
     approver_options: { value: number; label: string }[];
     can_manage_estimation: boolean;
     can_create_estimation: boolean;
+    can_create_next_version: boolean;
+    next_version_source_estimation_id: number | null;
     can_sync_lines: boolean;
     can_submit: boolean;
     can_approve: boolean;
@@ -101,6 +105,31 @@ const props = defineProps<{
     phase_options: { value: number; label: string }[];
     show_phase_column: boolean;
     max_generated_phase: number;
+    version_history: Array<{
+        id: number;
+        version: number;
+        status: string;
+        status_label: string;
+        reviewed_at: string | null;
+        created_at: string | null;
+    }>;
+    version_compare: {
+        from: { id: number; version: number };
+        to: { id: number; version: number };
+        diff: {
+            added: Array<Record<string, unknown>>;
+            removed: Array<Record<string, unknown>>;
+            modified: Array<Record<string, unknown>>;
+            summary: {
+                added_count: number;
+                removed_count: number;
+                modified_count: number;
+                minutes_from: number;
+                minutes_to: number;
+                minutes_delta: number;
+            };
+        };
+    } | null;
 }>();
 
 defineOptions({
@@ -416,6 +445,19 @@ function createEstimation(): void {
     router.post(store.url(routeBase.value));
 }
 
+function createNextVersion(): void {
+    if (props.next_version_source_estimation_id === null) {
+        return;
+    }
+
+    router.post(
+        nextVersion.url({
+            ...routeBase.value,
+            estimation: props.next_version_source_estimation_id,
+        }),
+    );
+}
+
 const submitDialogOpen = ref(false);
 
 const submitForm = useForm({
@@ -539,6 +581,19 @@ const statusBadgeClass = computed(() => {
         <div v-if="can_create_estimation">
             <Button type="button" @click="createEstimation">Start estimation</Button>
         </div>
+
+        <div v-if="can_create_next_version">
+            <Button type="button" @click="createNextVersion">
+                Create version {{ (estimation?.version ?? 0) + 1 }}
+            </Button>
+        </div>
+
+        <EstimationVersionCompare
+            :project-id="project.id"
+            :requirement-id="requirement.id"
+            :version-history="version_history"
+            :version-compare="version_compare"
+        />
 
         <template v-if="estimation !== null">
             <div v-if="estimation.review_notes"

@@ -41,6 +41,7 @@ final class TransferEstimationToTasks
                     'created_by_user_id' => $actor->id,
                     'estimated_minutes' => $item->estimated_minutes,
                     'phase' => $item->phase,
+                    'sort_order' => $item->sort_order,
                 ]);
 
                 $taskIdByItemId[$item->id] = $task->id;

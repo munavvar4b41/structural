@@ -29,7 +29,7 @@ class ProjectRequirementEstimationPolicy
             return false;
         }
 
-        if ($requirement->activeEstimation() !== null) {
+        if ($requirement->estimations()->exists()) {
             return false;
         }
 
@@ -52,7 +52,7 @@ class ProjectRequirementEstimationPolicy
 
     public function submit(User $actor, ProjectRequirementEstimation $estimation): bool
     {
-        if (! in_array($estimation->status, [RequirementEstimationStatus::Draft, RequirementEstimationStatus::ChangesRequested, RequirementEstimationStatus::Rejected], true)) {
+        if (! in_array($estimation->status, [RequirementEstimationStatus::Draft, RequirementEstimationStatus::ChangesRequested], true)) {
             return false;
         }
 
@@ -93,6 +93,19 @@ class ProjectRequirementEstimationPolicy
         }
 
         return $estimation->requirement->responsible_user_id === $actor->id;
+    }
+
+    public function createNextVersion(User $actor, ProjectRequirementEstimation $estimation): bool
+    {
+        if ($estimation->status !== RequirementEstimationStatus::Rejected) {
+            return false;
+        }
+
+        if ($estimation->requirement->activeEstimation() !== null) {
+            return false;
+        }
+
+        return $this->isProjectDeliveryUser($actor, $estimation->requirement);
     }
 
     public function transfer(User $actor, ProjectRequirementEstimation $estimation): bool

@@ -10,6 +10,7 @@ use App\Models\ProjectTask;
 use App\Models\Team;
 use App\Models\User;
 use App\Notifications\RequirementEstimationSubmittedNotification;
+use App\Support\RequirementEstimationVersionDiff;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -167,6 +168,217 @@ class ProjectRequirementEstimationTest extends TestCase
             ->assertRedirect();
 
         $this->assertSame(RequirementEstimationStatus::PendingApproval, $estimation->fresh()->status);
+    }
+
+    public function test_rejected_estimation_requires_new_version_for_editing(): void
+    {
+        ['staff' => $staff, 'approver' => $approver, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
+
+        $estimation = ProjectRequirementEstimation::factory()->create([
+            'project_requirement_id' => $requirement->id,
+            'version' => 1,
+            'created_by_user_id' => $staff->id,
+            'status' => RequirementEstimationStatus::PendingApproval,
+            'submitted_at' => now(),
+            'submitted_to_user_id' => $approver->id,
+        ]);
+        $estimation->items()->create(['title' => 'Line', 'estimated_minutes' => 30, 'sort_order' => 0]);
+
+        $this->actingAs($approver)
+            ->patch(route('admin.projects.requirements.estimation.reject', [$project, $requirement, $estimation]), [
+                'review_notes' => 'Scope is too high',
+            ])
+            ->assertRedirect();
+
+        $rejected = $estimation->fresh();
+        $this->assertSame(RequirementEstimationStatus::Rejected, $rejected->status);
+        $this->assertSame(1, $rejected->version);
+        $this->assertNull($requirement->fresh()->activeEstimation());
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.requirements.estimation.show', [$project, $requirement]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/projects/requirements/Estimation')
+                ->where('can_create_next_version', true)
+                ->where('can_submit', false)
+                ->where('can_sync_lines', false)
+                ->where('estimation.id', $estimation->id)
+                ->where('estimation.version', 1)
+                ->where('estimation.status', 'rejected')
+                ->where('estimation.review_notes', 'Scope is too high'));
+
+        $this->actingAs($staff)
+            ->patch(route('admin.projects.requirements.estimation.submit', [$project, $requirement, $estimation]), [
+                'submitted_to_user_id' => $approver->id,
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_staff_creates_next_version_after_rejection(): void
+    {
+        ['staff' => $staff, 'approver' => $approver, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
+
+        $estimation = ProjectRequirementEstimation::factory()->create([
+            'project_requirement_id' => $requirement->id,
+            'version' => 1,
+            'created_by_user_id' => $staff->id,
+            'status' => RequirementEstimationStatus::PendingApproval,
+            'submitted_at' => now(),
+            'submitted_to_user_id' => $approver->id,
+        ]);
+        $line = $estimation->items()->create(['title' => 'Line', 'estimated_minutes' => 30, 'sort_order' => 0, 'phase' => 1]);
+
+        $this->actingAs($approver)
+            ->patch(route('admin.projects.requirements.estimation.reject', [$project, $requirement, $estimation]), [
+                'review_notes' => 'Too high',
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($staff)
+            ->post(route('admin.projects.requirements.estimation.next-version', [$project, $requirement, $estimation]))
+            ->assertRedirect();
+
+        $old = $estimation->fresh();
+        $this->assertSame(RequirementEstimationStatus::Rejected, $old->status);
+        $this->assertNotNull($old->superseded_by_estimation_id);
+
+        $new = ProjectRequirementEstimation::query()->findOrFail($old->superseded_by_estimation_id);
+        $this->assertSame(2, $new->version);
+        $this->assertSame(RequirementEstimationStatus::Draft, $new->status);
+        $this->assertSame('Line', $new->items()->first()?->title);
+        $this->assertSame($line->id, $new->items()->first()?->source_estimation_item_id);
+        $this->assertSame($new->id, $requirement->fresh()->activeEstimation()?->id);
+    }
+
+    public function test_version_diff_detects_added_removed_modified(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
+
+        $versionOne = ProjectRequirementEstimation::factory()->create([
+            'project_requirement_id' => $requirement->id,
+            'version' => 1,
+            'created_by_user_id' => $staff->id,
+            'status' => RequirementEstimationStatus::Rejected,
+        ]);
+        $kept = $versionOne->items()->create([
+            'title' => 'Kept line',
+            'estimated_minutes' => 30,
+            'sort_order' => 0,
+            'phase' => 1,
+        ]);
+        $versionOne->items()->create([
+            'title' => 'Removed line',
+            'estimated_minutes' => 20,
+            'sort_order' => 1,
+            'phase' => 1,
+        ]);
+
+        $versionTwo = ProjectRequirementEstimation::factory()->create([
+            'project_requirement_id' => $requirement->id,
+            'version' => 2,
+            'created_by_user_id' => $staff->id,
+            'status' => RequirementEstimationStatus::Draft,
+        ]);
+        $versionTwo->items()->create([
+            'source_estimation_item_id' => $kept->id,
+            'title' => 'Kept line',
+            'estimated_minutes' => 45,
+            'sort_order' => 0,
+            'phase' => 1,
+        ]);
+        $versionTwo->items()->create([
+            'title' => 'Added line',
+            'estimated_minutes' => 15,
+            'sort_order' => 1,
+            'phase' => 1,
+        ]);
+
+        /** @var RequirementEstimationVersionDiff $diff */
+        $diff = app(RequirementEstimationVersionDiff::class);
+        $payload = $diff->compare($versionOne, $versionTwo);
+
+        $this->assertSame(1, $payload['summary']['added_count']);
+        $this->assertSame(1, $payload['summary']['removed_count']);
+        $this->assertSame(1, $payload['summary']['modified_count']);
+        $this->assertSame('Added line', $payload['added'][0]['title']);
+        $this->assertSame('Removed line', $payload['removed'][0]['title']);
+        $this->assertSame(45, $payload['modified'][0]['to']['estimated_minutes']);
+    }
+
+    public function test_version_compare_query_on_show(): void
+    {
+        ['staff' => $staff, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
+
+        $versionOne = ProjectRequirementEstimation::factory()->create([
+            'project_requirement_id' => $requirement->id,
+            'version' => 1,
+            'created_by_user_id' => $staff->id,
+            'status' => RequirementEstimationStatus::Rejected,
+        ]);
+        $versionOne->items()->create(['title' => 'Only v1', 'estimated_minutes' => 10, 'sort_order' => 0]);
+
+        $versionTwo = ProjectRequirementEstimation::factory()->create([
+            'project_requirement_id' => $requirement->id,
+            'version' => 2,
+            'created_by_user_id' => $staff->id,
+            'status' => RequirementEstimationStatus::Draft,
+        ]);
+        $versionTwo->items()->create(['title' => 'Only v2', 'estimated_minutes' => 20, 'sort_order' => 0]);
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.requirements.estimation.show', [
+                $project,
+                $requirement,
+                'compare_from' => $versionOne->id,
+                'compare_to' => $versionTwo->id,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('version_history', 2)
+                ->where('version_compare.from.version', 1)
+                ->where('version_compare.to.version', 2)
+                ->where('version_compare.diff.summary.added_count', 1)
+                ->where('version_compare.diff.summary.removed_count', 1));
+    }
+
+    public function test_transfer_preserves_estimation_line_order_on_tasks(): void
+    {
+        ['staff' => $staff, 'approver' => $approver, 'project' => $project, 'requirement' => $requirement] = $this->confirmedRequirementSetup();
+        $project->forceFill(['lead_user_id' => $approver->id])->save();
+
+        $estimation = ProjectRequirementEstimation::factory()->create([
+            'project_requirement_id' => $requirement->id,
+            'created_by_user_id' => $staff->id,
+            'status' => RequirementEstimationStatus::Approved,
+        ]);
+
+        $estimation->items()->create([
+            'title' => 'Phase 2 module',
+            'estimated_minutes' => 60,
+            'sort_order' => 0,
+            'phase' => 2,
+        ]);
+        $estimation->items()->create([
+            'title' => 'Phase 1 module',
+            'estimated_minutes' => 30,
+            'sort_order' => 1,
+            'phase' => 1,
+        ]);
+
+        $this->actingAs($approver)
+            ->post(route('admin.projects.requirements.estimation.transfer', [$project, $requirement, $estimation]))
+            ->assertRedirect();
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.tasks.index', $project))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('tasks.0.title', 'Phase 1 module')
+                ->where('tasks.1.title', 'Phase 2 module'));
+
+        $this->assertSame(1, (int) ProjectTask::query()->where('title', 'Phase 1 module')->value('sort_order'));
+        $this->assertSame(0, (int) ProjectTask::query()->where('title', 'Phase 2 module')->value('sort_order'));
     }
 
     public function test_approved_estimation_request_revision_creates_version_two(): void

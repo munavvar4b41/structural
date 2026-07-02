@@ -132,6 +132,8 @@ Route::scopeBindings()->group(function (): void {
         ->name('projects.requirements.estimation.request-changes');
     Route::post('projects/{project}/requirements/{requirement}/estimation/{estimation}/request-revision', [ProjectRequirementEstimationController::class, 'requestRevision'])
         ->name('projects.requirements.estimation.request-revision');
+    Route::post('projects/{project}/requirements/{requirement}/estimation/{estimation}/next-version', [ProjectRequirementEstimationController::class, 'createNextVersion'])
+        ->name('projects.requirements.estimation.next-version');
     Route::post('projects/{project}/requirements/{requirement}/estimation/{estimation}/transfer', [ProjectRequirementEstimationController::class, 'transfer'])
         ->name('projects.requirements.estimation.transfer');
 });

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'project_requirement_estimation_id',
     'parent_estimation_item_id',
+    'source_estimation_item_id',
     'title',
     'description',
     'estimated_minutes',
@@ -32,6 +33,11 @@ class ProjectRequirementEstimationItem extends Model
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_estimation_item_id');
+    }
+
+    public function sourceItem(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'source_estimation_item_id');
     }
 
     /**

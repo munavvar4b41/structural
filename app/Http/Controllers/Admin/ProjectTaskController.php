@@ -17,6 +17,7 @@ use App\Support\ProjectTaskAssigneeCapabilities;
 use App\Support\ProjectTaskDisplayOrder;
 use App\Support\ProjectTaskHierarchy;
 use App\Support\ProjectTaskShowPayloadBuilder;
+use App\Support\ProjectTaskSortOrder;
 use App\Support\RequirementEstimationTaskSource;
 use App\Support\RequirementPhaseRegistry;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -295,6 +296,11 @@ class ProjectTaskController extends Controller
         $data = $request->validated();
         $data['project_id'] = $project->id;
         $data['created_by_user_id'] = $actor->id;
+        $data['sort_order'] = ProjectTaskSortOrder::nextForCreate(
+            $project->id,
+            isset($data['parent_project_task_id']) ? (int) $data['parent_project_task_id'] : null,
+            isset($data['phase']) ? (int) $data['phase'] : null,
+        );
 
         $task = ProjectTask::query()->create($data);
 
@@ -422,7 +428,7 @@ class ProjectTaskController extends Controller
      */
     private function parentTaskOptions(Project $project): array
     {
-        $tasks = $project->tasks()->orderBy('title')->get(['id', 'title', 'parent_project_task_id']);
+        $tasks = $project->tasks()->get(['id', 'title', 'parent_project_task_id']);
 
         return collect(ProjectTaskDisplayOrder::depthFirstWithDepth($tasks))
             ->map(static fn (array $row): array => [
@@ -435,7 +441,7 @@ class ProjectTaskController extends Controller
 
     private function parentTaskOptionsForEdit(Project $project, ProjectTask $editing): array
     {
-        $tasks = $project->tasks()->orderBy('title')->get(['id', 'title', 'parent_project_task_id']);
+        $tasks = $project->tasks()->get(['id', 'title', 'parent_project_task_id']);
 
         /** @var array<int, list<int>> $childrenByParent */
         $childrenByParent = [];
