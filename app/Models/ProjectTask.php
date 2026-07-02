@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'created_by_user_id',
     'estimated_minutes',
     'phase',
+    'sort_order',
     'display_after_at',
     'notify_at',
     'notified_at',
@@ -112,5 +113,13 @@ class ProjectTask extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(ProjectTaskReview::class, 'project_task_id');
+    }
+
+    /**
+     * @return HasMany<CaseStudy, $this>
+     */
+    public function caseStudies(): HasMany
+    {
+        return $this->hasMany(CaseStudy::class, 'project_task_id');
     }
 }

@@ -5,14 +5,16 @@ import { computed, onMounted, ref, watch } from 'vue';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
 import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin/TaskCompletionReviewController';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import MyWorkSectionHeader from '@/components/my-work/MyWorkSectionHeader.vue';
 import MyWorkTaskCard from '@/components/my-work/MyWorkTaskCard.vue';
 import type { MyWorkTaskCardData } from '@/components/my-work/MyWorkTaskCard.vue';
-import FormSelect from '@/components/FormSelect.vue';
 import TaskShowPanel from '@/components/tasks/TaskShowPanel.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
@@ -34,7 +36,6 @@ import { index as myWorkIndex } from '@/routes/admin/my-work/index';
 import { index as projectsIndex } from '@/routes/admin/projects/index';
 import { show as projectTasksShow } from '@/routes/admin/projects/tasks/index';
 import type { TaskShowPayload } from '@/types/projectTaskShow';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type TaskCard = MyWorkTaskCardData;
 
@@ -521,7 +522,7 @@ onMounted(() => {
 
                 <div v-show="!isSectionCollapsed(col.status)" :id="sectionContentId(col.status)"
                     class="flex flex-col gap-3">
-                    <DataTable v-if="col.tasks.length > 0">
+                    <DataTable>
                         <thead>
                             <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
                                 <DataTableTh class="w-10" />
@@ -567,7 +568,7 @@ onMounted(() => {
                                 <DataTableTd label="Estimate" class="align-top text-muted-foreground">
                                     {{ formatTaskMinutes(task.estimated_minutes) }}
                                 </DataTableTd>
-                                <DataTableTd label="Status" class="align-top">
+                                <DataTableTd label="Status" class="align-middle">
                                     <FormSelect :id="`list-st-${task.id}`" :name="`list-status-${task.id}`"
                                         class="min-w-[9rem] text-xs" :model-value="task.status" required
                                         placeholder="Status" :options="statusSelectOptionsForTask(task)"
@@ -615,13 +616,13 @@ onMounted(() => {
                                     </div>
                                 </DataTableTd>
                             </TableRow>
+                            <DataTableEmptyRow
+                                v-if="col.tasks.length === 0"
+                                :colspan="7"
+                                message="No tasks — drop here to move"
+                            />
                         </tbody>
                     </DataTable>
-
-                    <p v-else
-                        class="min-h-[4rem] rounded-xl border border-dashed border-border/80 px-2 py-6 text-center text-xs text-muted-foreground">
-                        No tasks — drop here to move
-                    </p>
 
                     <Button v-if="col.tasks.length > 0 && col.meta.current_page < col.meta.last_page" variant="outline"
                         size="sm" class="w-full max-w-xs text-xs" type="button" @click="loadMoreColumn(col)">

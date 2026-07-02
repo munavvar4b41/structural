@@ -8,8 +8,10 @@ import DataTablePagination from '@/components/dashboard/DataTablePagination.vue'
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
@@ -20,7 +22,6 @@ import {
     index as requirementsIndex,
     show as requirementsShow,
 } from '@/routes/admin/projects/requirements/index';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserBrief = {
     id: number;
@@ -239,7 +240,7 @@ const deleteRequirementDescription = computed(() => {
             </thead>
             <tbody>
                 <TableRow v-for="row in requirements.data" :key="row.id">
-                    <DataTableTd label="Title" class="align-top">
+                    <DataTableTd label="Title" class="align-middle">
                         <div class="font-medium">{{ row.title }}</div>
                         <p v-if="row.description_preview" class="hidden md:block mt-1 line-clamp-2 text-xs text-muted-foreground">
                             {{ row.description_preview }}
@@ -268,29 +269,34 @@ const deleteRequirementDescription = computed(() => {
                         </div>
                     </DataTableTd>
                     <DataTableTd label="Actions" class="text-left md:text-right">
-                        <div class="flex gap-2 justify-start md:justify-end">
-                            <Button variant="ghost" size="sm" as-child>
-                                <Link :href="requirementsShow.url({
+                        <div class="flex gap-1 justify-start md:justify-end">
+                            <TableIconAction
+                                variant="ghost"
+                                icon="eye"
+                                label="View"
+                                :href="requirementsShow.url({
                                     project: project.id,
                                     requirement: row.id,
-                                })
-                                    ">
-                                    View
-                                </Link>
-                            </Button>
-                            <Button v-if="row.can_update" variant="ghost" size="sm" as-child>
-                                <Link :href="requirementsEdit.url({
+                                })"
+                            />
+                            <TableIconAction
+                                v-if="row.can_update"
+                                variant="ghost"
+                                icon="pencil"
+                                label="Edit"
+                                :href="requirementsEdit.url({
                                     project: project.id,
                                     requirement: row.id,
-                                })
-                                    ">
-                                    Edit
-                                </Link>
-                            </Button>
-                            <Button v-if="row.can_delete" variant="ghost" size="sm" class="text-destructive"
-                                type="button" @click="openDeleteDialog(row)">
-                                Delete
-                            </Button>
+                                })"
+                            />
+                            <TableIconAction
+                                v-if="row.can_delete"
+                                variant="ghost"
+                                icon="trash"
+                                label="Delete"
+                                destructive
+                                @click="openDeleteDialog(row)"
+                            />
                         </div>
                     </DataTableTd>
                 </TableRow>

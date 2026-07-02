@@ -45,7 +45,7 @@ onUnmounted(() => {
     <div
         role="status"
         aria-live="polite"
-        class="pointer-events-none fixed bottom-6 left-1/2 z-50 max-w-md -translate-x-1/2 px-4 transition-all duration-300"
+        class="pointer-events-none fixed bottom-6 left-1/2 z-100 max-w-md -translate-x-1/2 px-4 transition-all duration-300"
         :class="
             visible
                 ? 'translate-y-0 opacity-100'

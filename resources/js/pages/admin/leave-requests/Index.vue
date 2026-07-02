@@ -6,9 +6,11 @@ import DataTable from '@/components/dashboard/DataTable.vue';
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
+import FormSelect from '@/components/FormSelect.vue';
 import InputError from '@/components/InputError.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import FormSelect from '@/components/FormSelect.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -29,7 +31,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { index as leaveRequestsIndex } from '@/routes/admin/leave-requests/index';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type LeaveRow = {
     id: number;
@@ -290,10 +291,12 @@ const filteredLeaveRequests = computed(() => {
                             </DataTableTd>
                             <DataTableTd label="Status">{{ row.status_label }}</DataTableTd>
                             <DataTableTd label="Actions" class="text-left md:text-right">
-                                <Button v-if="row.status === 'pending'" type="button" variant="outline" size="sm"
-                                    @click="cancelRequest(row)">
-                                    Cancel
-                                </Button>
+                                <TableIconAction
+                                    v-if="row.status === 'pending'"
+                                    icon="x"
+                                    label="Cancel"
+                                    @click="cancelRequest(row)"
+                                />
                             </DataTableTd>
                         </TableRow>
                         <tr v-if="filteredLeaveRequests.length === 0">

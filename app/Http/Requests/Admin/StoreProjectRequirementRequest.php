@@ -3,11 +3,14 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\Project;
+use App\Models\ProjectRequirement;
+use App\Models\User;
 use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\TipTapDocument;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreProjectRequirementRequest extends FormRequest
 {
@@ -28,6 +31,9 @@ class StoreProjectRequirementRequest extends FormRequest
         $merge = [];
         if ($this->has('responsible_user_id') && $this->input('responsible_user_id') === '') {
             $merge['responsible_user_id'] = null;
+        }
+        if ($this->has('reviewer_user_id') && $this->input('reviewer_user_id') === '') {
+            $merge['reviewer_user_id'] = null;
         }
         $desc = $this->input('description');
         if (is_string($desc) && $desc !== '' && ! TipTapDocument::isValidDocumentJson($desc)) {
@@ -58,6 +64,7 @@ class StoreProjectRequirementRequest extends FormRequest
         $project->loadMissing('teams');
 
         $allowedResponsibleIds = ProjectRequirementAssignableUsers::responsibleUserIds($project);
+        $allowedReviewerIds = ProjectRequirementAssignableUsers::reviewerUserIds($project);
 
         return [
             'title' => ['required', 'string', 'max:255'],
@@ -75,7 +82,33 @@ class StoreProjectRequirementRequest extends FormRequest
                 },
             ],
             'responsible_user_id' => ['nullable', 'integer', Rule::in($allowedResponsibleIds)],
+            'reviewer_user_id' => ['nullable', 'integer', Rule::in($allowedReviewerIds)],
             'max_generated_phase' => ['required', 'integer', 'min:1', 'max:100'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            /** @var User|null $actor */
+            $actor = $this->user();
+            /** @var Project|null $project */
+            $project = $this->route('project');
+
+            if (! $actor instanceof User || ! $project instanceof Project) {
+                return;
+            }
+
+            $reviewerInput = $this->input('reviewer_user_id');
+            $reviewerNew = $reviewerInput === null || $reviewerInput === '' ? null : (int) $reviewerInput;
+
+            if ($reviewerNew === null) {
+                return;
+            }
+
+            if (! $actor->can('assignReviewerOnCreate', [ProjectRequirement::class, $project])) {
+                $validator->errors()->add('reviewer_user_id', __('You may not assign a reviewer.'));
+            }
+        });
     }
 }

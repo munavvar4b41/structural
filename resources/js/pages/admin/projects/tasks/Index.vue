@@ -7,14 +7,15 @@ import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
 import FormMultiSelect from '@/components/FormMultiSelect.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
-import { requiresPhaseSelection } from '@/lib/requirementPhaseOptions';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
+import { requiresPhaseSelection } from '@/lib/requirementPhaseOptions';
 import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
 import {
     index as requirementsIndex,
@@ -379,7 +380,7 @@ onMounted(() => {
                     </thead>
                     <tbody>
                         <tr v-for="task in tasks" :key="task.id" class="border-b border-border/60 last:border-0">
-                            <td data-label="Title" class="max-w-0 px-4 py-3 align-middle" :style="{
+                            <td data-label="Title" class="px-4 py-3 align-middle" :style="{
                                 paddingLeft: `calc(0.75rem + ${task.tree_depth} * 1.25rem)`,
                             }">
                                 <div class="flex min-w-0 items-center gap-1.5">
@@ -387,11 +388,11 @@ onMounted(() => {
                                         class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                                     <div class="min-w-0 flex-1 flex flex-col justify-center">
                                         <span v-if="task.estimation_source === 'transferred'"
-                                            class="mb-0.5 w-fit rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200">
+                                            class="mb-0.5 w-fit rounded bg-success/15 px-1.5 py-0.5 text-xs font-medium text-success">
                                             From estimation
                                         </span>
                                         <span v-else-if="task.estimation_source === 'ad_hoc'"
-                                            class="mb-0.5 w-fit rounded bg-sky-500/15 px-1.5 py-0.5 text-xs font-medium text-sky-800 dark:text-sky-200">
+                                            class="mb-0.5 w-fit rounded bg-info/15 px-1.5 py-0.5 text-xs font-medium text-info">
                                             New task
                                         </span>
                                         <Button variant="link"
@@ -440,13 +441,19 @@ onMounted(() => {
                                 {{ formatTaskMinutes(task.estimated_minutes) }}
                             </td>
                             <td data-label="Actions" class="px-4 py-3 text-right">
-                                <div class="flex flex-wrap justify-end gap-2">
-                                    <Button v-if="task.can_submit_task_completion" variant="secondary" size="sm"
-                                        type="button" @click="submitForCompletionFromList(task)">
-                                        Submit for completion
-                                    </Button>
-                                    <Button v-if="task.can_update" variant="outline" size="sm" as-child>
-                                        <Link :href="projectTasksEdit.url({
+                                <div class="flex flex-wrap justify-end gap-1">
+                                    <TableIconAction
+                                        v-if="task.can_submit_task_completion"
+                                        variant="secondary"
+                                        icon="check-circle"
+                                        label="Submit for completion"
+                                        @click="submitForCompletionFromList(task)"
+                                    />
+                                    <TableIconAction
+                                        v-if="task.can_update"
+                                        icon="pencil"
+                                        label="Edit"
+                                        :href="projectTasksEdit.url({
                                             project: project.id,
                                             task: task.id,
                                         }, {
@@ -461,15 +468,15 @@ onMounted(() => {
                                                     }),
                                                 }),
                                             },
-                                        })">
-                                            Edit
-                                        </Link>
-                                    </Button>
-                                    <Button v-if="task.can_delete" variant="outline" size="sm"
-                                        class="text-destructive hover:bg-destructive/10" type="button"
-                                        @click="openDeleteDialog(task)">
-                                        Delete
-                                    </Button>
+                                        })"
+                                    />
+                                    <TableIconAction
+                                        v-if="task.can_delete"
+                                        icon="trash"
+                                        label="Delete"
+                                        destructive
+                                        @click="openDeleteDialog(task)"
+                                    />
                                 </div>
                             </td>
                         </tr>

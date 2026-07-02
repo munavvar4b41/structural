@@ -21,8 +21,7 @@ class ProjectTaskFormOptionsBuilder
     public function build(Project $project, User $actor, ?ProjectTask $excludeFromParentOptions = null): array
     {
         $tasksCollection = $project->tasks()
-            ->orderBy('title')
-            ->get(['id', 'title', 'parent_project_task_id']);
+            ->get(['id', 'title', 'parent_project_task_id', 'phase', 'sort_order']);
 
         $parentTasks = collect(ProjectTaskDisplayOrder::depthFirstWithDepth($tasksCollection))
             ->reject(function (array $row) use ($excludeFromParentOptions): bool {

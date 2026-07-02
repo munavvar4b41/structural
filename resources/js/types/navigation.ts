@@ -14,3 +14,8 @@ export type NavItem = {
     /** `prefix` highlights nested routes; `exact` matches pathname only (default). */
     activeMatch?: 'exact' | 'prefix';
 };
+
+export type NavGroup = {
+    label: string;
+    items: NavItem[];
+};

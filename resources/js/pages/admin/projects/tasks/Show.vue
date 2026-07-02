@@ -15,6 +15,13 @@ defineProps<{
     can_manage_project: boolean;
     checklist: Checklist;
     time_tracking: TimeTracking;
+    case_studies: {
+        id: number;
+        title: string;
+        summary_preview: string | null;
+        created_at: string | null;
+    }[];
+    can_create_case_study: boolean;
 }>();
 
 defineOptions({
@@ -56,5 +63,7 @@ defineOptions({
         :can_manage_project="can_manage_project"
         :checklist="checklist"
         :time_tracking="time_tracking"
+        :case_studies="case_studies"
+        :can_create_case_study="can_create_case_study"
     />
 </template>

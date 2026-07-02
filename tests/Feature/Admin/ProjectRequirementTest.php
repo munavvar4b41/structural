@@ -190,6 +190,79 @@ class ProjectRequirementTest extends TestCase
         $this->assertSame($staff->id, ProjectRequirement::query()->value('responsible_user_id'));
     }
 
+    public function test_client_can_assign_reviewer_on_create(): void
+    {
+        $team = Team::factory()->create();
+        User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $staffReviewer = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $this->actingAs($client)
+            ->post(route('admin.projects.requirements.store', $project), [
+                'title' => 'Needs review',
+                'description' => $this->tipTapJson('Body'),
+                'reviewer_user_id' => $staffReviewer->id,
+                'max_generated_phase' => 1,
+            ])
+            ->assertRedirect(route('admin.projects.requirements.index', $project));
+
+        $this->assertSame($staffReviewer->id, ProjectRequirement::query()->value('reviewer_user_id'));
+    }
+
+    public function test_team_head_can_assign_reviewer_on_create(): void
+    {
+        $team = Team::factory()->create();
+        $staffReviewer = User::factory()->withPrimaryTeam($team)->create();
+        $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $this->actingAs($teamHead)
+            ->post(route('admin.projects.requirements.store', $project), [
+                'title' => 'Head creates with reviewer',
+                'description' => $this->tipTapJson('Body'),
+                'reviewer_user_id' => $staffReviewer->id,
+                'max_generated_phase' => 1,
+            ])
+            ->assertRedirect(route('admin.projects.requirements.index', $project));
+
+        $this->assertSame($staffReviewer->id, ProjectRequirement::query()->value('reviewer_user_id'));
+    }
+
+    public function test_create_sends_assignment_notification_to_reviewer_when_assigned(): void
+    {
+        $team = Team::factory()->create();
+        $teamHead = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $staffReviewer = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        $this->actingAs($client)
+            ->post(route('admin.projects.requirements.store', $project), [
+                'title' => 'Notify reviewer',
+                'description' => $this->tipTapJson('Body'),
+                'reviewer_user_id' => $staffReviewer->id,
+                'max_generated_phase' => 1,
+            ])
+            ->assertRedirect(route('admin.projects.requirements.index', $project));
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => RequirementAssignedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $staffReviewer->id,
+        ]);
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => RequirementAssignedNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $teamHead->id,
+        ]);
+    }
+
     public function test_create_sends_assignment_notification_to_responsible_user(): void
     {
         $team = Team::factory()->create();

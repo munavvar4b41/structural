@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
-import { Calculator } from 'lucide-vue-next';
+import { Head } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import { Button } from '@/components/ui/button';
-import { index as projectsIndex } from '@/routes/admin/projects/index';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { index as estimationReviewsIndex } from '@/routes/admin/estimation-reviews/index';
+import { index as projectsIndex } from '@/routes/admin/projects/index';
 
 type UserBrief = {
     id: number;
@@ -80,53 +80,54 @@ const filteredEstimations = computed(() => {
             placeholder="Search requirement, project, or submitter…"
         />
 
-        <DataTable v-if="filteredEstimations.length > 0">
-            <template #head>
-                <tr>
+        <DataTable>
+            <thead>
+                <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
                     <DataTableTh>Requirement</DataTableTh>
                     <DataTableTh>Project</DataTableTh>
                     <DataTableTh>Submitted</DataTableTh>
                     <DataTableTh>By</DataTableTh>
                     <DataTableTh class="text-right">Action</DataTableTh>
                 </tr>
-            </template>
-            <template #body>
+            </thead>
+            <tbody>
                 <tr v-for="row in filteredEstimations" :key="row.id">
-                    <DataTableTd data-label="Requirement">
+                    <DataTableTd label="Requirement">
                         <span class="font-medium">{{ row.requirement.title }}</span>
                         <span class="mt-0.5 block text-xs text-muted-foreground">v{{ row.version }}</span>
                     </DataTableTd>
-                    <DataTableTd data-label="Project">
+                    <DataTableTd label="Project">
                         {{ row.project.name }}
                         <span v-if="row.project.code" class="text-muted-foreground">
                             ({{ row.project.code }})
                         </span>
                     </DataTableTd>
-                    <DataTableTd data-label="Submitted">
+                    <DataTableTd label="Submitted">
                         {{
                             row.submitted_at
                                 ? new Date(row.submitted_at).toLocaleString()
                                 : '—'
                         }}
                     </DataTableTd>
-                    <DataTableTd data-label="By">
+                    <DataTableTd label="By">
                         {{ row.creator?.name ?? '—' }}
                     </DataTableTd>
-                    <DataTableTd data-label="Action" class="text-right">
-                        <Button variant="outline" size="sm" as-child>
-                            <Link :href="row.requirement_show_url">Review</Link>
-                        </Button>
+                    <DataTableTd label="Action" class="text-right">
+                        <TableIconAction
+                            icon="arrow-right"
+                            label="Review"
+                            :href="row.requirement_show_url"
+                        />
                     </DataTableTd>
                 </tr>
-            </template>
+                <DataTableEmptyRow
+                    v-if="filteredEstimations.length === 0"
+                    :colspan="5"
+                    :message="estimations.length === 0
+                        ? 'No estimations pending your approval.'
+                        : 'No estimations match your search.'"
+                />
+            </tbody>
         </DataTable>
-
-        <div
-            v-else
-            class="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border py-16 text-center"
-        >
-            <Calculator class="size-10 text-muted-foreground" aria-hidden="true" />
-            <p class="text-sm text-muted-foreground">No estimations pending your approval.</p>
-        </div>
     </div>
 </template>

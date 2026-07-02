@@ -23,11 +23,11 @@ const numericValue = typeof props.value === 'number' ? props.value : 0;
 const { display } = useAnimatedCounter(() => numericValue);
 
 const accentClasses: Record<string, string> = {
-    blue: 'from-blue-500/20 to-blue-500/5 text-blue-600 dark:text-blue-400',
-    green: 'from-emerald-500/20 to-emerald-500/5 text-emerald-600 dark:text-emerald-400',
-    purple: 'from-violet-500/20 to-violet-500/5 text-violet-600 dark:text-violet-400',
-    amber: 'from-amber-500/20 to-amber-500/5 text-amber-600 dark:text-amber-400',
-    rose: 'from-rose-500/20 to-rose-500/5 text-rose-600 dark:text-rose-400',
+    blue: 'from-primary/20 to-primary/5 text-primary',
+    green: 'from-success/20 to-success/5 text-success',
+    purple: 'from-chart-3/20 to-chart-3/5 text-chart-3',
+    amber: 'from-warning/20 to-warning/5 text-warning',
+    rose: 'from-destructive/20 to-destructive/5 text-destructive',
 };
 </script>
 

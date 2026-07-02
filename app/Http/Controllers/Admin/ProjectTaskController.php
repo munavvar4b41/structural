@@ -17,6 +17,7 @@ use App\Support\ProjectTaskAssigneeCapabilities;
 use App\Support\ProjectTaskDisplayOrder;
 use App\Support\ProjectTaskHierarchy;
 use App\Support\ProjectTaskShowPayloadBuilder;
+use App\Support\ProjectTaskSortOrder;
 use App\Support\RequirementEstimationTaskSource;
 use App\Support\RequirementPhaseRegistry;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -295,11 +296,22 @@ class ProjectTaskController extends Controller
         $data = $request->validated();
         $data['project_id'] = $project->id;
         $data['created_by_user_id'] = $actor->id;
+        $data['sort_order'] = ProjectTaskSortOrder::nextForCreate(
+            $project->id,
+            isset($data['parent_project_task_id']) ? (int) $data['parent_project_task_id'] : null,
+            isset($data['phase']) ? (int) $data['phase'] : null,
+        );
 
         $task = ProjectTask::query()->create($data);
 
         if ($task->assignee_user_id !== null) {
             $this->assignmentNotificationDispatcher->sendTaskAssigned($task, $actor);
+        }
+
+        if ($this->cameFromGlobalTasksIndex($request)) {
+            return redirect()
+                ->back()
+                ->with('toast', __('Task created.'));
         }
 
         return to_route('admin.projects.tasks.index', $project)->with('toast', __('Task created.'));
@@ -416,7 +428,7 @@ class ProjectTaskController extends Controller
      */
     private function parentTaskOptions(Project $project): array
     {
-        $tasks = $project->tasks()->orderBy('title')->get(['id', 'title', 'parent_project_task_id']);
+        $tasks = $project->tasks()->get(['id', 'title', 'parent_project_task_id']);
 
         return collect(ProjectTaskDisplayOrder::depthFirstWithDepth($tasks))
             ->map(static fn (array $row): array => [
@@ -429,7 +441,7 @@ class ProjectTaskController extends Controller
 
     private function parentTaskOptionsForEdit(Project $project, ProjectTask $editing): array
     {
-        $tasks = $project->tasks()->orderBy('title')->get(['id', 'title', 'parent_project_task_id']);
+        $tasks = $project->tasks()->get(['id', 'title', 'parent_project_task_id']);
 
         /** @var array<int, list<int>> $childrenByParent */
         $childrenByParent = [];
@@ -531,6 +543,14 @@ class ProjectTaskController extends Controller
         $path = parse_url($url, PHP_URL_PATH);
 
         return is_string($path) && str_starts_with($path, '/admin/');
+    }
+
+    private function cameFromGlobalTasksIndex(Request $request): bool
+    {
+        $previous = $request->headers->get('referer', url()->previous());
+        $path = parse_url($previous, PHP_URL_PATH);
+
+        return is_string($path) && preg_match('#/admin/tasks/?$#', $path) === 1;
     }
 
     /**

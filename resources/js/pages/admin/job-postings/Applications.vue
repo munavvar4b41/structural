@@ -5,13 +5,13 @@ import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import FormSelect from '@/components/FormSelect.vue';
-import { Button } from '@/components/ui/button';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
+import { show as jobApplicationsShow } from '@/routes/admin/job-applications/index';
 import {
     applications as jobPostingsApplications,
     index as jobPostingsIndex,
 } from '@/routes/admin/job-postings/index';
-import { show as jobApplicationsShow } from '@/routes/admin/job-applications/index';
 
 type ApplicationRow = {
     id: number;
@@ -112,9 +112,11 @@ function formatDate(iso: string): string {
                     <DataTableTd label="Experience">{{ application.years_of_experience }} years</DataTableTd>
                     <DataTableTd label="Applied">{{ formatDate(application.applied_at) }}</DataTableTd>
                     <DataTableTd label="Actions" class="text-right">
-                        <Button variant="outline" size="sm" as-child>
-                            <Link :href="jobApplicationsShow(application.id)">View</Link>
-                        </Button>
+                        <TableIconAction
+                            icon="eye"
+                            label="View"
+                            :href="jobApplicationsShow(application.id)"
+                        />
                     </DataTableTd>
                 </tr>
                 <tr v-if="applications.length === 0">

@@ -8,7 +8,9 @@ import DataTablePagination from '@/components/dashboard/DataTablePagination.vue'
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -20,7 +22,6 @@ import {
     index as proposalsIndex,
     show as proposalsShow,
 } from '@/routes/admin/projects/proposals/index';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserBrief = {
     id: number;
@@ -207,7 +208,7 @@ function statusBadgeVariant(status: string): 'default' | 'secondary' | 'destruct
             </thead>
             <tbody>
                 <TableRow v-for="row in proposals.data" :key="row.id">
-                    <DataTableTd label="Title" class="align-top">
+                    <DataTableTd label="Title" class="align-middle">
                         <div class="font-medium">{{ row.title }}</div>
                         <p v-if="row.description_preview" class="hidden md:block mt-1 line-clamp-2 text-xs text-muted-foreground">
                             {{ row.description_preview }}
@@ -226,29 +227,34 @@ function statusBadgeVariant(status: string): 'default' | 'secondary' | 'destruct
                         {{ row.created_at ? new Date(row.created_at).toLocaleString() : '—' }}
                     </DataTableTd>
                     <DataTableTd label="Actions" class="text-left md:text-right">
-                        <div class="flex gap-2 justify-start md:justify-end">
-                            <Button variant="ghost" size="sm" as-child>
-                                <Link :href="proposalsShow.url({
+                        <div class="flex gap-1 justify-start md:justify-end">
+                            <TableIconAction
+                                variant="ghost"
+                                icon="eye"
+                                label="View"
+                                :href="proposalsShow.url({
                                     project: project.id,
                                     proposal: row.id,
-                                })
-                                    ">
-                                    View
-                                </Link>
-                            </Button>
-                            <Button v-if="row.can_update" variant="ghost" size="sm" as-child>
-                                <Link :href="proposalsEdit.url({
+                                })"
+                            />
+                            <TableIconAction
+                                v-if="row.can_update"
+                                variant="ghost"
+                                icon="pencil"
+                                label="Edit"
+                                :href="proposalsEdit.url({
                                     project: project.id,
                                     proposal: row.id,
-                                })
-                                    ">
-                                    Edit
-                                </Link>
-                            </Button>
-                            <Button v-if="row.can_delete" variant="ghost" size="sm" class="text-destructive"
-                                @click="openDeleteDialog(row)">
-                                Delete
-                            </Button>
+                                })"
+                            />
+                            <TableIconAction
+                                v-if="row.can_delete"
+                                variant="ghost"
+                                icon="trash"
+                                label="Delete"
+                                destructive
+                                @click="openDeleteDialog(row)"
+                            />
                         </div>
                     </DataTableTd>
                 </TableRow>

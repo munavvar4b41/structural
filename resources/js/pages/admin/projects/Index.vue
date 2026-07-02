@@ -4,15 +4,19 @@ import { computed, ref, watch } from 'vue';
 import ProjectController from '@/actions/App/Http/Controllers/Admin/ProjectController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import DataTablePagination from '@/components/dashboard/DataTablePagination.vue';
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
+import { index as projectCaseStudiesIndex } from '@/routes/admin/projects/case-studies/index';
 import {
     create as projectsCreate,
     edit as projectsEdit,
@@ -21,7 +25,6 @@ import {
 } from '@/routes/admin/projects/index';
 import { index as projectRequirementsIndex } from '@/routes/admin/projects/requirements/index';
 import { index as projectTasksIndex } from '@/routes/admin/projects/tasks/index';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type ClientUserSummary = {
     id: number;
@@ -62,6 +65,7 @@ type Props = {
         leads: { value: number; label: string }[];
     };
     show_lead_filter: boolean;
+    can_view_case_studies: boolean;
 };
 
 defineOptions({
@@ -71,6 +75,20 @@ defineOptions({
 });
 
 const props = defineProps<Props>();
+
+const projectTableColspan = computed(() => {
+    let columns = 6;
+
+    if (props.can_view_case_studies) {
+        columns += 1;
+    }
+
+    if (props.canManageProjects) {
+        columns += 1;
+    }
+
+    return columns;
+});
 
 const deleteDialogOpen = ref(false);
 const projectPendingDelete = ref<ProjectRow | null>(null);
@@ -201,6 +219,7 @@ const deleteProjectDescription = computed(() => {
                     <DataTableTh>Teams</DataTableTh>
                     <DataTableTh>Requirements</DataTableTh>
                     <DataTableTh>Tasks</DataTableTh>
+                    <DataTableTh v-if="can_view_case_studies">Case studies</DataTableTh>
                     <DataTableTh v-if="canManageProjects" class="text-right">Actions</DataTableTh>
                 </tr>
             </thead>
@@ -217,7 +236,7 @@ const deleteProjectDescription = computed(() => {
                     <DataTableTd label="Client">
                         <span>
                             <template v-if="project.client_user">
-                                {{ project.client_user.name }} <br/>
+                                {{ project.client_user.name }} <br />
                                 <span class="text-xs">({{ project.client_user.email }})</span>
                             </template>
                             <template v-else>—</template>
@@ -227,27 +246,50 @@ const deleteProjectDescription = computed(() => {
                         {{ project.teams_count }}
                     </DataTableTd>
                     <DataTableTd label="Requirements">
-                        <Button variant="link" class="h-auto p-0 w-fit md:w-full" as-child>
-                            <Link :href="projectRequirementsIndex.url(project.id)">View</Link>
-                        </Button>
+                        <TableIconAction
+                            variant="link"
+                            icon="eye"
+                            label="View requirements"
+                            :href="projectRequirementsIndex.url(project.id)"
+                        />
                     </DataTableTd>
                     <DataTableTd label="Tasks">
-                        <Button variant="link" class="h-auto p-0 w-fit md:w-full" as-child>
-                            <Link :href="projectTasksIndex.url(project.id)">View</Link>
-                        </Button>
+                        <TableIconAction
+                            variant="link"
+                            icon="eye"
+                            label="View tasks"
+                            :href="projectTasksIndex.url(project.id)"
+                        />
+                    </DataTableTd>
+                    <DataTableTd v-if="can_view_case_studies" label="Case studies">
+                        <TableIconAction
+                            variant="link"
+                            icon="eye"
+                            label="View case studies"
+                            :href="projectCaseStudiesIndex.url(project.id)"
+                        />
                     </DataTableTd>
                     <DataTableTd v-if="canManageProjects" label="Actions" class="text-left md:text-right">
-                        <div class="flex gap-2 justify-start md:justify-end">
-                            <Button variant="outline" size="sm" as-child>
-                                <Link :href="projectsEdit(project.id)">Edit</Link>
-                            </Button>
-                            <Button variant="outline" size="sm" class="text-destructive hover:bg-destructive/10"
-                                type="button" @click="openDeleteDialog(project)">
-                                Delete
-                            </Button>
+                        <div class="flex gap-1 justify-start md:justify-end">
+                            <TableIconAction
+                                icon="pencil"
+                                label="Edit"
+                                :href="projectsEdit.url(project.id)"
+                            />
+                            <TableIconAction
+                                icon="trash"
+                                label="Delete"
+                                destructive
+                                @click="openDeleteDialog(project)"
+                            />
                         </div>
                     </DataTableTd>
                 </TableRow>
+                <DataTableEmptyRow
+                    v-if="projects.data.length === 0"
+                    :colspan="projectTableColspan"
+                    message="No projects match this filter."
+                />
             </tbody>
         </DataTable>
 

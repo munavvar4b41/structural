@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\CareersSettingsController;
+use App\Http\Controllers\Admin\CaseStudyAttachmentController;
+use App\Http\Controllers\Admin\CaseStudyController;
 use App\Http\Controllers\Admin\CompanySettingsController;
 use App\Http\Controllers\Admin\EstimationReviewController;
 use App\Http\Controllers\Admin\JobApplicationController;
@@ -21,6 +23,7 @@ use App\Http\Controllers\Admin\ProjectTagController;
 use App\Http\Controllers\Admin\ProjectTaskChecklistItemController;
 use App\Http\Controllers\Admin\ProjectTaskController;
 use App\Http\Controllers\Admin\ProposalController;
+use App\Http\Controllers\Admin\RequirementController;
 use App\Http\Controllers\Admin\SuggestionController;
 use App\Http\Controllers\Admin\TaskCompletionReviewController;
 use App\Http\Controllers\Admin\TaskController;
@@ -29,6 +32,7 @@ use App\Http\Controllers\Admin\TaskTimeEntryController;
 use App\Http\Controllers\Admin\TaskTimerController;
 use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\TimeReportController;
+use App\Http\Controllers\Admin\UnderstandingReviewController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Middleware\EnsureCanManageCompanySettings;
 use App\Http\Middleware\EnsureCanManageUsers;
@@ -85,8 +89,15 @@ Route::patch('notifications/{notification}', [NotificationController::class, 'ma
     ->name('notifications.read');
 Route::get('tasks', [TaskController::class, 'index'])->name('tasks.index');
 Route::get('proposals', [ProposalController::class, 'index'])->name('proposals.index');
+Route::get('case-studies', [CaseStudyController::class, 'globalIndex'])->name('case-studies.index');
+Route::get('case-studies/{caseStudy}/attachments/{attachment}', [CaseStudyAttachmentController::class, 'show'])
+    ->name('case-studies.attachments.show');
+Route::delete('case-studies/{caseStudy}/attachments/{attachment}', [CaseStudyAttachmentController::class, 'destroy'])
+    ->name('case-studies.attachments.destroy');
+Route::get('requirements', [RequirementController::class, 'index'])->name('requirements.index');
 Route::get('task-reviews', [TaskCompletionReviewController::class, 'index'])->name('task-reviews.index');
 Route::get('estimation-reviews', [EstimationReviewController::class, 'index'])->name('estimation-reviews.index');
+Route::get('understanding-reviews', [UnderstandingReviewController::class, 'index'])->name('understanding-reviews.index');
 Route::get('task-ratings-report', [TaskRatingReportController::class, 'index'])->name('task-ratings-report.index');
 Route::get('suggestions', [SuggestionController::class, 'index'])->name('suggestions.index');
 Route::resource('projects', ProjectController::class);
@@ -121,6 +132,8 @@ Route::scopeBindings()->group(function (): void {
         ->name('projects.requirements.estimation.request-changes');
     Route::post('projects/{project}/requirements/{requirement}/estimation/{estimation}/request-revision', [ProjectRequirementEstimationController::class, 'requestRevision'])
         ->name('projects.requirements.estimation.request-revision');
+    Route::post('projects/{project}/requirements/{requirement}/estimation/{estimation}/next-version', [ProjectRequirementEstimationController::class, 'createNextVersion'])
+        ->name('projects.requirements.estimation.next-version');
     Route::post('projects/{project}/requirements/{requirement}/estimation/{estimation}/transfer', [ProjectRequirementEstimationController::class, 'transfer'])
         ->name('projects.requirements.estimation.transfer');
 });
@@ -136,6 +149,7 @@ Route::patch('projects/{project}/proposals/{proposal}/reopen', [ProjectProposalC
 Route::post('projects/{project}/proposals/{proposal}/messages', [ProjectProposalMessageController::class, 'store'])
     ->name('projects.proposals.messages.store');
 Route::resource('projects.proposals', ProjectProposalController::class);
+Route::resource('projects.case-studies', CaseStudyController::class)->scoped();
 
 Route::post('projects/{project}/tasks/{task}/submit-completion', [TaskCompletionReviewController::class, 'submit'])
     ->scopeBindings()

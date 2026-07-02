@@ -39,10 +39,14 @@ class JobPosting extends Model
         parent::boot();
 
         static::creating(function (JobPosting $jobPosting): void {
+            if (filled($jobPosting->slug)) {
+                return;
+            }
+
             $jobPosting->slug = Str::slug($jobPosting->title);
 
             while (self::where('slug', $jobPosting->slug)->exists()) {
-                $jobPosting->slug = $jobPosting->slug . '-' . Str::random(5);
+                $jobPosting->slug = $jobPosting->slug.'-'.Str::random(5);
             }
         });
     }

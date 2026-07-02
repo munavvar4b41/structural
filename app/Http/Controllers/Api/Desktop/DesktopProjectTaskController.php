@@ -13,6 +13,7 @@ use App\Support\AssignmentNotificationDispatcher;
 use App\Support\ProjectTaskFormOptionsBuilder;
 use App\Support\ProjectTaskHierarchy;
 use App\Support\ProjectTaskShowPayloadBuilder;
+use App\Support\ProjectTaskSortOrder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -64,6 +65,11 @@ class DesktopProjectTaskController extends Controller
         $data = $request->validated();
         $data['project_id'] = $project->id;
         $data['created_by_user_id'] = $actor->id;
+        $data['sort_order'] = ProjectTaskSortOrder::nextForCreate(
+            $project->id,
+            isset($data['parent_project_task_id']) ? (int) $data['parent_project_task_id'] : null,
+            isset($data['phase']) ? (int) $data['phase'] : null,
+        );
 
         $task = ProjectTask::query()->create($data);
 

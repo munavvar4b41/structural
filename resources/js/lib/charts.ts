@@ -10,17 +10,39 @@ export function colorsForProjectIds(projectIds: number[]): string[] {
     return projectIds.map((id) => colorForProjectId(id));
 }
 
-export function getChartColors(): string[] {
+function getCssVariable(name: string, fallback: string): string {
     if (typeof document === 'undefined') {
-        return ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899'];
+        return fallback;
     }
 
-    const styles = getComputedStyle(document.documentElement);
+    const value = getComputedStyle(document.documentElement)
+        .getPropertyValue(name)
+        .trim();
 
-    return [1, 2, 3, 4, 5].map((i) => {
-        const value = styles.getPropertyValue(`--chart-${i}`).trim();
+    if (! value) {
+        return fallback;
+    }
 
-        return value ? `hsl(${value})` : '#3b82f6';
+    if (value.startsWith('hsl(')) {
+        return value;
+    }
+
+    return `hsl(${value})`;
+}
+
+export function getChartColors(): string[] {
+    const fallbacks = ['#e07a52', '#3d9e72', '#9b6fc4', '#e89a2e', '#d45a7a'];
+
+    if (typeof document === 'undefined') {
+        return fallbacks;
+    }
+
+    return [1, 2, 3, 4, 5].map((i, index) => {
+        const value = getComputedStyle(document.documentElement)
+            .getPropertyValue(`--chart-${i}`)
+            .trim();
+
+        return value ? `hsl(${value})` : fallbacks[index];
     });
 }
 
@@ -34,9 +56,18 @@ export function isDarkMode(): boolean {
 
 export function buildApexTheme(dark = isDarkMode()): ApexOptions {
     const colors = getChartColors();
-    const muted = dark ? 'hsl(240 5% 64%)' : 'hsl(240 4% 46%)';
-    const grid = dark ? 'hsl(240 4% 20%)' : 'hsl(240 6% 90%)';
-    const fore = dark ? 'hsl(0 0% 98%)' : 'hsl(240 6% 10%)';
+    const muted = getCssVariable(
+        '--muted-foreground',
+        dark ? 'hsl(28 10% 62%)' : 'hsl(20 10% 45%)',
+    );
+    const grid = getCssVariable(
+        '--border',
+        dark ? 'hsl(22 8% 22%)' : 'hsl(28 20% 88%)',
+    );
+    const fore = getCssVariable(
+        '--foreground',
+        dark ? 'hsl(30 20% 96%)' : 'hsl(20 18% 14%)',
+    );
 
     return {
         chart: {

@@ -7,8 +7,9 @@ import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import StatCard from '@/components/dashboard/StatCard.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -22,7 +23,6 @@ import { Label } from '@/components/ui/label';
 import { colorsForProjectIds } from '@/lib/charts';
 import { formatSeconds } from '@/lib/formatSeconds';
 import { index as timeReportIndex } from '@/routes/admin/time-report/index';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type SelectOption = { value: number; label: string };
 
@@ -338,11 +338,11 @@ const projectChartOptions = computed(() => ({
                     </thead>
                     <tbody>
                         <TableRow v-for="row in per_day" :key="row.date">
-                            <DataTableTd label="Date" class="align-top">{{ formatDateLabel(row.date) }}</DataTableTd>
-                            <DataTableTd label="Total" class="align-top font-medium tabular-nums">
+                            <DataTableTd label="Date" class="align-middle">{{ formatDateLabel(row.date) }}</DataTableTd>
+                            <DataTableTd label="Total" class="align-middle font-medium tabular-nums">
                                 {{ formatSeconds(row.total_seconds) }}
                             </DataTableTd>
-                            <DataTableTd label="Projects" class="align-top text-muted-foreground">
+                            <DataTableTd label="Projects" class="align-middle text-muted-foreground">
                                 <ul class="grid gap-1">
                                     <li v-for="p in row.projects" :key="p.project_id">
                                         <span class="font-medium text-foreground">

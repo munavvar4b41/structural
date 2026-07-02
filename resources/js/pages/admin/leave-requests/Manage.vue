@@ -6,8 +6,10 @@ import DataTable from '@/components/dashboard/DataTable.vue';
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -21,7 +23,6 @@ import {
     index as leaveRequestsIndex,
     manage as leaveRequestsManage,
 } from '@/routes/admin/leave-requests/index';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type LeaveRow = {
     id: number;
@@ -259,12 +260,19 @@ const filteredLeaveRequests = computed(() => {
                             <DataTableTd label="Status">{{ row.status_label }}</DataTableTd>
                             <DataTableTd label="Actions" class="text-left md:text-right whitespace-nowrap">
                                 <template v-if="row.status === 'pending'">
-                                    <Button type="button" size="sm" class="mr-2" @click="approve(row)">
-                                        Approve
-                                    </Button>
-                                    <Button type="button" size="sm" variant="outline" @click="reject(row)">
-                                        Reject
-                                    </Button>
+                                    <div class="flex gap-1">
+                                        <TableIconAction
+                                            variant="default"
+                                            icon="check"
+                                            label="Approve"
+                                            @click="approve(row)"
+                                        />
+                                        <TableIconAction
+                                            icon="x"
+                                            label="Reject"
+                                            @click="reject(row)"
+                                        />
+                                    </div>
                                 </template>
                                 <span v-else class="text-muted-foreground text-xs">
                                     <template v-if="row.reviewed_by">

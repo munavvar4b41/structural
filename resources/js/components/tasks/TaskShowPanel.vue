@@ -1,20 +1,27 @@
 <script setup lang="ts">
 import { Form, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { CornerDownRight } from 'lucide-vue-next';
+import { CornerDownRight, ChevronDown, ChevronRight } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import ProjectTaskChecklistItemController from '@/actions/App/Http/Controllers/Admin/ProjectTaskChecklistItemController';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
 import TaskCompletionReviewController from '@/actions/App/Http/Controllers/Admin/TaskCompletionReviewController';
 import TaskTimeEntryController from '@/actions/App/Http/Controllers/Admin/TaskTimeEntryController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import InputError from '@/components/InputError.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import InputError from '@/components/InputError.vue';
 import RichTextViewer from '@/components/RichTextViewer.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
     Dialog,
     DialogContent,
@@ -28,6 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { formatSeconds } from '@/lib/formatSeconds';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
+import { create as caseStudiesCreate, show as caseStudiesShow } from '@/routes/admin/projects/case-studies/index';
 import { show as requirementsShow } from '@/routes/admin/projects/requirements/index';
 import {
     edit as projectTasksEdit,
@@ -44,6 +52,13 @@ import type {
     TimeTracking,
 } from '@/types/projectTaskShow';
 
+type CaseStudyBrief = {
+    id: number;
+    title: string;
+    summary_preview: string | null;
+    created_at: string | null;
+};
+
 const props = withDefaults(
     defineProps<{
         project: ProjectSummary;
@@ -51,9 +66,13 @@ const props = withDefaults(
         can_manage_project: boolean;
         checklist: Checklist;
         time_tracking: TimeTracking;
+        case_studies?: CaseStudyBrief[];
+        can_create_case_study?: boolean;
         embedded?: boolean;
     }>(),
     {
+        case_studies: () => [],
+        can_create_case_study: false,
         embedded: false,
     },
 );
@@ -577,6 +596,25 @@ const checklistDeleteDescription = computed(() => {
 
     return `Delete "${row.title}"? This cannot be undone.`;
 });
+
+const pendingChecklistItems = computed(() =>
+    props.checklist.items.filter((item) => !item.is_completed),
+);
+
+const completedChecklistItems = computed(() =>
+    props.checklist.items.filter((item) => item.is_completed),
+);
+
+const completedChecklistOpen = ref(false);
+
+const checklistAddFormOptions = computed(() => ({
+    preserveScroll: true,
+    only: props.embedded ? ['task_preview', 'columns'] : ['checklist'],
+}));
+
+function onChecklistAddSuccess(): void {
+    newChecklistTitle.value = '';
+}
 </script>
 
 <template>
@@ -755,21 +793,33 @@ const checklistDeleteDescription = computed(() => {
     <div class="flex flex-col gap-8">
         <div class="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <PageHeader v-if="!embedded" :title="task.title" :description="`Project ${project.name}`" />
-            <div class="flex flex-wrap gap-2" :class="{ 'w-full': embedded }">
-                <Button v-if="task.can_submit_task_completion" variant="secondary" type="button"
-                    @click="submitForCompletion()">
-                    Submit for completion
-                </Button>
-                <Button v-if="task.can_confirm_task_completion" type="button" @click="confirmCompletionOpen = true">
-                    Confirm completion
-                </Button>
+            <div class="flex flex-wrap gap-1" :class="{ 'w-full': embedded }">
+                <TableIconAction
+                    v-if="task.can_submit_task_completion"
+                    variant="secondary"
+                    icon="check-circle"
+                    label="Submit for completion"
+                    @click="submitForCompletion()"
+                />
+                <TableIconAction
+                    v-if="task.can_confirm_task_completion"
+                    icon="check"
+                    label="Confirm completion"
+                    @click="confirmCompletionOpen = true"
+                />
                 <TaskTimerButton v-if="time_tracking.can_track" :project-id="project.id" :task-id="task.id"
                     size="default" :reload-props-on-mutation="['time_tracking']" />
-                <Button v-if="!embedded" variant="outline" as-child>
-                    <Link :href="projectTasksIndex.url(project.id)">Back to task list</Link>
-                </Button>
-                <Button v-if="task.can_update" variant="outline" as-child>
-                    <Link :href="projectTasksEdit.url({
+                <TableIconAction
+                    v-if="!embedded"
+                    icon="list"
+                    label="Back to task list"
+                    :href="projectTasksIndex.url(project.id)"
+                />
+                <TableIconAction
+                    v-if="task.can_update"
+                    icon="pencil"
+                    label="Edit task"
+                    :href="projectTasksEdit.url({
                         project: project.id,
                         task: task.id,
                     }, {
@@ -779,19 +829,20 @@ const checklistDeleteDescription = computed(() => {
                                 task: task.id,
                             }),
                         },
-                    })">
-                        Edit task
-                    </Link>
-                </Button>
-                <Button v-if="task.can_delete" variant="outline" class="text-destructive hover:bg-destructive/10"
-                    type="button" @click="deleteDialogOpen = true">
-                    Delete
-                </Button>
+                    })"
+                />
+                <TableIconAction
+                    v-if="task.can_delete"
+                    icon="trash"
+                    label="Delete task"
+                    destructive
+                    @click="deleteDialogOpen = true"
+                />
             </div>
         </div>
 
         <GlassCard v-if="task.status === 'review'"
-            class="border-amber-200/80 bg-amber-50/40 dark:border-amber-500/35 dark:bg-amber-500/10">
+            class="border-warning/30 bg-warning/10">
             <div class="space-y-1">
                 <h2 class="text-lg font-semibold">Awaiting review</h2>
                 <p class="text-sm text-muted-foreground">
@@ -897,8 +948,8 @@ const checklistDeleteDescription = computed(() => {
                     Simple steps for this task. Check items off as you complete them.
                 </p>
             </div>
-            <ul v-if="checklist.items.length > 0" class="space-y-2">
-                <li v-for="item in checklist.items" :key="item.id"
+            <ul v-if="pendingChecklistItems.length > 0" class="space-y-2">
+                <li v-for="item in pendingChecklistItems" :key="item.id"
                     class="flex gap-3 rounded-lg border border-border/60 px-3 py-2 items-center">
                     <Checkbox :id="`checklist-${item.id}`" :model-value="item.is_completed"
                         :disabled="!checklist.can_manage" class="mt-0.5"
@@ -918,33 +969,75 @@ const checklistDeleteDescription = computed(() => {
                         </div>
                     </div>
                     <div v-else class="min-w-0 flex-1">
-                        <label :for="`checklist-${item.id}`" class="block cursor-pointer text-sm" :class="item.is_completed
-                            ? 'text-muted-foreground line-through'
-                            : 'text-foreground'
-                            " @click="checklist.can_manage && toggleChecklistItem(item, !item.is_completed)">
+                        <label :for="`checklist-${item.id}`" class="block cursor-pointer text-sm text-foreground"
+                            @click="checklist.can_manage && toggleChecklistItem(item, !item.is_completed)">
                             {{ item.title }}
                         </label>
                     </div>
                     <div v-if="checklist.can_manage && editingChecklistId !== item.id" class="flex shrink-0 gap-1">
-                        <Button type="button" variant="outline" size="sm" @click="openEditChecklistItem(item)">
-                            Edit
-                        </Button>
-                        <Button type="button" variant="outline" size="sm"
-                            class="text-destructive hover:bg-destructive/10" @click="openChecklistDelete(item)">
-                            Delete
-                        </Button>
+                        <TableIconAction icon="pencil" label="Edit" @click="openEditChecklistItem(item)" />
+                        <TableIconAction icon="trash" label="Delete" destructive
+                            @click="openChecklistDelete(item)" />
                     </div>
                 </li>
             </ul>
-            <p v-else class="text-sm text-muted-foreground">
+            <Collapsible v-if="completedChecklistItems.length > 0" v-model:open="completedChecklistOpen"
+                class="mt-2">
+                <CollapsibleTrigger
+                    class="flex w-full items-center gap-2 rounded-lg border border-border/60 px-3 py-2 text-sm text-muted-foreground hover:bg-muted/40">
+                    <ChevronRight v-if="!completedChecklistOpen" class="size-4 shrink-0" />
+                    <ChevronDown v-else class="size-4 shrink-0" />
+                    {{ completedChecklistItems.length }} completed
+                </CollapsibleTrigger>
+                <CollapsibleContent class="mt-2 space-y-2">
+                    <ul class="space-y-2">
+                        <li v-for="item in completedChecklistItems" :key="item.id"
+                            class="flex gap-3 rounded-lg border border-border/60 px-3 py-2 items-center">
+                            <Checkbox :id="`checklist-${item.id}`" :model-value="item.is_completed"
+                                :disabled="!checklist.can_manage" class="mt-0.5"
+                                @update:model-value="(v) => toggleChecklistItem(item, v)" />
+                            <div v-if="editingChecklistId === item.id"
+                                class="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+                                <Input :id="`edit-checklist-${item.id}`" v-model="editChecklistTitle" type="text"
+                                    maxlength="500" class="h-8" placeholder="Checklist item title"
+                                    @keydown.enter.prevent="saveChecklistItem(item)" />
+                                <div class="flex shrink-0 gap-1">
+                                    <Button type="button" size="sm" @click="saveChecklistItem(item)">
+                                        Save
+                                    </Button>
+                                    <Button type="button" variant="outline" size="sm"
+                                        @click="closeEditChecklistItem()">
+                                        Cancel
+                                    </Button>
+                                </div>
+                            </div>
+                            <div v-else class="min-w-0 flex-1">
+                                <label :for="`checklist-${item.id}`"
+                                    class="block cursor-pointer text-sm text-muted-foreground line-through"
+                                    @click="checklist.can_manage && toggleChecklistItem(item, !item.is_completed)">
+                                    {{ item.title }}
+                                </label>
+                            </div>
+                            <div v-if="checklist.can_manage && editingChecklistId !== item.id"
+                                class="flex shrink-0 gap-1">
+                                <TableIconAction icon="pencil" label="Edit" @click="openEditChecklistItem(item)" />
+                                <TableIconAction icon="trash" label="Delete" destructive
+                                    @click="openChecklistDelete(item)" />
+                            </div>
+                        </li>
+                    </ul>
+                </CollapsibleContent>
+            </Collapsible>
+            <p v-if="checklist.items.length === 0" class="text-sm text-muted-foreground">
                 No checklist items yet.
             </p>
             <Form v-if="checklist.can_manage" :action="ProjectTaskChecklistItemController.store.url({
                 project: project.id,
                 task: task.id,
             })
-                " method="post" class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end"
-                @success="() => { newChecklistTitle = ''; reloadAfterMutation(); }" v-slot="{ errors, processing }">
+                " method="post" :options="checklistAddFormOptions"
+                class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end"
+                @success="onChecklistAddSuccess" v-slot="{ errors, processing }">
                 <div class="grid flex-1 gap-2">
                     <Label for="new-checklist-title" class="sr-only">New item</Label>
                     <Input id="new-checklist-title" name="title" type="text" maxlength="500" required
@@ -963,9 +1056,12 @@ const checklistDeleteDescription = computed(() => {
                         Start a timer or log past work. Totals reflect closed entries only.
                     </p>
                 </div>
-                <Button type="button" variant="outline" size="sm" @click="openManualDialog">
-                    Log time
-                </Button>
+                <TableIconAction
+                    type="button"
+                    icon="timer"
+                    label="Log time"
+                    @click="openManualDialog"
+                />
             </div>
             <div class="grid gap-6">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -1014,8 +1110,8 @@ const checklistDeleteDescription = computed(() => {
                                 </td>
                                 <td data-label="Duration" class="px-3 py-2 align-top tabular-nums">
                                     <span v-if="entry.is_running" :class="entry.is_paused
-                                        ? 'text-amber-600 dark:text-amber-400'
-                                        : 'text-emerald-600 dark:text-emerald-400'">
+                                        ? 'text-warning'
+                                        : 'text-success'">
                                         {{ formatSeconds(entryDurationSeconds(entry), { withSeconds: true }) }}
                                     </span>
                                     <span v-else>
@@ -1030,24 +1126,28 @@ const checklistDeleteDescription = computed(() => {
                                     {{ entry.notes ?? '—' }}
                                 </td>
                                 <td data-label="Actions" class="px-3 py-2 align-top text-right">
-                                    <div class="flex justify-end gap-2">
-                                        <Button v-if="entry.can_update && !entry.is_running" variant="outline" size="sm"
-                                            type="button" @click="openEditEntry(entry)">
-                                            Edit
-                                        </Button>
-                                        <Button v-if="entry.can_delete" variant="outline" size="sm"
-                                            class="text-destructive hover:bg-destructive/10" type="button"
-                                            @click="openEntryDelete(entry)">
-                                            Delete
-                                        </Button>
+                                    <div class="flex justify-end gap-1">
+                                        <TableIconAction
+                                            v-if="entry.can_update && !entry.is_running"
+                                            icon="pencil"
+                                            label="Edit"
+                                            @click="openEditEntry(entry)"
+                                        />
+                                        <TableIconAction
+                                            v-if="entry.can_delete"
+                                            icon="trash"
+                                            label="Delete"
+                                            destructive
+                                            @click="openEntryDelete(entry)"
+                                        />
                                     </div>
                                 </td>
                             </tr>
-                            <tr v-if="time_tracking.entries.length === 0">
-                                <td data-label="" colspan="6" class="px-3 py-8 text-center text-muted-foreground">
-                                    No time entries yet.
-                                </td>
-                            </tr>
+                            <DataTableEmptyRow
+                                v-if="time_tracking.entries.length === 0"
+                                :colspan="6"
+                                message="No time entries yet."
+                            />
                         </tbody>
                     </table>
                 </div>
@@ -1131,13 +1231,19 @@ const checklistDeleteDescription = computed(() => {
                                 {{ formatTaskMinutes(sub.estimated_minutes) }}
                             </td>
                             <td data-label="Actions" class="px-4 py-3 text-right">
-                                <div class="flex flex-wrap justify-end gap-2">
-                                    <Button v-if="sub.can_submit_task_completion" variant="secondary" size="sm"
-                                        type="button" @click="submitForCompletionSubtask(sub)">
-                                        Submit for completion
-                                    </Button>
-                                    <Button v-if="sub.can_update" variant="outline" size="sm" as-child>
-                                        <Link :href="projectTasksEdit.url({
+                                <div class="flex flex-wrap justify-end gap-1">
+                                    <TableIconAction
+                                        v-if="sub.can_submit_task_completion"
+                                        variant="secondary"
+                                        icon="check-circle"
+                                        label="Submit for completion"
+                                        @click="submitForCompletionSubtask(sub)"
+                                    />
+                                    <TableIconAction
+                                        v-if="sub.can_update"
+                                        icon="pencil"
+                                        label="Edit"
+                                        :href="projectTasksEdit.url({
                                             project: project.id,
                                             task: sub.id,
                                         }, {
@@ -1147,25 +1253,64 @@ const checklistDeleteDescription = computed(() => {
                                                     task: task.id,
                                                 }),
                                             },
-                                        })">
-                                            Edit
-                                        </Link>
-                                    </Button>
-                                    <Button v-if="sub.can_delete" variant="outline" size="sm"
-                                        class="text-destructive hover:bg-destructive/10" type="button"
-                                        @click="openSubtaskDelete(sub)">
-                                        Delete
-                                    </Button>
+                                        })"
+                                    />
+                                    <TableIconAction
+                                        v-if="sub.can_delete"
+                                        icon="trash"
+                                        label="Delete"
+                                        destructive
+                                        @click="openSubtaskDelete(sub)"
+                                    />
                                 </div>
                             </td>
                         </tr>
-                        <tr v-if="task.subtasks.length === 0">
-                            <td data-label="" colspan="6" class="px-4 py-8 text-center text-muted-foreground">
-                                No subtasks yet.
-                            </td>
-                        </tr>
+                        <DataTableEmptyRow
+                            v-if="task.subtasks.length === 0"
+                            :colspan="6"
+                            message="No subtasks yet."
+                        />
                     </tbody>
                 </table>
+            </div>
+        </GlassCard>
+
+        <GlassCard v-if="case_studies.length > 0 || can_create_case_study">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3">
+                <h2 class="text-sm font-semibold">Case studies</h2>
+                <TableIconAction
+                    v-if="can_create_case_study"
+                    icon="plus"
+                    label="Add case study"
+                    :href="caseStudiesCreate.url(project.id, {
+                        query: { project_task_id: task.id },
+                    })"
+                />
+            </div>
+            <div class="divide-y divide-border/60">
+                <div
+                    v-for="caseStudy in case_studies"
+                    :key="caseStudy.id"
+                    class="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                >
+                    <div>
+                        <p class="font-medium">{{ caseStudy.title }}</p>
+                        <p v-if="caseStudy.summary_preview" class="text-sm text-muted-foreground">
+                            {{ caseStudy.summary_preview }}
+                        </p>
+                    </div>
+                    <TableIconAction
+                        icon="eye"
+                        label="View case study"
+                        :href="caseStudiesShow.url({
+                            project: project.id,
+                            case_study: caseStudy.id,
+                        })"
+                    />
+                </div>
+                <p v-if="case_studies.length === 0" class="px-4 py-6 text-center text-sm text-muted-foreground">
+                    No case studies linked to this task yet.
+                </p>
             </div>
         </GlassCard>
     </div>

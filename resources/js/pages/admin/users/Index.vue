@@ -4,12 +4,15 @@ import { computed, ref, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import DataTablePagination from '@/components/dashboard/DataTablePagination.vue';
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
@@ -18,7 +21,6 @@ import {
     edit as usersEdit,
     index as usersIndex,
 } from '@/routes/admin/users/index';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type UserRow = {
     id: number;
@@ -224,17 +226,26 @@ function roleLabel(role: string): string {
                         {{ roleLabel(row.role) }}
                     </DataTableTd>
                     <DataTableTd label="Actions" class="text-left md:text-right">
-                        <div class="flex gap-2 justify-start md:justify-end">
-                            <Button variant="outline" size="sm" as-child>
-                                <Link :href="usersEdit(row.id)">Edit</Link>
-                            </Button>
-                            <Button variant="outline" size="sm" class="text-destructive hover:bg-destructive/10"
-                                type="button" @click="openDeleteDialog(row)">
-                                Delete
-                            </Button>
+                        <div class="flex gap-1 justify-start md:justify-end">
+                            <TableIconAction
+                                icon="pencil"
+                                label="Edit"
+                                :href="usersEdit.url(row.id)"
+                            />
+                            <TableIconAction
+                                icon="trash"
+                                label="Delete"
+                                destructive
+                                @click="openDeleteDialog(row)"
+                            />
                         </div>
                     </DataTableTd>
                 </TableRow>
+                <DataTableEmptyRow
+                    v-if="users.data.length === 0"
+                    :colspan="4"
+                    message="No users match this filter."
+                />
             </tbody>
         </DataTable>
 

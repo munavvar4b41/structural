@@ -6,14 +6,16 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
-import type { NavItem } from '@/types';
+import type { NavGroup, NavItem } from '@/types';
 
 defineProps<{
-    items: NavItem[];
+    groups: NavGroup[];
 }>();
 
+const { isMobile, setOpenMobile } = useSidebar();
 const { isCurrentUrl, isCurrentOrParentUrl } = useCurrentUrl();
 
 function isNavItemActive(item: NavItem): boolean {
@@ -23,21 +25,31 @@ function isNavItemActive(item: NavItem): boolean {
 
     return isCurrentUrl(item.href);
 }
+
+function handleNavClick(): void {
+    if (isMobile.value) {
+        setOpenMobile(false);
+    }
+}
 </script>
 
 <template>
-    <SidebarGroup class="px-3 py-0">
+    <SidebarGroup
+        v-for="group in groups"
+        :key="group.label"
+        class="px-3 py-0"
+    >
         <SidebarGroupLabel class="px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Platform
+            {{ group.label }}
         </SidebarGroupLabel>
         <SidebarMenu>
-            <SidebarMenuItem v-for="item in items" :key="item.title">
+            <SidebarMenuItem v-for="item in group.items" :key="item.title">
                 <SidebarMenuButton
                     as-child
                     :is-active="isNavItemActive(item)"
                     :tooltip="item.title"
                 >
-                    <Link :href="item.href">
+                    <Link :href="item.href" @click="handleNavClick">
                         <component :is="item.icon" />
                         <span>{{ item.title }}</span>
                     </Link>

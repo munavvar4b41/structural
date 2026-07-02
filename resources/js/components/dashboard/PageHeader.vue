@@ -17,7 +17,7 @@ defineProps<Props>();
                 {{ description }}
             </p>
         </div>
-        <div class="flex shrink-0 flex-wrap items-center gap-2 empty:hidden">
+        <div class="flex shrink-0 flex-wrap items-center gap-0.5 empty:hidden">
             <slot name="actions" />
         </div>
     </header>

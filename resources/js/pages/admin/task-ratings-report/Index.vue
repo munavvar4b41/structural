@@ -3,11 +3,13 @@ import { Head, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import ChartCard from '@/components/dashboard/ChartCard.vue';
 import DataTable from '@/components/dashboard/DataTable.vue';
+import DataTableEmptyRow from '@/components/dashboard/DataTableEmptyRow.vue';
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
+import TableRow from '@/components/dashboard/TableRow.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -20,7 +22,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { index as projectsIndex } from '@/routes/admin/projects/index';
 import { index as taskRatingsReportIndex } from '@/routes/admin/task-ratings-report/index';
-import TableRow from '@/components/dashboard/TableRow.vue';
 
 type SelectOption = { value: number; label: string };
 
@@ -220,7 +221,7 @@ const ratingsChartOptions = computed(() => ({
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <DataTable v-if="filteredRows.length > 0">
+                <DataTable>
                     <thead>
                         <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
                             <DataTableTh>Name</DataTableTh>
@@ -246,11 +247,15 @@ const ratingsChartOptions = computed(() => ({
                                 {{ row.creator_count }}
                             </DataTableTd>
                         </TableRow>
+                        <DataTableEmptyRow
+                            v-if="filteredRows.length === 0"
+                            :colspan="5"
+                            :message="rows.length === 0
+                                ? 'No ratings in this range.'
+                                : 'No rows match your search.'"
+                        />
                     </tbody>
                 </DataTable>
-                <div v-else class="text-sm text-muted-foreground">
-                    {{ rows.length === 0 ? 'No ratings in this range.' : 'No rows match your search.' }}
-                </div>
             </CardContent>
         </Card>
 
@@ -260,7 +265,7 @@ const ratingsChartOptions = computed(() => ({
                 <CardDescription>Latest confirmed tasks (up to 100 in this filter).</CardDescription>
             </CardHeader>
             <CardContent>
-                <DataTable v-if="filteredRecentReviews.length > 0">
+                <DataTable>
                     <thead>
                         <tr class="border-b border-border/60 bg-muted/40 backdrop-blur-sm">
                             <DataTableTh>Date</DataTableTh>
@@ -289,15 +294,15 @@ const ratingsChartOptions = computed(() => ({
                                 {{ r.creator_rating ?? '—' }}
                             </DataTableTd>
                         </TableRow>
+                        <DataTableEmptyRow
+                            v-if="filteredRecentReviews.length === 0"
+                            :colspan="6"
+                            :message="recent_reviews.length === 0
+                                ? 'No reviews in this range.'
+                                : 'No reviews match your search.'"
+                        />
                     </tbody>
                 </DataTable>
-                <div v-else class="text-sm text-muted-foreground">
-                    {{
-                        recent_reviews.length === 0
-                            ? 'No reviews in this range.'
-                            : 'No reviews match your search.'
-                    }}
-                </div>
             </CardContent>
         </Card>
     </div>

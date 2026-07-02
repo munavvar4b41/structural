@@ -59,7 +59,7 @@ class CompanySettingsTest extends TestCase
 
     public function test_team_head_cannot_view_company_settings(): void
     {
-        $user = User::factory()->teamHead()->create();
+        $user = User::factory()->teamHead()->withPrimaryTeam()->create();
 
         $this->actingAs($user)
             ->get(route('admin.company.edit'))
@@ -68,7 +68,7 @@ class CompanySettingsTest extends TestCase
 
     public function test_staff_cannot_view_company_settings(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withPrimaryTeam()->create();
 
         $this->actingAs($user)
             ->get(route('admin.company.edit'))

@@ -1,9 +1,11 @@
-import { computed, ref, type ComputedRef, type Ref } from 'vue';
+import { computed, ref   } from 'vue';
+import type {ComputedRef, Ref} from 'vue';
 import {
     buildDirectChildCountByParentKey,
-    filterVisibleEstimationLines,
-    type EstimationLineTreeNode,
+    filterVisibleEstimationLines
+    
 } from '@/lib/estimationLinesVisibility';
+import type {EstimationLineTreeNode} from '@/lib/estimationLinesVisibility';
 
 export function useEstimationLineCollapse<T extends EstimationLineTreeNode>(
     displayLines: ComputedRef<readonly T[]>,

@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\ProjectTaskStatus;
+use App\Models\CaseStudy;
 use App\Models\Project;
 use App\Models\ProjectMetadata;
 use App\Models\ProjectProposal;
@@ -44,10 +45,21 @@ class ProjectShowPayloadBuilder
             ->map(fn (ProjectProposal $proposal): array => $this->proposalRow($proposal))
             ->all();
 
+        $canViewCaseStudies = $actor->can('viewAny', CaseStudy::class);
+
+        $caseStudies = $canViewCaseStudies
+            ? $project->caseStudies()
+                ->with(['creator', 'task:id,title'])
+                ->orderByDesc('created_at')
+                ->limit(self::LIST_LIMIT)
+                ->get()
+                ->map(fn (CaseStudy $caseStudy): array => $this->caseStudyRow($caseStudy))
+                ->all()
+            : [];
+
         $tasksCollection = $project->tasks()
             ->with(['assignee:id,name,email', 'requirement:id,title'])
             ->withCount('children')
-            ->orderBy('title')
             ->limit(self::LIST_LIMIT)
             ->get();
 
@@ -105,6 +117,11 @@ class ProjectShowPayloadBuilder
             'proposals' => $proposals,
             'proposals_total' => $project->proposals()->count(),
             'can_create_proposals' => $actor->can('create', [ProjectProposal::class, $project]),
+            'case_studies' => $caseStudies,
+            'case_studies_total' => $canViewCaseStudies ? $project->caseStudies()->count() : 0,
+            'can_create_case_studies' => $canViewCaseStudies
+                && $actor->can('create', [CaseStudy::class, $project]),
+            'can_view_case_studies' => $canViewCaseStudies,
             'tasks' => $tasks,
             'tasks_total' => $project->tasks()->count(),
             'time_entries' => $timeEntries,
@@ -196,6 +213,27 @@ class ProjectShowPayloadBuilder
             'status_label' => $proposal->status->label(),
             'created_at' => $proposal->created_at?->toIso8601String(),
             'creator' => $this->userBrief($proposal->creator),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function caseStudyRow(CaseStudy $caseStudy): array
+    {
+        return [
+            'id' => $caseStudy->id,
+            'title' => $caseStudy->title,
+            'summary_preview' => ($overviewPreview = TipTapDocument::previewFromStored($caseStudy->overview)) !== null
+                && $overviewPreview !== ''
+                ? $overviewPreview
+                : TipTapDocument::previewFromStored($caseStudy->client_issue),
+            'created_at' => $caseStudy->created_at?->toIso8601String(),
+            'creator' => $this->userBrief($caseStudy->creator),
+            'task' => $caseStudy->task ? [
+                'id' => $caseStudy->task->id,
+                'title' => $caseStudy->task->title,
+            ] : null,
         ];
     }
 

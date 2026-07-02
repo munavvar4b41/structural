@@ -2,15 +2,15 @@
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { Plus, Send } from 'lucide-vue-next';
 import { computed, nextTick, ref, toRef, watch } from 'vue';
-import RequirementEstimationAnalyticsCards, {
-    type EstimationAnalytics,
-} from '@/components/requirements/RequirementEstimationAnalyticsCards.vue';
-import EstimationLinesTable from '@/components/requirements/EstimationLinesTable.vue';
 import ConfirmDestructiveDialog from '@/components/ConfirmDestructiveDialog.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import InputError from '@/components/InputError.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import InputError from '@/components/InputError.vue';
+import EstimationLinesTable from '@/components/requirements/EstimationLinesTable.vue';
+import EstimationVersionCompare from '@/components/requirements/EstimationVersionCompare.vue';
+import RequirementEstimationAnalyticsCards from '@/components/requirements/RequirementEstimationAnalyticsCards.vue';
+import type {EstimationAnalytics} from '@/components/requirements/RequirementEstimationAnalyticsCards.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -25,10 +25,11 @@ import { Label } from '@/components/ui/label';
 import { useEstimationDisplayLines } from '@/composables/useEstimationDisplayLines';
 import { useEstimationLineCollapse } from '@/composables/useEstimationLineCollapse';
 import {
-    useEstimationLinesIndex,
-    type EstimationLineEditable,
-    type EstimationLineReadonly,
+    useEstimationLinesIndex
+    
+    
 } from '@/composables/useEstimationLinesIndex';
+import type {EstimationLineEditable, EstimationLineReadonly} from '@/composables/useEstimationLinesIndex';
 import {
     depthFirstEstimationLines,
     insertIndexAfterSubtree,
@@ -38,17 +39,14 @@ import {
     filterEditableEstimationLinesByPhase,
     filterReadonlyEstimationLinesByPhase,
 } from '@/lib/filterEstimationLinesByPhase';
-import { buildPhaseFilterOptions } from '@/lib/requirementPhaseOptions';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 import { generateUuid } from '@/lib/generateUuid';
+import { buildPhaseFilterOptions } from '@/lib/requirementPhaseOptions';
 import { index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
-import {
-    index as requirementsIndex,
-    show as requirementsShow,
-} from '@/routes/admin/projects/requirements/index';
 import {
     approve,
     lines,
+    nextVersion,
     reject,
     requestChanges,
     requestRevision,
@@ -57,6 +55,10 @@ import {
     submit,
     transfer,
 } from '@/routes/admin/projects/requirements/estimation/index';
+import {
+    index as requirementsIndex,
+    show as requirementsShow,
+} from '@/routes/admin/projects/requirements/index';
 
 type UserBrief = {
     id: number;
@@ -91,6 +93,8 @@ const props = defineProps<{
     approver_options: { value: number; label: string }[];
     can_manage_estimation: boolean;
     can_create_estimation: boolean;
+    can_create_next_version: boolean;
+    next_version_source_estimation_id: number | null;
     can_sync_lines: boolean;
     can_submit: boolean;
     can_approve: boolean;
@@ -101,6 +105,31 @@ const props = defineProps<{
     phase_options: { value: number; label: string }[];
     show_phase_column: boolean;
     max_generated_phase: number;
+    version_history: Array<{
+        id: number;
+        version: number;
+        status: string;
+        status_label: string;
+        reviewed_at: string | null;
+        created_at: string | null;
+    }>;
+    version_compare: {
+        from: { id: number; version: number };
+        to: { id: number; version: number };
+        diff: {
+            added: Array<Record<string, unknown>>;
+            removed: Array<Record<string, unknown>>;
+            modified: Array<Record<string, unknown>>;
+            summary: {
+                added_count: number;
+                removed_count: number;
+                modified_count: number;
+                minutes_from: number;
+                minutes_to: number;
+                minutes_delta: number;
+            };
+        };
+    } | null;
 }>();
 
 defineOptions({
@@ -416,6 +445,19 @@ function createEstimation(): void {
     router.post(store.url(routeBase.value));
 }
 
+function createNextVersion(): void {
+    if (props.next_version_source_estimation_id === null) {
+        return;
+    }
+
+    router.post(
+        nextVersion.url({
+            ...routeBase.value,
+            estimation: props.next_version_source_estimation_id,
+        }),
+    );
+}
+
 const submitDialogOpen = ref(false);
 
 const submitForm = useForm({
@@ -491,11 +533,11 @@ const statusBadgeClass = computed(() => {
     const status = props.estimation?.status ?? '';
 
     if (status === 'approved' || status === 'transferred') {
-        return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300';
+        return 'bg-success/15 text-success';
     }
 
     if (status === 'pending_approval') {
-        return 'bg-amber-500/15 text-amber-800 dark:text-amber-200';
+        return 'bg-warning/15 text-warning';
     }
 
     if (status === 'changes_requested' || status === 'rejected') {
@@ -540,9 +582,22 @@ const statusBadgeClass = computed(() => {
             <Button type="button" @click="createEstimation">Start estimation</Button>
         </div>
 
+        <div v-if="can_create_next_version">
+            <Button type="button" @click="createNextVersion">
+                Create version {{ (estimation?.version ?? 0) + 1 }}
+            </Button>
+        </div>
+
+        <EstimationVersionCompare
+            :project-id="project.id"
+            :requirement-id="requirement.id"
+            :version-history="version_history"
+            :version-compare="version_compare"
+        />
+
         <template v-if="estimation !== null">
             <div v-if="estimation.review_notes"
-                class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+                class="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm">
                 <p class="font-medium">Review notes</p>
                 <p class="mt-1 whitespace-pre-wrap text-muted-foreground">
                     {{ estimation.review_notes }}

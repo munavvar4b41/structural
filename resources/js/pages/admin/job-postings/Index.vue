@@ -8,8 +8,9 @@ import DataTablePagination from '@/components/dashboard/DataTablePagination.vue'
 import DataTableTd from '@/components/dashboard/DataTableTd.vue';
 import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
-import ListToolbar from '@/components/ListToolbar.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import ListToolbar from '@/components/ListToolbar.vue';
+import TableIconAction from '@/components/TableIconAction.vue';
 import { Button } from '@/components/ui/button';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
 import {
@@ -168,18 +169,23 @@ const deleteDescription = computed(() => {
                     <DataTableTd :label="`${posting.applications_count} applications`">{{ posting.applications_count }}
                     </DataTableTd>
                     <DataTableTd label="Actions" class="text-right">
-                        <div class="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" as-child>
-                                <Link :href="jobPostingsApplications(posting.id)">
-                                    Applications
-                                </Link>
-                            </Button>
-                            <Button variant="outline" size="sm" as-child>
-                                <Link :href="jobPostingsEdit(posting.id)">Edit</Link>
-                            </Button>
-                            <Button variant="outline" size="sm" @click="openDeleteDialog(posting)">
-                                Delete
-                            </Button>
+                        <div class="flex justify-end gap-1">
+                            <TableIconAction
+                                icon="users"
+                                label="Applications"
+                                :href="jobPostingsApplications(posting.id)"
+                            />
+                            <TableIconAction
+                                icon="pencil"
+                                label="Edit"
+                                :href="jobPostingsEdit.url(posting.id)"
+                            />
+                            <TableIconAction
+                                icon="trash"
+                                label="Delete"
+                                destructive
+                                @click="openDeleteDialog(posting)"
+                            />
                         </div>
                     </DataTableTd>
                 </tr>

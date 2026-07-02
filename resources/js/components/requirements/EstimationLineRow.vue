@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { ChevronDown, ChevronRight, CornerDownRight, FileText } from 'lucide-vue-next';
 import { ref } from 'vue';
-import type {
-    EstimationLineEditable,
-    EstimationLineReadonly,
-} from '@/composables/useEstimationLinesIndex';
+import FormSelect from '@/components/FormSelect.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -15,8 +12,11 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import FormSelect from '@/components/FormSelect.vue';
 import { Input } from '@/components/ui/input';
+import type {
+    EstimationLineEditable,
+    EstimationLineReadonly,
+} from '@/composables/useEstimationLinesIndex';
 import { formatTaskMinutes } from '@/lib/formatTaskMinutes';
 
 const props = defineProps<{
