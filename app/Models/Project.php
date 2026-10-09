@@ -101,6 +101,14 @@ class Project extends Model
     }
 
     /**
+     * @return HasMany<ProjectNote, $this>
+     */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(ProjectNote::class);
+    }
+
+    /**
      * @param  Builder<Project>  $query
      */
     public function scopeVisibleToUser(Builder $query, User $user): void

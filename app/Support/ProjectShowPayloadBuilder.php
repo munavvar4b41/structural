@@ -6,6 +6,7 @@ use App\Enums\ProjectTaskStatus;
 use App\Models\CaseStudy;
 use App\Models\Project;
 use App\Models\ProjectMetadata;
+use App\Models\ProjectNote;
 use App\Models\ProjectProposal;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectTag;
@@ -58,7 +59,7 @@ class ProjectShowPayloadBuilder
             : [];
 
         $tasksCollection = $project->tasks()
-            ->with(['assignee:id,name,email', 'requirement:id,title'])
+            ->with(['assignee:id,name,email', 'requirement:id,title', 'priority:id,name,color,shade'])
             ->withCount('children')
             ->limit(self::LIST_LIMIT)
             ->get();
@@ -112,6 +113,8 @@ class ProjectShowPayloadBuilder
                     'value' => $row->value,
                 ],
             )->all(),
+            'notes' => $this->noteRows($project, $actor),
+            'can_create_notes' => $actor->can('create', [ProjectNote::class, $project]),
             'requirements' => $requirements,
             'requirements_total' => $project->requirements()->count(),
             'proposals' => $proposals,
@@ -178,6 +181,33 @@ class ProjectShowPayloadBuilder
                 'name' => $team->name,
             ])->all(),
         ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function noteRows(Project $project, User $actor): array
+    {
+        if ($actor->isClient() || ! $actor->can('view', $project)) {
+            return [];
+        }
+
+        return $project->notes()
+            ->with('creator')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get()
+            ->each(fn (ProjectNote $note) => $note->setRelation('project', $project))
+            ->map(fn (ProjectNote $note): array => [
+                'id' => $note->id,
+                'title' => $note->title,
+                'body' => $note->body,
+                'created_at' => $note->created_at?->toIso8601String(),
+                'creator' => $this->userBrief($note->creator),
+                'can_update' => $actor->can('update', $note),
+                'can_delete' => $actor->can('delete', $note),
+            ])
+            ->all();
     }
 
     /**
@@ -248,6 +278,7 @@ class ProjectShowPayloadBuilder
             'description' => $task->description,
             'status' => $task->status->value,
             'status_label' => $task->status->label(),
+            'priority' => $task->priority?->toBadgeArray(),
             'assignee_user_id' => $task->assignee_user_id,
             'assignee' => $this->userBrief($task->assignee),
             'project_requirement_id' => $task->project_requirement_id,

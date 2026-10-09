@@ -371,7 +371,11 @@ class ProjectRequirementEstimationTest extends TestCase
             ->assertRedirect();
 
         $this->actingAs($staff)
-            ->get(route('admin.projects.tasks.index', $project))
+            ->get(route('admin.projects.tasks.index', [
+                'project' => $project,
+                'assignee_id' => 'all',
+                'status' => 'all',
+            ]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('tasks.0.title', 'Phase 1 module')

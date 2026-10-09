@@ -15,6 +15,8 @@ import type {RequirementPhaseSettings} from '@/components/requirements/Requireme
 import RichTextEditor from '@/components/RichTextEditor.vue';
 import RichTextViewer from '@/components/RichTextViewer.vue';
 import TableIconAction from '@/components/TableIconAction.vue';
+import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge.vue';
+import type { TaskPriorityBadgeData } from '@/components/tasks/TaskPriorityBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -64,6 +66,7 @@ type RequirementTaskRow = {
     description: string | null;
     status: string;
     status_label: string;
+    priority: TaskPriorityBadgeData | null;
     assignee_user_id: number | null;
     assignee: UserBrief;
     project_requirement_id: number | null;
@@ -615,6 +618,7 @@ defineOptions({
                                                 <p class="font-medium text-foreground line-clamp-2 break-words" :title="task.title">
                                                     {{ task.title }}
                                                 </p>
+                                                <TaskPriorityBadge class="mt-1" :priority="task.priority" />
                                                 <span v-if="task.children_count > 0"
                                                     class="mt-0.5 block text-xs text-muted-foreground">
                                                     ({{ task.children_count }} subtasks)

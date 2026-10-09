@@ -84,7 +84,7 @@ class DesktopTraySnapshot
             ->where('assignee_user_id', $actor->id)
             ->whereIn('status', [ProjectTaskStatus::ToDo, ProjectTaskStatus::InProgress])
             ->whereIn('project_id', Project::query()->visibleToUser($actor)->select('projects.id'))
-            ->with('project:id,name,code');
+            ->with(['project:id,name,code', 'priority:id,name,color,shade']);
 
         if ($activeTaskId !== null) {
             $query->where('id', '!=', $activeTaskId);
@@ -101,6 +101,7 @@ class DesktopTraySnapshot
             ->map(function (ProjectTask $task): array {
                 $projectLabel = $task->project?->code ?: ($task->project?->name ?? '');
                 $description = $this->taskDescription($projectLabel, $task->title);
+
                 return [
                     'id' => $task->id,
                     'project_id' => $task->project_id,
@@ -112,6 +113,7 @@ class DesktopTraySnapshot
                     'description_tray' => Str::limit($description, self::TRAY_ICON_TITLE_LIMIT),
                     'status' => $task->status?->value ?? '',
                     'status_label' => $task->status?->label(),
+                    'priority' => $task->priority?->toBadgeArray(),
                 ];
             })
             ->all();

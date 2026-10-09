@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\MyWorkController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\ProjectMetadataController;
+use App\Http\Controllers\Admin\ProjectNoteController;
 use App\Http\Controllers\Admin\ProjectProposalController;
 use App\Http\Controllers\Admin\ProjectProposalMessageController;
 use App\Http\Controllers\Admin\ProjectRequirementController;
@@ -27,6 +28,7 @@ use App\Http\Controllers\Admin\RequirementController;
 use App\Http\Controllers\Admin\SuggestionController;
 use App\Http\Controllers\Admin\TaskCompletionReviewController;
 use App\Http\Controllers\Admin\TaskController;
+use App\Http\Controllers\Admin\TaskPriorityController;
 use App\Http\Controllers\Admin\TaskRatingReportController;
 use App\Http\Controllers\Admin\TaskTimeEntryController;
 use App\Http\Controllers\Admin\TaskTimerController;
@@ -54,6 +56,11 @@ Route::middleware(EnsureCanManageCompanySettings::class)
     ->name('careers-settings.')->group(function (): void {
         Route::get('careers-settings', [CareersSettingsController::class, 'edit'])->name('edit');
         Route::patch('careers-settings', [CareersSettingsController::class, 'update'])->name('update');
+    });
+
+Route::middleware(EnsureCanManageCompanySettings::class)
+    ->group(function (): void {
+        Route::resource('task-priorities', TaskPriorityController::class)->except(['show']);
     });
 
 Route::middleware(EnsureCanManageCompanySettings::class)
@@ -106,6 +113,13 @@ Route::delete('projects/{project}/tags/{tag}', [ProjectTagController::class, 'de
 Route::post('projects/{project}/metadata', [ProjectMetadataController::class, 'store'])->name('projects.metadata.store');
 Route::patch('projects/{project}/metadata/{metadata}', [ProjectMetadataController::class, 'update'])->name('projects.metadata.update');
 Route::delete('projects/{project}/metadata/{metadata}', [ProjectMetadataController::class, 'destroy'])->name('projects.metadata.destroy');
+Route::post('projects/{project}/notes', [ProjectNoteController::class, 'store'])->name('projects.notes.store');
+Route::patch('projects/{project}/notes/{note}', [ProjectNoteController::class, 'update'])
+    ->scopeBindings()
+    ->name('projects.notes.update');
+Route::delete('projects/{project}/notes/{note}', [ProjectNoteController::class, 'destroy'])
+    ->scopeBindings()
+    ->name('projects.notes.destroy');
 Route::resource('projects.tasks', ProjectTaskController::class);
 Route::patch('projects/{project}/requirements/{requirement}/review', [ProjectRequirementController::class, 'markReviewed'])
     ->name('projects.requirements.review');
