@@ -119,7 +119,8 @@ defineOptions({
                 <div class="mb-6 space-y-1">
                     <h2 class="text-lg font-semibold">Project details</h2>
                     <p class="text-sm text-muted-foreground">
-                        Name, optional code, description, client contact, and assigned teams
+                        Name, optional code, description, client contact, and assigned teams. The
+                        project passphrase is not stored, so it cannot be viewed or changed here.
                     </p>
                 </div>
                 <div class="grid gap-6">

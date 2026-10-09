@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\UserRole;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['name', 'code', 'description', 'client_user_id', 'lead_user_id', 'estimation_required'])]
+#[Hidden(['password_kdf_salt', 'password_verifier_nonce', 'password_verifier_ciphertext'])]
 class Project extends Model
 {
     /** @use HasFactory<ProjectFactory> */
@@ -98,6 +100,27 @@ class Project extends Model
     public function metadata(): HasMany
     {
         return $this->hasMany(ProjectMetadata::class);
+    }
+
+    /**
+     * @return HasMany<ProjectPassword, $this>
+     */
+    public function passwords(): HasMany
+    {
+        return $this->hasMany(ProjectPassword::class);
+    }
+
+    public function hasPasswordPassphrase(): bool
+    {
+        return is_string($this->password_kdf_salt) && $this->password_kdf_salt !== '';
+    }
+    
+    /**
+     * @return HasMany<ProjectNote, $this>
+     */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(ProjectNote::class);
     }
 
     /**

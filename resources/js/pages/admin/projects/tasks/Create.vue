@@ -51,11 +51,14 @@ type ParentTaskOption = {
 type Defaults = {
     project_requirement_id: string;
     parent_project_task_id: string;
+    status: string;
+    assignee_user_id: string;
 };
 
 const props = defineProps<{
     project: ProjectSummary;
     status_options: Option[];
+    priority_options: Option[];
     assignable_users: AssignableUser[];
     requirements: RequirementOption[];
     parent_tasks: ParentTaskOption[];
@@ -65,8 +68,9 @@ const props = defineProps<{
 
 const descriptionJson = ref(emptyTipTapDocumentJson());
 const createTitle = ref('');
-const createStatus = ref(props.status_options[0]?.value ?? 'to_do');
-const createAssignee = ref('');
+const createStatus = ref(props.defaults.status || 'to_do');
+const createPriority = ref('');
+const createAssignee = ref(props.defaults.assignee_user_id);
 const createRequirement = ref(props.defaults.project_requirement_id);
 const createPhase = ref('1');
 const createParent = ref(props.defaults.parent_project_task_id);
@@ -75,6 +79,10 @@ const createNotifyAt = ref('');
 
 const statusSelectOptions = computed(() =>
     props.status_options.map((o) => ({ value: o.value, label: o.label })),
+);
+
+const prioritySelectOptions = computed(() =>
+    props.priority_options.map((option) => ({ value: option.value, label: option.label })),
 );
 
 const assigneeSelectOptions = computed(() =>
@@ -185,6 +193,12 @@ defineOptions({
                         <FormSelect id="create-status" name="status" v-model="createStatus" required
                             placeholder="Status" :options="statusSelectOptions" />
                         <InputError :message="errors.status" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="create-priority">Priority</Label>
+                        <FormSelect id="create-priority" name="task_priority_id" v-model="createPriority"
+                            none-label="None" placeholder="None" :options="prioritySelectOptions" />
+                        <InputError :message="errors.task_priority_id" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="create-assignee">Assignee</Label>

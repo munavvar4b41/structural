@@ -1,3 +1,5 @@
+import type { TaskPriorityBadgeData } from '@/components/tasks/TaskPriorityBadge.vue';
+
 export type UserBrief = {
     id: number;
     name: string;
@@ -14,6 +16,7 @@ export type SubtaskRow = {
     title: string;
     status: string;
     status_label: string;
+    priority: TaskPriorityBadgeData | null;
     assignee_user_id: number | null;
     assignee: UserBrief;
     project_requirement_id: number | null;
@@ -34,6 +37,7 @@ export type TaskDetail = {
     description: string | null;
     status: string;
     status_label: string;
+    priority: TaskPriorityBadgeData | null;
     assignee_user_id: number | null;
     assignee: UserBrief;
     project_requirement_id: number | null;

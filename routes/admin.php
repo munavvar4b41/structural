@@ -14,6 +14,9 @@ use App\Http\Controllers\Admin\MyWorkController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\ProjectMetadataController;
+use App\Http\Controllers\Admin\ProjectPassphraseController;
+use App\Http\Controllers\Admin\ProjectPasswordController;
+use App\Http\Controllers\Admin\ProjectNoteController;
 use App\Http\Controllers\Admin\ProjectProposalController;
 use App\Http\Controllers\Admin\ProjectProposalMessageController;
 use App\Http\Controllers\Admin\ProjectRequirementController;
@@ -27,6 +30,7 @@ use App\Http\Controllers\Admin\RequirementController;
 use App\Http\Controllers\Admin\SuggestionController;
 use App\Http\Controllers\Admin\TaskCompletionReviewController;
 use App\Http\Controllers\Admin\TaskController;
+use App\Http\Controllers\Admin\TaskPriorityController;
 use App\Http\Controllers\Admin\TaskRatingReportController;
 use App\Http\Controllers\Admin\TaskTimeEntryController;
 use App\Http\Controllers\Admin\TaskTimerController;
@@ -54,6 +58,11 @@ Route::middleware(EnsureCanManageCompanySettings::class)
     ->name('careers-settings.')->group(function (): void {
         Route::get('careers-settings', [CareersSettingsController::class, 'edit'])->name('edit');
         Route::patch('careers-settings', [CareersSettingsController::class, 'update'])->name('update');
+    });
+
+Route::middleware(EnsureCanManageCompanySettings::class)
+    ->group(function (): void {
+        Route::resource('task-priorities', TaskPriorityController::class)->except(['show']);
     });
 
 Route::middleware(EnsureCanManageCompanySettings::class)
@@ -101,11 +110,26 @@ Route::get('understanding-reviews', [UnderstandingReviewController::class, 'inde
 Route::get('task-ratings-report', [TaskRatingReportController::class, 'index'])->name('task-ratings-report.index');
 Route::get('suggestions', [SuggestionController::class, 'index'])->name('suggestions.index');
 Route::resource('projects', ProjectController::class);
+Route::get('projects/{project}/passwords', [ProjectPasswordController::class, 'index'])->name('projects.passwords.index');
+Route::middleware('throttle:project-passphrase')->group(function (): void {
+    Route::post('projects/{project}/passphrase', [ProjectPassphraseController::class, 'store'])->name('projects.passphrase.store');
+    Route::post('projects/{project}/passwords', [ProjectPasswordController::class, 'store'])->name('projects.passwords.store');
+    Route::put('projects/{project}/passwords/{password}', [ProjectPasswordController::class, 'update'])->name('projects.passwords.update');
+    Route::delete('projects/{project}/passwords/{password}', [ProjectPasswordController::class, 'destroy'])->name('projects.passwords.destroy');
+    Route::post('projects/{project}/passwords/{password}/reveal', [ProjectPasswordController::class, 'reveal'])->name('projects.passwords.reveal');
+});
 Route::post('projects/{project}/tags', [ProjectTagController::class, 'store'])->name('projects.tags.store');
 Route::delete('projects/{project}/tags/{tag}', [ProjectTagController::class, 'destroy'])->name('projects.tags.destroy');
 Route::post('projects/{project}/metadata', [ProjectMetadataController::class, 'store'])->name('projects.metadata.store');
 Route::patch('projects/{project}/metadata/{metadata}', [ProjectMetadataController::class, 'update'])->name('projects.metadata.update');
 Route::delete('projects/{project}/metadata/{metadata}', [ProjectMetadataController::class, 'destroy'])->name('projects.metadata.destroy');
+Route::post('projects/{project}/notes', [ProjectNoteController::class, 'store'])->name('projects.notes.store');
+Route::patch('projects/{project}/notes/{note}', [ProjectNoteController::class, 'update'])
+    ->scopeBindings()
+    ->name('projects.notes.update');
+Route::delete('projects/{project}/notes/{note}', [ProjectNoteController::class, 'destroy'])
+    ->scopeBindings()
+    ->name('projects.notes.destroy');
 Route::resource('projects.tasks', ProjectTaskController::class);
 Route::patch('projects/{project}/requirements/{requirement}/review', [ProjectRequirementController::class, 'markReviewed'])
     ->name('projects.requirements.review');

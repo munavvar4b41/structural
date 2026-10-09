@@ -118,6 +118,7 @@ class ProjectManagementTest extends TestCase
             ->assertRedirect(route('admin.projects.index'));
 
         $project = Project::query()->where('name', 'Platform Revamp')->firstOrFail();
+        $this->assertFalse($project->hasPasswordPassphrase());
         $this->assertSame($clientUser->id, $project->client_user_id);
         $this->assertSame(2, $project->teams()->count());
         $this->assertSame($teamHead->id, $project->lead_user_id);

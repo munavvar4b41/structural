@@ -3,9 +3,11 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\ProjectTaskStatus;
+use App\Enums\TaskPriorityColor;
 use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectTask;
+use App\Models\TaskPriority;
 use App\Models\TaskTimeEntry;
 use App\Models\Team;
 use App\Models\User;
@@ -62,6 +64,53 @@ class ProjectTaskTest extends TestCase
                 ->where('can_manage_project', true));
     }
 
+    public function test_tasks_index_defaults_assignee_to_current_user_and_status_to_to_do(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.index', $project))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.assignee_id', (string) $head->id)
+                ->where('filters.status', [ProjectTaskStatus::ToDo->value]));
+
+        $this->actingAs($client)
+            ->get(route('admin.projects.tasks.index', $project))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.assignee_id', '')
+                ->where('filters.status', [ProjectTaskStatus::ToDo->value]));
+    }
+
+    public function test_tasks_index_can_clear_default_assignee_and_status_filters(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => null,
+                'status' => ProjectTaskStatus::Backlog,
+                'title' => 'Unassigned backlog',
+            ]);
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.index', [
+                'project' => $project,
+                'assignee_id' => 'all',
+                'status' => 'all',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.assignee_id', '')
+                ->where('filters.status', [])
+                ->where('tasks', fn ($tasks) => collect($tasks)->contains(
+                    fn (array $task): bool => $task['title'] === 'Unassigned backlog',
+                )));
+    }
+
     public function test_create_page_renders_for_authorized_user(): void
     {
         extract($this->projectWithTeamHead());
@@ -77,6 +126,8 @@ class ProjectTaskTest extends TestCase
                 ->has('requirements')
                 ->has('parent_tasks')
                 ->has('defaults')
+                ->where('defaults.status', ProjectTaskStatus::ToDo->value)
+                ->where('defaults.assignee_user_id', (string) $head->id)
                 ->has('cancel_href'));
     }
 
@@ -823,6 +874,87 @@ class ProjectTaskTest extends TestCase
                 ->where('tasks', fn ($tasks) => count($tasks) >= 2));
     }
 
+    public function test_tasks_index_paginates_each_status_section(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        ProjectTask::factory()->count(25)->forProject($project)->create([
+            'created_by_user_id' => $head->id,
+            'assignee_user_id' => $head->id,
+            'status' => ProjectTaskStatus::ToDo,
+        ]);
+        ProjectTask::factory()->count(22)->forProject($project)->create([
+            'created_by_user_id' => $head->id,
+            'assignee_user_id' => $head->id,
+            'status' => ProjectTaskStatus::InProgress,
+        ]);
+
+        $countByStatus = static fn (array $tasks, ProjectTaskStatus $status): int => collect($tasks)
+            ->where('status', $status->value)
+            ->count();
+
+        $query = ['project' => $project, 'status' => 'all'];
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.index', $query))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('tasks', 40)
+                ->where('status_meta.to_do.total', 25)
+                ->where('status_meta.to_do.current_page', 1)
+                ->where('status_meta.to_do.last_page', 2)
+                ->where('status_meta.to_do.per_page', 20)
+                ->where('status_meta.in_progress.total', 22)
+                ->where('status_meta.backlog.total', 0)
+                ->where('status_meta.backlog.last_page', 1));
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.index', [...$query, 'page_to_do' => 2]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('tasks', fn ($tasks) => $countByStatus(collect($tasks)->all(), ProjectTaskStatus::ToDo) === 25
+                    && $countByStatus(collect($tasks)->all(), ProjectTaskStatus::InProgress) === 20)
+                ->where('status_meta.to_do.current_page', 2)
+                ->where('status_meta.in_progress.current_page', 1));
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.index', [...$query, 'page_to_do' => 99]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('status_meta.to_do.current_page', 2)
+                ->where('tasks', fn ($tasks) => $countByStatus(collect($tasks)->all(), ProjectTaskStatus::ToDo) === 25));
+    }
+
+    public function test_tasks_index_pagination_counts_ancestors_in_their_own_status(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $parent = ProjectTask::factory()->forProject($project)->create([
+            'created_by_user_id' => $head->id,
+            'title' => 'Blocked parent',
+            'status' => ProjectTaskStatus::Blocked,
+        ]);
+
+        ProjectTask::factory()->forProject($project)->childOf($parent)->create([
+            'created_by_user_id' => $head->id,
+            'title' => 'PagedChildToken',
+            'status' => ProjectTaskStatus::ToDo,
+        ]);
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.index', [
+                'project' => $project,
+                'assignee_id' => 'all',
+                'search' => 'PagedChildToken',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('tasks', 2)
+                ->where('status_meta.to_do.total', 1)
+                ->where('status_meta.blocked.total', 1)
+                ->where('tasks', fn ($tasks) => collect($tasks)->pluck('title')->sort()->values()->all() === ['Blocked parent', 'PagedChildToken']));
+    }
+
     public function test_linked_task_defaults_to_phase_one_when_max_is_one(): void
     {
         extract($this->projectWithTeamHead());
@@ -963,5 +1095,159 @@ class ProjectTaskTest extends TestCase
                 ->has('tasks', 1)
                 ->where('tasks.0.id', $phaseOneTask->id)
                 ->where('tasks.0.phase', 1));
+    }
+
+    public function test_team_head_can_store_task_with_priority(): void
+    {
+        extract($this->projectWithTeamHead());
+        $priority = TaskPriority::factory()->create([
+            'name' => 'High',
+            'color' => TaskPriorityColor::Red,
+        ]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->post(route('admin.projects.tasks.store', $project), [
+                'title' => 'Urgent task',
+                'description' => null,
+                'status' => ProjectTaskStatus::ToDo->value,
+                'task_priority_id' => $priority->id,
+                'assignee_user_id' => null,
+                'project_requirement_id' => null,
+                'parent_project_task_id' => null,
+                'estimated_minutes' => null,
+            ])
+            ->assertRedirect(route('admin.projects.tasks.index', $project));
+
+        $this->assertDatabaseHas('project_tasks', [
+            'project_id' => $project->id,
+            'title' => 'Urgent task',
+            'task_priority_id' => $priority->id,
+        ]);
+    }
+
+    public function test_store_rejects_unknown_priority(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->post(route('admin.projects.tasks.store', $project), [
+                'title' => 'Bad priority',
+                'description' => null,
+                'status' => ProjectTaskStatus::ToDo->value,
+                'task_priority_id' => 999_999,
+                'assignee_user_id' => null,
+                'project_requirement_id' => null,
+                'parent_project_task_id' => null,
+                'estimated_minutes' => null,
+            ])
+            ->assertSessionHasErrors('task_priority_id');
+    }
+
+    public function test_staff_assignee_cannot_change_priority(): void
+    {
+        extract($this->projectWithTeamHead());
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $priority = TaskPriority::factory()->create();
+
+        $task = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'assignee_user_id' => $staff->id,
+                'status' => ProjectTaskStatus::ToDo,
+                'title' => 'Original',
+            ]);
+
+        $this->actingAs($staff)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->patch(route('admin.projects.tasks.update', [$project, $task]), [
+                'status' => ProjectTaskStatus::InProgress->value,
+                'task_priority_id' => $priority->id,
+            ])
+            ->assertSessionHasErrors('task_priority_id');
+
+        $this->assertNull($task->fresh()->task_priority_id);
+    }
+
+    public function test_project_tasks_index_filters_by_priority_and_keeps_ancestors(): void
+    {
+        extract($this->projectWithTeamHead());
+        $high = TaskPriority::factory()->create(['name' => 'High', 'color' => TaskPriorityColor::Red]);
+
+        $parent = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'title' => 'Parent umbrella',
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $child = ProjectTask::factory()
+            ->forProject($project)
+            ->childOf($parent)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'title' => 'Child urgent',
+                'status' => ProjectTaskStatus::ToDo,
+                'task_priority_id' => $high->id,
+            ]);
+
+        ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'title' => 'Unrelated',
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.index', [
+                'project' => $project,
+                'priority' => [$high->id],
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('tasks', 2)
+                ->where('tasks.0.id', $parent->id)
+                ->where('tasks.0.priority', null)
+                ->where('tasks.1.id', $child->id)
+                ->where('tasks.1.priority.name', 'High')
+                ->where('tasks.1.priority.color', TaskPriorityColor::Red->value));
+    }
+
+    public function test_project_tasks_index_can_filter_tasks_with_no_priority(): void
+    {
+        extract($this->projectWithTeamHead());
+        $high = TaskPriority::factory()->create();
+
+        $plain = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'title' => 'No badge',
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+
+        ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'title' => 'Has badge',
+                'status' => ProjectTaskStatus::ToDo,
+                'task_priority_id' => $high->id,
+            ]);
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.index', [
+                'project' => $project,
+                'priority' => ['none'],
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('tasks', 1)
+                ->where('tasks.0.id', $plain->id)
+                ->where('tasks.0.priority', null));
     }
 }

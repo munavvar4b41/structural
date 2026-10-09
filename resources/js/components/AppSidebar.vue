@@ -13,6 +13,7 @@ import {
     FileCheck,
     BookOpen,
     Star,
+    Tags,
     Timer,
     Users,
 } from 'lucide-vue-next';
@@ -41,6 +42,7 @@ import { index as adminMyWorkIndex } from '@/routes/admin/my-work/index';
 import { index as adminProjectsIndex } from '@/routes/admin/projects/index';
 import { index as adminProposalsIndex } from '@/routes/admin/proposals/index';
 import { index as adminRequirementsIndex } from '@/routes/admin/requirements/index';
+import { index as adminTaskPrioritiesIndex } from '@/routes/admin/task-priorities/index';
 import { index as adminTaskRatingsReportIndex } from '@/routes/admin/task-ratings-report/index';
 import { index as adminTaskReviewsIndex } from '@/routes/admin/task-reviews/index';
 import { index as adminTasksIndex } from '@/routes/admin/tasks/index';
@@ -242,6 +244,12 @@ const navGroups = computed((): NavGroup[] => {
                 title: 'Careers emails',
                 href: adminCareersSettingsEdit(),
                 icon: Briefcase,
+                activeMatch: 'prefix',
+            },
+            {
+                title: 'Task priorities',
+                href: adminTaskPrioritiesIndex(),
+                icon: Tags,
                 activeMatch: 'prefix',
             },
         );

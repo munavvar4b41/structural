@@ -3,8 +3,10 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\ProjectTaskStatus;
+use App\Enums\TaskPriorityColor;
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Models\TaskPriority;
 use App\Models\TaskTimeEntry;
 use App\Models\Team;
 use App\Models\User;
@@ -60,6 +62,56 @@ class MyWorkTest extends TestCase
                     'columns.'.$inProgressColumnIndex.'.tasks.0.task_show_url',
                     route('admin.projects.tasks.show', [$project, $task]),
                 ));
+    }
+
+    public function test_my_work_columns_paginate_per_status_with_load_more(): void
+    {
+        $team = Team::factory()->create();
+        $head = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+
+        ProjectTask::factory()->count(25)->forProject($project)->create([
+            'created_by_user_id' => $head->id,
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+        ]);
+        ProjectTask::factory()->count(3)->forProject($project)->create([
+            'created_by_user_id' => $head->id,
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::InProgress,
+        ]);
+
+        $toDoIndex = array_search(ProjectTaskStatus::ToDo, ProjectTaskStatus::boardOrder(), true);
+        $inProgressIndex = array_search(ProjectTaskStatus::InProgress, ProjectTaskStatus::boardOrder(), true);
+
+        $this->actingAs($staff)
+            ->get(route('admin.my-work.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has("columns.{$toDoIndex}.tasks", 20)
+                ->where("columns.{$toDoIndex}.meta.total", 25)
+                ->where("columns.{$toDoIndex}.meta.current_page", 1)
+                ->where("columns.{$toDoIndex}.meta.last_page", 2)
+                ->has("columns.{$inProgressIndex}.tasks", 3)
+                ->where("columns.{$inProgressIndex}.meta.last_page", 1));
+
+        $this->actingAs($staff)
+            ->get(route('admin.my-work.index', ['page_to_do' => 2]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has("columns.{$toDoIndex}.tasks", 25)
+                ->where("columns.{$toDoIndex}.meta.current_page", 2)
+                ->has("columns.{$inProgressIndex}.tasks", 3));
+
+        $this->actingAs($staff)
+            ->get(route('admin.my-work.index', ['page_to_do' => 99]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has("columns.{$toDoIndex}.tasks", 25)
+                ->where("columns.{$toDoIndex}.meta.current_page", 2));
     }
 
     public function test_project_filter_limits_board_to_one_project(): void
@@ -322,5 +374,52 @@ class MyWorkTest extends TestCase
         $this->actingAs($outsider)
             ->get(route('admin.my-work.index', ['task_id' => $task->id]))
             ->assertForbidden();
+    }
+
+    public function test_my_work_filters_by_priority_including_none(): void
+    {
+        $team = Team::factory()->create();
+        $head = User::factory()->teamHead()->withPrimaryTeam($team)->create();
+        $staff = User::factory()->withPrimaryTeam($team)->create();
+        $client = User::factory()->client()->create();
+        $project = Project::factory()->create(['client_user_id' => $client->id]);
+        $project->teams()->sync([$team->id]);
+        $high = TaskPriority::factory()->create([
+            'name' => 'High',
+            'color' => TaskPriorityColor::Red,
+        ]);
+
+        ProjectTask::factory()->forProject($project)->create([
+            'created_by_user_id' => $head->id,
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+            'title' => 'Urgent task',
+            'task_priority_id' => $high->id,
+        ]);
+        ProjectTask::factory()->forProject($project)->create([
+            'created_by_user_id' => $head->id,
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+            'title' => 'Plain task',
+        ]);
+
+        $toDoIndex = array_search(ProjectTaskStatus::ToDo, ProjectTaskStatus::boardOrder(), true);
+        $this->assertNotFalse($toDoIndex);
+
+        $this->actingAs($staff)
+            ->get(route('admin.my-work.index', ['priority' => [$high->id]]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('columns.'.$toDoIndex.'.tasks', 1)
+                ->where('columns.'.$toDoIndex.'.tasks.0.title', 'Urgent task')
+                ->where('columns.'.$toDoIndex.'.tasks.0.priority.name', 'High'));
+
+        $this->actingAs($staff)
+            ->get(route('admin.my-work.index', ['priority' => ['none']]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('columns.'.$toDoIndex.'.tasks', 1)
+                ->where('columns.'.$toDoIndex.'.tasks.0.title', 'Plain task')
+                ->where('columns.'.$toDoIndex.'.tasks.0.priority', null));
     }
 }

@@ -55,6 +55,7 @@ type TaskForm = {
     title: string;
     description: string | null;
     status: string;
+    task_priority_id: string;
     assignee_user_id: number | null;
     project_requirement_id: number | null;
     parent_project_task_id: number | null;
@@ -68,6 +69,7 @@ const props = defineProps<{
     project: ProjectSummary;
     task: TaskForm;
     status_options: Option[];
+    priority_options: Option[];
     assignable_users: AssignableUser[];
     requirements: RequirementOption[];
     parent_tasks: ParentTaskOption[];
@@ -94,6 +96,7 @@ function toDatetimeLocalValue(value: string | null): string {
 const descriptionJson = ref(props.task.description ?? emptyTipTapDocumentJson());
 const editTitle = ref(props.task.title);
 const editStatus = ref(props.task.status);
+const editPriority = ref(props.task.task_priority_id);
 const editAssignee = ref(
     props.task.assignee_user_id !== null ? String(props.task.assignee_user_id) : '',
 );
@@ -106,6 +109,10 @@ const editParent = ref(
 );
 const editDisplayAfterAt = ref(toDatetimeLocalValue(props.task.display_after_at));
 const editNotifyAt = ref(toDatetimeLocalValue(props.task.notify_at));
+
+const prioritySelectOptions = computed(() =>
+    props.priority_options.map((option) => ({ value: option.value, label: option.label })),
+);
 
 const statusSelectOptions = computed(() => {
     const base = props.status_options.map((o) => ({ value: o.value, label: o.label }));
@@ -261,6 +268,12 @@ defineOptions({
                             <InputError :message="errors.status" />
                         </div>
                         <template v-if="!is_assignee_only_limited">
+                            <div class="grid gap-2">
+                                <Label for="edit-priority">Priority</Label>
+                                <FormSelect id="edit-priority" name="task_priority_id" v-model="editPriority"
+                                    none-label="None" placeholder="None" :options="prioritySelectOptions" />
+                                <InputError :message="errors.task_priority_id" />
+                            </div>
                             <div class="grid gap-2">
                                 <Label for="edit-assignee">Assignee</Label>
                                 <FormSelect id="edit-assignee" name="assignee_user_id" v-model="editAssignee"

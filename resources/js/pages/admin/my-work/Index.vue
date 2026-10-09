@@ -11,10 +11,12 @@ import DataTableTh from '@/components/dashboard/DataTableTh.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import TableRow from '@/components/dashboard/TableRow.vue';
+import FormMultiSelect from '@/components/FormMultiSelect.vue';
 import FormSelect from '@/components/FormSelect.vue';
 import MyWorkSectionHeader from '@/components/my-work/MyWorkSectionHeader.vue';
 import MyWorkTaskCard from '@/components/my-work/MyWorkTaskCard.vue';
 import type { MyWorkTaskCardData } from '@/components/my-work/MyWorkTaskCard.vue';
+import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge.vue';
 import TaskShowPanel from '@/components/tasks/TaskShowPanel.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
@@ -65,7 +67,8 @@ const props = defineProps<{
     columns: Column[];
     status_options: StatusOption[];
     project_options: ProjectOption[];
-    filters: { project_id: number | null };
+    priority_filter_options: StatusOption[];
+    filters: { project_id: number | null; priority: string[] };
     task_preview?: TaskShowPayload | null;
 }>();
 
@@ -207,11 +210,15 @@ function parseTaskIdFromUrl(): number | null {
     return id > 0 ? id : null;
 }
 
-function boardQuery(extra: Record<string, string | number> = {}): Record<string, string | number> {
-    const query: Record<string, string | number> = { ...extra };
+function boardQuery(extra: Record<string, string | number | string[]> = {}): Record<string, string | number | string[]> {
+    const query: Record<string, string | number | string[]> = { ...extra };
 
     if (props.filters.project_id !== null) {
         query.project_id = props.filters.project_id;
+    }
+
+    if (props.filters.priority.length > 0 && !('priority' in query)) {
+        query.priority = props.filters.priority;
     }
 
     const url = new URL(page.url, window.location.origin);
@@ -271,16 +278,38 @@ function onTaskPreviewOpenChange(open: boolean): void {
 function applyProjectFilter(value: string): void {
     projectValue.value = value;
 
-    const query: Record<string, string | number> = {};
+    const query: Record<string, string | number | string[]> = {};
 
     if (value !== '') {
         query.project_id = Number(value);
     }
 
+    if (props.filters.priority.length > 0) {
+        query.priority = props.filters.priority;
+    }
+
     router.get(myWorkIndex.url(), query, {
         preserveState: true,
         preserveScroll: true,
-        only: ['columns', 'filters', 'project_options'],
+        only: ['columns', 'filters', 'project_options', 'priority_filter_options'],
+    });
+}
+
+function applyPriorityFilter(priority: string[]): void {
+    const query: Record<string, string | number | string[]> = {};
+
+    if (projectValue.value !== '') {
+        query.project_id = Number(projectValue.value);
+    }
+
+    if (priority.length > 0) {
+        query.priority = priority;
+    }
+
+    router.get(myWorkIndex.url(), query, {
+        preserveState: true,
+        preserveScroll: true,
+        only: ['columns', 'filters', 'project_options', 'priority_filter_options'],
     });
 }
 
@@ -492,6 +521,14 @@ onMounted(() => {
                     :model-value="projectValue" :options="projectSelectOptions" placeholder="All projects"
                     none-label="All projects" exclude-from-submit @update:model-value="applyProjectFilter" />
             </div>
+            <div class="grid gap-1">
+                <Label class="text-xs text-muted-foreground" for="my-work-priority-filter">
+                    Priority
+                </Label>
+                <FormMultiSelect id="my-work-priority-filter" :model-value="filters.priority"
+                    :options="priority_filter_options" placeholder="All priorities" menu-label="Priorities"
+                    class="min-w-[12rem]" @update:model-value="applyPriorityFilter" />
+            </div>
 
             <div class="inline-flex rounded-lg border border-border/80 bg-muted/30 p-0.5" role="group"
                 aria-label="View mode">
@@ -552,6 +589,7 @@ onMounted(() => {
                                         @click="openTaskPreview(task)">
                                         {{ task.title }}
                                     </button>
+                                    <TaskPriorityBadge class="mt-1" :priority="task.priority" />
                                 </DataTableTd>
                                 <DataTableTd label="Project" class="align-top text-muted-foreground">
                                     {{ task.project.name }}
