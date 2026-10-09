@@ -114,6 +114,14 @@ class Project extends Model
     {
         return is_string($this->password_kdf_salt) && $this->password_kdf_salt !== '';
     }
+    
+    /**
+     * @return HasMany<ProjectNote, $this>
+     */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(ProjectNote::class);
+    }
 
     /**
      * @param  Builder<Project>  $query

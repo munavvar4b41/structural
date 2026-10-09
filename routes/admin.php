@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\ProjectMetadataController;
 use App\Http\Controllers\Admin\ProjectPassphraseController;
 use App\Http\Controllers\Admin\ProjectPasswordController;
+use App\Http\Controllers\Admin\ProjectNoteController;
 use App\Http\Controllers\Admin\ProjectProposalController;
 use App\Http\Controllers\Admin\ProjectProposalMessageController;
 use App\Http\Controllers\Admin\ProjectRequirementController;
@@ -122,6 +123,13 @@ Route::delete('projects/{project}/tags/{tag}', [ProjectTagController::class, 'de
 Route::post('projects/{project}/metadata', [ProjectMetadataController::class, 'store'])->name('projects.metadata.store');
 Route::patch('projects/{project}/metadata/{metadata}', [ProjectMetadataController::class, 'update'])->name('projects.metadata.update');
 Route::delete('projects/{project}/metadata/{metadata}', [ProjectMetadataController::class, 'destroy'])->name('projects.metadata.destroy');
+Route::post('projects/{project}/notes', [ProjectNoteController::class, 'store'])->name('projects.notes.store');
+Route::patch('projects/{project}/notes/{note}', [ProjectNoteController::class, 'update'])
+    ->scopeBindings()
+    ->name('projects.notes.update');
+Route::delete('projects/{project}/notes/{note}', [ProjectNoteController::class, 'destroy'])
+    ->scopeBindings()
+    ->name('projects.notes.destroy');
 Route::resource('projects.tasks', ProjectTaskController::class);
 Route::patch('projects/{project}/requirements/{requirement}/review', [ProjectRequirementController::class, 'markReviewed'])
     ->name('projects.requirements.review');

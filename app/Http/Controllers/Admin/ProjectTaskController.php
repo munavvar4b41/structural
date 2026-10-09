@@ -140,6 +140,8 @@ class ProjectTaskController extends Controller
 
             $tasksCollection = $project->tasks()
                 ->whereIn('id', $expandedIds)
+                ->with(['assignee:id,name,email', 'requirement:id,title', 'priority:id,name,color,shade'])
+                ->withCount('children')
                 ->get();
         }
 

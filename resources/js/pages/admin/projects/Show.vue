@@ -3,6 +3,7 @@ import { Form, Head, Link, router } from '@inertiajs/vue3';
 import { CornerDownRight, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import ProjectMetadataController from '@/actions/App/Http/Controllers/Admin/ProjectMetadataController';
+import ProjectNoteController from '@/actions/App/Http/Controllers/Admin/ProjectNoteController';
 import ProjectRequirementController from '@/actions/App/Http/Controllers/Admin/ProjectRequirementController';
 import ProjectTagController from '@/actions/App/Http/Controllers/Admin/ProjectTagController';
 import TaskTimeEntryController from '@/actions/App/Http/Controllers/Admin/TaskTimeEntryController';
@@ -88,6 +89,16 @@ type MetadataRow = {
     value: string;
 };
 
+type NoteRow = {
+    id: number;
+    title: string;
+    body: string;
+    created_at: string | null;
+    creator: UserBrief;
+    can_update: boolean;
+    can_delete: boolean;
+};
+
 type RequirementRow = {
     id: number;
     title: string;
@@ -169,6 +180,8 @@ const props = defineProps<{
     project: ProjectDetail;
     tags: TagRow[];
     metadata: MetadataRow[];
+    notes: NoteRow[];
+    can_create_notes: boolean;
     requirements: RequirementRow[];
     requirements_total: number;
     proposals: ProposalRow[];
@@ -218,6 +231,15 @@ const metadataAddOpen = ref(false);
 const metadataEditOpen = ref(false);
 const editingMetadata = ref<MetadataRow | null>(null);
 const metadataEditValue = ref('');
+const noteAddOpen = ref(false);
+const noteTitleInput = ref('');
+const noteBodyInput = ref('');
+const noteEditOpen = ref(false);
+const editingNote = ref<NoteRow | null>(null);
+const noteEditTitle = ref('');
+const noteEditBody = ref('');
+const noteDeleteOpen = ref(false);
+const notePendingDelete = ref<NoteRow | null>(null);
 
 const requirementOpen = ref(false);
 const requirementDescription = ref(emptyTipTapDocumentJson());
@@ -370,6 +392,52 @@ function removeMetadata(row: MetadataRow): void {
     );
 }
 
+function openNoteEdit(note: NoteRow): void {
+    editingNote.value = note;
+    noteEditTitle.value = note.title;
+    noteEditBody.value = note.body;
+    noteEditOpen.value = true;
+}
+
+function closeNoteEdit(): void {
+    noteEditOpen.value = false;
+    editingNote.value = null;
+    noteEditTitle.value = '';
+    noteEditBody.value = '';
+}
+
+function openNoteDelete(note: NoteRow): void {
+    notePendingDelete.value = note;
+    noteDeleteOpen.value = true;
+}
+
+function executeNoteDelete(): void {
+    const note = notePendingDelete.value;
+
+    if (note === null) {
+        return;
+    }
+
+    router.delete(
+        ProjectNoteController.destroy.url({
+            project: props.project.id,
+            note: note.id,
+        }),
+        { preserveScroll: true },
+    );
+    notePendingDelete.value = null;
+}
+
+const noteDeleteDescription = computed(() => {
+    const note = notePendingDelete.value;
+
+    if (note === null) {
+        return '';
+    }
+
+    return `Delete "${note.title}"? This cannot be undone.`;
+});
+
 function resetTagDialog(): void {
     tagInput.value = '';
 }
@@ -472,6 +540,13 @@ watch(tagOpen, (open) => {
     }
 });
 
+watch(noteAddOpen, (open) => {
+    if (open) {
+        noteTitleInput.value = '';
+        noteBodyInput.value = '';
+    }
+});
+
 watch(metadataAddOpen, (open) => {
     if (open) {
         resetMetadataAddDialog();
@@ -499,9 +574,12 @@ watch(timeEntryOpen, (open) => {
     <ConfirmDestructiveDialog v-model:open="entryDeleteOpen" title="Delete time entry?"
         :description="entryDeleteDescription" @confirm="executeEntryDelete" />
 
+    <ConfirmDestructiveDialog v-model:open="noteDeleteOpen" title="Delete note?" :description="noteDeleteDescription"
+        @confirm="executeNoteDelete" />
+
     <div class="flex flex-col gap-8">
         <PageHeader :title="project.name"
-            :description="project.description ?? 'Project overview, tags, metadata, requirements, tasks, and time entries.'">
+            :description="project.description ?? 'Project overview, tags, metadata, notes, requirements, tasks, and time entries.'">
             <template #actions>
                 <div class="flex flex-wrap gap-1">
                     <TableIconAction icon="file-text" tone="view" label="All requirements"
@@ -601,6 +679,40 @@ watch(timeEntryOpen, (open) => {
                         message="No metadata yet." />
                 </tbody>
             </DataTable>
+        </GlassCard>
+
+        <GlassCard v-if="can_create_notes || notes.length > 0" class="p-6">
+            <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">Notes</h2>
+                    <p class="text-sm text-muted-foreground">Ideas and details to remember about this project.</p>
+                </div>
+                <Button v-if="can_create_notes" type="button" @click="noteAddOpen = true">
+                    Add note
+                </Button>
+            </div>
+
+            <p v-if="notes.length === 0" class="text-sm text-muted-foreground">No notes yet.</p>
+            <ul v-else class="flex flex-col gap-4">
+                <li v-for="note in notes" :key="note.id" class="rounded-xl border border-border/60 p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <h3 class="font-medium">{{ note.title }}</h3>
+                            <p class="mt-1 text-xs text-muted-foreground">
+                                {{ note.creator?.name ?? '—' }}
+                                <span v-if="note.created_at"> · {{ new Date(note.created_at).toLocaleString() }}</span>
+                            </p>
+                        </div>
+                        <div v-if="note.can_update || note.can_delete" class="flex shrink-0 gap-1">
+                            <TableIconAction v-if="note.can_update" variant="ghost" icon="pencil" label="Edit note"
+                                @click="openNoteEdit(note)" />
+                            <TableIconAction v-if="note.can_delete" variant="ghost" icon="trash" label="Delete note"
+                                destructive @click="openNoteDelete(note)" />
+                        </div>
+                    </div>
+                    <p class="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{{ note.body }}</p>
+                </li>
+            </ul>
         </GlassCard>
 
         <section class="flex flex-col gap-4">
@@ -930,6 +1042,64 @@ watch(timeEntryOpen, (open) => {
                 </div>
                 <DialogFooter class="gap-3">
                     <Button type="button" variant="outline" @click="closeMetadataEdit()">Cancel</Button>
+                    <Button type="submit" :disabled="processing">Save</Button>
+                </DialogFooter>
+            </Form>
+        </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="noteAddOpen">
+        <DialogContent class="sm:max-w-lg">
+            <DialogHeader>
+                <DialogTitle>Add note</DialogTitle>
+                <DialogDescription>Record an idea or detail about this project.</DialogDescription>
+            </DialogHeader>
+            <Form v-bind="ProjectNoteController.store.form({ project: project.id })" class="grid gap-4"
+                preserve-scroll @success="noteAddOpen = false" v-slot="{ errors, processing }">
+                <div class="grid gap-2">
+                    <Label for="note-title">Title</Label>
+                    <Input id="note-title" v-model="noteTitleInput" name="title" type="text" required maxlength="255" />
+                    <InputError :message="errors.title" />
+                </div>
+                <div class="grid gap-2">
+                    <Label for="note-body">Note</Label>
+                    <textarea id="note-body" v-model="noteBodyInput" name="body" rows="5" required maxlength="10000"
+                        class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30" />
+                    <InputError :message="errors.body" />
+                </div>
+                <DialogFooter class="gap-3">
+                    <Button type="button" variant="outline" @click="noteAddOpen = false">Cancel</Button>
+                    <Button type="submit" :disabled="processing">Add note</Button>
+                </DialogFooter>
+            </Form>
+        </DialogContent>
+    </Dialog>
+
+    <Dialog :open="noteEditOpen" @update:open="(value: boolean) => !value && closeNoteEdit()">
+        <DialogContent v-if="editingNote !== null" class="sm:max-w-lg">
+            <DialogHeader>
+                <DialogTitle>Edit note</DialogTitle>
+                <DialogDescription>Update this project note.</DialogDescription>
+            </DialogHeader>
+            <Form :key="editingNote.id" v-bind="ProjectNoteController.update.form({
+                project: project.id,
+                note: editingNote.id,
+            })" class="grid gap-4" preserve-scroll @success="closeNoteEdit()" v-slot="{ errors, processing }">
+                <div class="grid gap-2">
+                    <Label for="note-edit-title">Title</Label>
+                    <Input id="note-edit-title" v-model="noteEditTitle" name="title" type="text" required
+                        maxlength="255" />
+                    <InputError :message="errors.title" />
+                </div>
+                <div class="grid gap-2">
+                    <Label for="note-edit-body">Note</Label>
+                    <textarea id="note-edit-body" v-model="noteEditBody" name="body" rows="5" required
+                        maxlength="10000"
+                        class="w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30" />
+                    <InputError :message="errors.body" />
+                </div>
+                <DialogFooter class="gap-3">
+                    <Button type="button" variant="outline" @click="closeNoteEdit()">Cancel</Button>
                     <Button type="submit" :disabled="processing">Save</Button>
                 </DialogFooter>
             </Form>
