@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'title',
     'description',
     'status',
+    'task_priority_id',
     'assignee_user_id',
     'created_by_user_id',
     'estimated_minutes',
@@ -74,6 +75,11 @@ class ProjectTask extends Model
     public function children(): HasMany
     {
         return $this->hasMany(ProjectTask::class, 'parent_project_task_id');
+    }
+
+    public function priority(): BelongsTo
+    {
+        return $this->belongsTo(TaskPriority::class, 'task_priority_id');
     }
 
     public function assignee(): BelongsTo

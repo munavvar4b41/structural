@@ -34,7 +34,7 @@ class ProjectTaskShowPayloadBuilder
             ->orderBy('phase')
             ->orderBy('sort_order')
             ->orderBy('id')
-            ->with(['assignee:id,name,email', 'requirement:id,title'])
+            ->with(['assignee:id,name,email', 'requirement:id,title', 'priority:id,name,color,shade'])
             ->withCount('children')
             ->get();
 
@@ -54,6 +54,7 @@ class ProjectTaskShowPayloadBuilder
     {
         $task->load([
             'assignee:id,name,email',
+            'priority:id,name,color,shade',
             'requirement:id,title',
             'parent:id,title',
             'completionSubmittedBy:id,name,email',
@@ -165,6 +166,7 @@ class ProjectTaskShowPayloadBuilder
             'description' => $task->description,
             'status' => $task->status->value,
             'status_label' => $task->status->label(),
+            'priority' => $task->priority?->toBadgeArray(),
             'assignee_user_id' => $task->assignee_user_id,
             'assignee' => $this->userBrief($task->assignee),
             'project_requirement_id' => $task->project_requirement_id,
@@ -186,6 +188,7 @@ class ProjectTaskShowPayloadBuilder
                     'title' => $child->title,
                     'status' => $child->status->value,
                     'status_label' => $child->status->label(),
+                    'priority' => $child->priority?->toBadgeArray(),
                     'assignee_user_id' => $child->assignee_user_id,
                     'assignee' => $this->userBrief($child->assignee),
                     'project_requirement_id' => $child->project_requirement_id,

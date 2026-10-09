@@ -58,7 +58,7 @@ class ProjectShowPayloadBuilder
             : [];
 
         $tasksCollection = $project->tasks()
-            ->with(['assignee:id,name,email', 'requirement:id,title'])
+            ->with(['assignee:id,name,email', 'requirement:id,title', 'priority:id,name,color,shade'])
             ->withCount('children')
             ->limit(self::LIST_LIMIT)
             ->get();
@@ -248,6 +248,7 @@ class ProjectShowPayloadBuilder
             'description' => $task->description,
             'status' => $task->status->value,
             'status_label' => $task->status->label(),
+            'priority' => $task->priority?->toBadgeArray(),
             'assignee_user_id' => $task->assignee_user_id,
             'assignee' => $this->userBrief($task->assignee),
             'project_requirement_id' => $task->project_requirement_id,

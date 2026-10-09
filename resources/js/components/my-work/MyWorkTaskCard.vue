@@ -4,6 +4,8 @@ import { CheckCircle, Eye, List } from 'lucide-vue-next';
 import type { HTMLAttributes } from 'vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import FormSelect from '@/components/FormSelect.vue';
+import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge.vue';
+import type { TaskPriorityBadgeData } from '@/components/tasks/TaskPriorityBadge.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
 import Tooltip from '@/components/ui/tooltip/Tooltip.vue';
@@ -15,6 +17,7 @@ export type MyWorkTaskCardData = {
     id: number;
     project_id: number;
     title: string;
+    priority: TaskPriorityBadgeData | null;
     status: string;
     estimated_minutes: number | null;
     project: { id: number; name: string; code: string | null };
@@ -66,6 +69,7 @@ function onDragStart(event: DragEvent): void {
         @dragend="emit('dragEnd')">
         <button type="button" class="block min-w-0 w-full cursor-pointer p-3 pb-0 text-left hover:bg-muted/40"
             @click="emit('preview', task)" @keydown="onCardKeydown">
+            <TaskPriorityBadge class="mb-2" :priority="task.priority" />
             <p class="line-clamp-2 break-words text-sm font-medium leading-snug text-foreground" :title="task.title">
                 {{ task.title }}
             </p>

@@ -10,6 +10,7 @@ use App\Http\Requests\Admin\UpdateProjectTaskRequest;
 use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectTask;
+use App\Models\TaskPriority;
 use App\Models\User;
 use App\Support\AssignmentNotificationDispatcher;
 use App\Support\ProjectRequirementAssignableUsers;
@@ -31,6 +32,8 @@ use Inertia\Response;
 class ProjectTaskController extends Controller
 {
     use AuthorizesRequests;
+
+    private const PER_STATUS_SECTION = 5;
 
     public function __construct(
         private readonly ProjectTaskShowPayloadBuilder $showPayloadBuilder,
@@ -59,40 +62,26 @@ class ProjectTaskController extends Controller
 
         $search = trim((string) $request->query('search', ''));
 
-        $assigneeQuery = $request->query('assignee_id');
-        $assigneeId = null;
-        if ($assigneeQuery !== null && $assigneeQuery !== '') {
-            $aid = (int) $assigneeQuery;
-            $assigneeId = $aid > 0 ? $aid : null;
-        }
-
         $assignableIds = collect($this->assignableUserOptions($project))
             ->pluck('value')
             ->all();
 
-        if ($assigneeId !== null && ! in_array($assigneeId, $assignableIds, true)) {
-            $assigneeId = null;
-        }
+        $assigneeId = $this->resolveAssigneeFilter($request, $actor, $assignableIds);
 
         $allowedStatusValues = array_map(
             static fn (ProjectTaskStatus $s): string => $s->value,
             ProjectTaskStatus::cases(),
         );
 
-        $statusRaw = $request->query('status');
-        $statuses = [];
-        if (is_array($statusRaw)) {
-            $statuses = array_values(array_intersect(
-                array_map(static fn (mixed $v): string => (string) $v, $statusRaw),
-                $allowedStatusValues,
-            ));
-        }
+        $statuses = $this->resolveStatusFilter($request, $allowedStatusValues);
 
         $phaseFilterPayload = $this->requirementPhaseRegistry->taskFilterPayloadForProject($project);
         $allowedPhaseValues = array_map(
             static fn (array $option): int => (int) $option['value'],
             $phaseFilterPayload['options'],
         );
+        $priorityFilter = TaskPriority::parseFilter($request->query('priority'));
+
         $phaseQuery = $request->query('phase');
         $phase = null;
         if ($phaseQuery !== null && $phaseQuery !== '') {
@@ -140,6 +129,8 @@ class ProjectTaskController extends Controller
             })
             ->when($phase !== null, static fn ($query) => $query->where('phase', $phase));
 
+        TaskPriority::applyFilter($matchQuery, $priorityFilter);
+
         $matchingIds = $matchQuery->pluck('id')->all();
 
         if ($matchingIds === []) {
@@ -149,12 +140,22 @@ class ProjectTaskController extends Controller
 
             $tasksCollection = $project->tasks()
                 ->whereIn('id', $expandedIds)
-                ->with(['assignee:id,name,email', 'requirement:id,title'])
-                ->withCount('children')
                 ->get();
         }
 
-        $transferredRequirementIds = $tasksCollection
+        ['rows' => $visibleRows, 'meta' => $statusMeta] = $this->paginateRowsByStatus(
+            ProjectTaskDisplayOrder::depthFirstWithDepth($tasksCollection),
+            $request,
+        );
+
+        $visibleTasks = new EloquentCollection(array_map(
+            static fn (array $row): ProjectTask => $row['task'],
+            $visibleRows,
+        ));
+        $visibleTasks->load(['assignee:id,name,email', 'requirement:id,title', 'priority:id,name,color,shade'])
+            ->loadCount('children');
+
+        $transferredRequirementIds = $visibleTasks
             ->pluck('project_requirement_id')
             ->filter()
             ->unique()
@@ -171,7 +172,7 @@ class ProjectTaskController extends Controller
                 ->pluck('id')
                 ->all();
 
-        $tasks = collect(ProjectTaskDisplayOrder::depthFirstWithDepth($tasksCollection))
+        $tasks = collect($visibleRows)
             ->map(fn (array $row): array => $this->taskRow(
                 $row['task'],
                 $actor,
@@ -183,6 +184,7 @@ class ProjectTaskController extends Controller
         return Inertia::render('admin/projects/tasks/Index', [
             'project' => $this->projectSummary($project),
             'tasks' => $tasks,
+            'status_meta' => $statusMeta,
             'task_filter' => $filter,
             'filters' => [
                 'search' => $search,
@@ -190,7 +192,9 @@ class ProjectTaskController extends Controller
                 'status' => $statuses,
                 'estimation_source' => $estimationSource,
                 'phase' => $phase !== null ? (string) $phase : '',
+                'priority' => TaskPriority::filterValues($priorityFilter),
             ],
+            'priority_filter_options' => TaskPriority::filterOptions(),
             'show_phase_filter' => $phaseFilterPayload['show_filter'],
             'phase_filter_options' => array_map(
                 static fn (array $option): array => [
@@ -210,6 +214,54 @@ class ProjectTaskController extends Controller
             'can_create_tasks' => $actor->can('create', [ProjectTask::class, $project]),
             'can_manage_project' => $actor->can('update', $project),
         ]);
+    }
+
+    /**
+     * Keeps the first `PER_STATUS_SECTION * page_{status}` rows of each status, preserving display order.
+     *
+     * @param  list<array{task: ProjectTask, depth: int}>  $orderedRows
+     * @return array{
+     *     rows: list<array{task: ProjectTask, depth: int}>,
+     *     meta: array<string, array{total: int, current_page: int, last_page: int, per_page: int}>
+     * }
+     */
+    private function paginateRowsByStatus(array $orderedRows, Request $request): array
+    {
+        /** @var array<string, int> $totals */
+        $totals = [];
+        foreach ($orderedRows as $row) {
+            $status = $row['task']->status->value;
+            $totals[$status] = ($totals[$status] ?? 0) + 1;
+        }
+
+        $meta = [];
+        $limits = [];
+        foreach (ProjectTaskStatus::boardOrder() as $status) {
+            $total = $totals[$status->value] ?? 0;
+            $lastPage = max(1, (int) ceil($total / self::PER_STATUS_SECTION));
+            $page = min($lastPage, max(1, (int) $request->query('page_'.$status->value, '1')));
+
+            $limits[$status->value] = self::PER_STATUS_SECTION * $page;
+            $meta[$status->value] = [
+                'total' => $total,
+                'current_page' => $page,
+                'last_page' => $lastPage,
+                'per_page' => self::PER_STATUS_SECTION,
+            ];
+        }
+
+        $rows = [];
+        $taken = [];
+        foreach ($orderedRows as $row) {
+            $status = $row['task']->status->value;
+            $taken[$status] = ($taken[$status] ?? 0) + 1;
+
+            if ($taken[$status] <= ($limits[$status] ?? self::PER_STATUS_SECTION)) {
+                $rows[] = $row;
+            }
+        }
+
+        return ['rows' => $rows, 'meta' => $meta];
     }
 
     /**
@@ -233,6 +285,56 @@ class ProjectTaskController extends Controller
         return array_keys($keep);
     }
 
+    /**
+     * @param  list<int>  $assignableIds
+     */
+    private function resolveAssigneeFilter(Request $request, User $actor, array $assignableIds): ?int
+    {
+        if (! $request->exists('assignee_id')) {
+            return in_array($actor->id, $assignableIds, true) ? $actor->id : null;
+        }
+
+        $assigneeQuery = $request->query('assignee_id');
+
+        if ($assigneeQuery === null || $assigneeQuery === '' || $assigneeQuery === 'all') {
+            return null;
+        }
+
+        $assigneeId = (int) $assigneeQuery;
+
+        if ($assigneeId <= 0 || ! in_array($assigneeId, $assignableIds, true)) {
+            return null;
+        }
+
+        return $assigneeId;
+    }
+
+    /**
+     * @param  list<string>  $allowedStatusValues
+     * @return list<string>
+     */
+    private function resolveStatusFilter(Request $request, array $allowedStatusValues): array
+    {
+        if (! $request->exists('status')) {
+            return [ProjectTaskStatus::ToDo->value];
+        }
+
+        $statusRaw = $request->query('status');
+
+        if ($statusRaw === null || $statusRaw === '' || $statusRaw === 'all') {
+            return [];
+        }
+
+        if (! is_array($statusRaw)) {
+            return [];
+        }
+
+        return array_values(array_intersect(
+            array_map(static fn (mixed $value): string => (string) $value, $statusRaw),
+            $allowedStatusValues,
+        ));
+    }
+
     public function create(Request $request, Project $project): Response
     {
         $this->authorize('create', [ProjectTask::class, $project]);
@@ -242,14 +344,20 @@ class ProjectTaskController extends Controller
 
         $requirementId = $this->validatedRequirementIdFromQuery($request, $project);
         $parentTaskId = $this->validatedParentTaskIdFromQuery($request, $project);
+        $formOptions = $this->taskFormOptions($project);
+        $assignableIds = collect($formOptions['assignable_users'])->pluck('value')->all();
 
         return Inertia::render('admin/projects/tasks/Create', [
             'project' => $this->projectSummary($project),
-            ...$this->taskFormOptions($project),
+            ...$formOptions,
             'parent_tasks' => $this->parentTaskOptions($project),
             'defaults' => [
                 'project_requirement_id' => $requirementId !== null ? (string) $requirementId : '',
                 'parent_project_task_id' => $parentTaskId !== null ? (string) $parentTaskId : '',
+                'status' => ProjectTaskStatus::ToDo->value,
+                'assignee_user_id' => in_array($actor->id, $assignableIds, true)
+                    ? (string) $actor->id
+                    : '',
             ],
             'cancel_href' => $this->resolveCancelHref($request, $project),
         ]);
@@ -414,6 +522,7 @@ class ProjectTaskController extends Controller
     {
         return [
             'status_options' => $this->statusOptions(),
+            'priority_options' => TaskPriority::formOptions(),
             'assignable_users' => $this->assignableUserOptions($project),
             'requirements' => $project->requirements()->orderBy('title')->get(['id', 'title', 'max_generated_phase'])->map(static fn (ProjectRequirement $r): array => [
                 'value' => $r->id,
@@ -563,6 +672,7 @@ class ProjectTaskController extends Controller
             'title' => $task->title,
             'description' => $task->description,
             'status' => $task->status->value,
+            'task_priority_id' => $task->task_priority_id !== null ? (string) $task->task_priority_id : '',
             'assignee_user_id' => $task->assignee_user_id,
             'project_requirement_id' => $task->project_requirement_id,
             'parent_project_task_id' => $task->parent_project_task_id,
@@ -617,6 +727,7 @@ class ProjectTaskController extends Controller
             'description' => $task->description,
             'status' => $task->status->value,
             'status_label' => $task->status->label(),
+            'priority' => $task->priority?->toBadgeArray(),
             'assignee_user_id' => $task->assignee_user_id,
             'assignee' => $this->userBrief($task->assignee),
             'project_requirement_id' => $task->project_requirement_id,

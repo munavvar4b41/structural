@@ -6,6 +6,7 @@ use App\Enums\ProjectTaskStatus;
 use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectTask;
+use App\Models\TaskPriority;
 use App\Models\User;
 
 class ProjectTaskFormOptionsBuilder
@@ -47,6 +48,7 @@ class ProjectTaskFormOptionsBuilder
                 'estimation_required' => $project->estimation_required,
             ],
             'status_options' => $this->statusOptions(),
+            'priority_options' => TaskPriority::formOptions(),
             'assignable_users' => $this->assignableUserOptions($project),
             'requirements' => $project->requirements()
                 ->orderBy('title')

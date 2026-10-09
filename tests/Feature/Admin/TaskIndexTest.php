@@ -3,8 +3,10 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\ProjectTaskStatus;
+use App\Enums\TaskPriorityColor;
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Models\TaskPriority;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -183,5 +185,48 @@ class TaskIndexTest extends TestCase
             'title' => 'Created from global page',
             'created_by_user_id' => $head->id,
         ]);
+    }
+
+    public function test_global_tasks_index_filters_by_priority_including_none(): void
+    {
+        extract($this->projectWithTeamHead());
+        $high = TaskPriority::factory()->create([
+            'name' => 'High',
+            'color' => TaskPriorityColor::Amber,
+        ]);
+
+        ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+                'title' => 'Urgent task',
+                'task_priority_id' => $high->id,
+            ]);
+
+        $plain = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+                'title' => 'Plain task',
+            ]);
+
+        $this->actingAs($head)
+            ->get(route('admin.tasks.index', ['priority' => [$high->id]]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('tasks', 1)
+                ->where('tasks.0.title', 'Urgent task')
+                ->where('tasks.0.priority.name', 'High')
+                ->where('tasks.0.priority.color', TaskPriorityColor::Amber->value));
+
+        $this->actingAs($head)
+            ->get(route('admin.tasks.index', ['priority' => ['none']]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('tasks', 1)
+                ->where('tasks.0.id', $plain->id)
+                ->where('tasks.0.priority', null));
     }
 }

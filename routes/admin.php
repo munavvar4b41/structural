@@ -27,6 +27,7 @@ use App\Http\Controllers\Admin\RequirementController;
 use App\Http\Controllers\Admin\SuggestionController;
 use App\Http\Controllers\Admin\TaskCompletionReviewController;
 use App\Http\Controllers\Admin\TaskController;
+use App\Http\Controllers\Admin\TaskPriorityController;
 use App\Http\Controllers\Admin\TaskRatingReportController;
 use App\Http\Controllers\Admin\TaskTimeEntryController;
 use App\Http\Controllers\Admin\TaskTimerController;
@@ -54,6 +55,11 @@ Route::middleware(EnsureCanManageCompanySettings::class)
     ->name('careers-settings.')->group(function (): void {
         Route::get('careers-settings', [CareersSettingsController::class, 'edit'])->name('edit');
         Route::patch('careers-settings', [CareersSettingsController::class, 'update'])->name('update');
+    });
+
+Route::middleware(EnsureCanManageCompanySettings::class)
+    ->group(function (): void {
+        Route::resource('task-priorities', TaskPriorityController::class)->except(['show']);
     });
 
 Route::middleware(EnsureCanManageCompanySettings::class)
