@@ -114,6 +114,8 @@ class ProjectManagementTest extends TestCase
                 'description' => 'Delivery milestone one',
                 'client_user_id' => $clientUser->id,
                 'team_ids' => [$teamA->id, $teamB->id],
+                'passphrase' => 'correct horse battery',
+                'passphrase_confirmation' => 'correct horse battery',
             ])
             ->assertRedirect(route('admin.projects.index'));
 

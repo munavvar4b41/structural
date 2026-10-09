@@ -32,5 +32,7 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="PROJECT_PASSWORD_PWHASH_OPS" value="1"/>
+        <env name="PROJECT_PASSWORD_PWHASH_MEM" value="8192"/>
     </php>
 </phpunit>

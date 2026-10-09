@@ -43,6 +43,7 @@ import {
     show as caseStudiesShow,
 } from '@/routes/admin/projects/case-studies/index';
 import { edit as projectsEdit, index as projectsIndex, show as projectsShow } from '@/routes/admin/projects/index';
+import { index as projectPasswordsIndex } from '@/routes/admin/projects/passwords/index';
 import {
     create as proposalsCreate,
     index as proposalsIndex,
@@ -510,6 +511,8 @@ watch(timeEntryOpen, (open) => {
                         :href="projectCaseStudiesIndex.url(project.id)" />
                     <TableIconAction icon="clipboard-list" label="All tasks"
                         :href="projectTasksIndex.url(project.id)" />
+                    <TableIconAction icon="key-round" label="Passwords"
+                        :href="projectPasswordsIndex.url(project.id)" />
                     <TableIconAction v-if="can_manage_project" icon="pencil" label="Edit project"
                         :href="projectsEdit.url(project.id)" />
                 </div>

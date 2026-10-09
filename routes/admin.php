@@ -14,6 +14,8 @@ use App\Http\Controllers\Admin\MyWorkController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Admin\ProjectMetadataController;
+use App\Http\Controllers\Admin\ProjectPassphraseController;
+use App\Http\Controllers\Admin\ProjectPasswordController;
 use App\Http\Controllers\Admin\ProjectProposalController;
 use App\Http\Controllers\Admin\ProjectProposalMessageController;
 use App\Http\Controllers\Admin\ProjectRequirementController;
@@ -107,6 +109,14 @@ Route::get('understanding-reviews', [UnderstandingReviewController::class, 'inde
 Route::get('task-ratings-report', [TaskRatingReportController::class, 'index'])->name('task-ratings-report.index');
 Route::get('suggestions', [SuggestionController::class, 'index'])->name('suggestions.index');
 Route::resource('projects', ProjectController::class);
+Route::get('projects/{project}/passwords', [ProjectPasswordController::class, 'index'])->name('projects.passwords.index');
+Route::middleware('throttle:project-passphrase')->group(function (): void {
+    Route::post('projects/{project}/passphrase', [ProjectPassphraseController::class, 'store'])->name('projects.passphrase.store');
+    Route::post('projects/{project}/passwords', [ProjectPasswordController::class, 'store'])->name('projects.passwords.store');
+    Route::put('projects/{project}/passwords/{password}', [ProjectPasswordController::class, 'update'])->name('projects.passwords.update');
+    Route::delete('projects/{project}/passwords/{password}', [ProjectPasswordController::class, 'destroy'])->name('projects.passwords.destroy');
+    Route::post('projects/{project}/passwords/{password}/reveal', [ProjectPasswordController::class, 'reveal'])->name('projects.passwords.reveal');
+});
 Route::post('projects/{project}/tags', [ProjectTagController::class, 'store'])->name('projects.tags.store');
 Route::delete('projects/{project}/tags/{tag}', [ProjectTagController::class, 'destroy'])->name('projects.tags.destroy');
 Route::post('projects/{project}/metadata', [ProjectMetadataController::class, 'store'])->name('projects.metadata.store');

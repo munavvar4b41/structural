@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Project;
 use App\Models\User;
+use App\Support\ProjectPasswordCipher;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -25,5 +26,12 @@ class ProjectFactory extends Factory
             'client_user_id' => User::factory()->client(),
             'lead_user_id' => null,
         ];
+    }
+
+    public function withPassphrase(string $passphrase): static
+    {
+        return $this->afterCreating(function (Project $project) use ($passphrase): void {
+            app(ProjectPasswordCipher::class)->seal($project, $passphrase);
+        });
     }
 }
