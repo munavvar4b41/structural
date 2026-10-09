@@ -10,7 +10,7 @@ use App\Models\User;
 
 class DashboardTasksBuilder
 {
-    public const LIMIT = 20;
+    public const LIMIT = 10;
 
     public function __construct(private readonly DashboardTaskPreferences $preferences) {}
 
