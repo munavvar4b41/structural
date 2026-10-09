@@ -11,11 +11,33 @@ import { computed } from 'vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import StatCard from '@/components/dashboard/StatCard.vue';
+import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge.vue';
+import type { TaskPriorityBadgeData } from '@/components/tasks/TaskPriorityBadge.vue';
 import { dashboard } from '@/routes';
 import { index as adminMyWorkIndex } from '@/routes/admin/my-work/index';
 import { index as adminProjectsIndex } from '@/routes/admin/projects/index';
 import { index as adminTimeReportIndex } from '@/routes/admin/time-report/index';
 import { index as adminUsersIndex } from '@/routes/admin/users/index';
+import { edit as editDashboardTasks } from '@/routes/dashboard-tasks';
+
+type DashboardTask = {
+    id: number;
+    title: string;
+    status: string;
+    status_label: string;
+    priority: TaskPriorityBadgeData | null;
+    project: { id: number; name: string; code: string | null };
+    task_show_url: string;
+};
+
+defineProps<{
+    dashboard_tasks: {
+        enabled: boolean;
+        tasks: DashboardTask[];
+        total: number;
+        has_more: boolean;
+    };
+}>();
 
 defineOptions({
     layout: {
@@ -79,6 +101,89 @@ const quickLinks = computed(() => {
             description="Your workspace overview and quick actions."
         />
 
+        <section
+            v-if="user?.can_view_projects"
+            class="space-y-4"
+            data-test="dashboard-tasks"
+        >
+            <div class="flex items-center justify-between gap-3">
+                <h2 class="text-sm font-medium text-muted-foreground">
+                    My tasks
+                </h2>
+                <Link
+                    :href="editDashboardTasks()"
+                    class="text-sm font-medium text-primary hover:underline"
+                >
+                    Task settings
+                </Link>
+            </div>
+
+            <GlassCard v-if="!dashboard_tasks.enabled" class="p-5">
+                <p class="text-sm text-muted-foreground">
+                    Dashboard tasks are turned off.
+                    <Link
+                        :href="editDashboardTasks()"
+                        class="font-medium text-foreground underline decoration-border underline-offset-4"
+                    >
+                        Turn them on in settings.
+                    </Link>
+                </p>
+            </GlassCard>
+
+            <GlassCard
+                v-else-if="dashboard_tasks.tasks.length === 0"
+                class="p-5"
+            >
+                <p class="text-sm text-muted-foreground">
+                    No tasks match your dashboard settings.
+                </p>
+            </GlassCard>
+
+            <div v-else class="grid gap-3">
+                <Link
+                    v-for="task in dashboard_tasks.tasks"
+                    :key="task.id"
+                    :href="task.task_show_url"
+                    class="group block"
+                >
+                    <GlassCard
+                        hover
+                        class="flex items-start justify-between gap-4 p-4"
+                    >
+                        <div class="min-w-0">
+                            <p
+                                class="font-medium text-foreground group-hover:text-primary"
+                            >
+                                {{ task.title }}
+                            </p>
+                            <p class="mt-1 text-sm text-muted-foreground">
+                                {{ task.project.name }}
+                                <span v-if="task.project.code"
+                                    >({{ task.project.code }})</span
+                                >
+                                · {{ task.status_label }}
+                            </p>
+                        </div>
+                        <TaskPriorityBadge :priority="task.priority" />
+                    </GlassCard>
+                </Link>
+
+                <p
+                    v-if="dashboard_tasks.has_more"
+                    class="text-sm text-muted-foreground"
+                >
+                    Showing {{ dashboard_tasks.tasks.length }} of
+                    {{ dashboard_tasks.total }}.
+                    <Link
+                        :href="adminMyWorkIndex()"
+                        class="font-medium text-foreground underline decoration-border underline-offset-4"
+                    >
+                        Open My work
+                    </Link>
+                </p>
+            </div>
+        </section>
+
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard
                 title="Quick access"
@@ -125,7 +230,9 @@ const quickLinks = computed(() => {
                             <component :is="item.icon" class="size-5" />
                         </div>
                         <div class="min-w-0">
-                            <p class="font-semibold text-foreground group-hover:text-primary">
+                            <p
+                                class="font-semibold text-foreground group-hover:text-primary"
+                            >
                                 {{ item.title }}
                             </p>
                             <p class="mt-0.5 text-sm text-muted-foreground">
