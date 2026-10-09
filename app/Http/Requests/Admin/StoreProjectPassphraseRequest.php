@@ -28,7 +28,7 @@ class StoreProjectPassphraseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'passphrase' => ['required', 'string', 'min:12', 'max:1024', 'confirmed'],
+            'passphrase' => ['required', 'string', 'max:1024', 'confirmed'],
         ];
     }
 }

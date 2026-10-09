@@ -114,12 +114,11 @@ class ProjectManagementTest extends TestCase
                 'description' => 'Delivery milestone one',
                 'client_user_id' => $clientUser->id,
                 'team_ids' => [$teamA->id, $teamB->id],
-                'passphrase' => 'correct horse battery',
-                'passphrase_confirmation' => 'correct horse battery',
             ])
             ->assertRedirect(route('admin.projects.index'));
 
         $project = Project::query()->where('name', 'Platform Revamp')->firstOrFail();
+        $this->assertFalse($project->hasPasswordPassphrase());
         $this->assertSame($clientUser->id, $project->client_user_id);
         $this->assertSame(2, $project->teams()->count());
         $this->assertSame($teamHead->id, $project->lead_user_id);

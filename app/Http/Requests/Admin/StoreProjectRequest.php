@@ -52,7 +52,6 @@ class StoreProjectRequest extends FormRequest
             'team_ids.*' => ['required', 'integer', Rule::exists(Team::class, 'id')],
             'lead_user_id' => ['nullable', 'integer', Rule::exists(User::class, 'id')],
             'estimation_required' => ['sometimes', 'boolean'],
-            'passphrase' => ['required', 'string', 'min:12', 'max:1024', 'confirmed'],
         ];
     }
 

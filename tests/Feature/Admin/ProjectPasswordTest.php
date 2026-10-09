@@ -17,7 +17,26 @@ class ProjectPasswordTest extends TestCase
 
     private const string PASSPHRASE = 'correct horse battery';
 
-    public function test_creating_a_project_stores_a_verifier_and_not_the_passphrase(): void
+    public function test_creating_a_project_does_not_require_a_passphrase(): void
+    {
+        $team = Team::factory()->create();
+        $client = User::factory()->client()->create();
+        $admin = User::factory()->admin()->create(['primary_team_id' => null]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.projects.store'), [
+                'name' => 'Vault Project',
+                'client_user_id' => $client->id,
+                'team_ids' => [$team->id],
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('admin.projects.index'));
+
+        $project = Project::query()->where('name', 'Vault Project')->firstOrFail();
+        $this->assertFalse($project->hasPasswordPassphrase());
+    }
+
+    public function test_creating_a_project_ignores_a_submitted_passphrase(): void
     {
         $team = Team::factory()->create();
         $client = User::factory()->client()->create();
@@ -34,7 +53,22 @@ class ProjectPasswordTest extends TestCase
             ->assertRedirect(route('admin.projects.index'));
 
         $project = Project::query()->where('name', 'Vault Project')->firstOrFail();
-        $this->assertTrue($project->hasPasswordPassphrase());
+        $this->assertFalse($project->hasPasswordPassphrase());
+    }
+
+    public function test_sealing_a_project_stores_a_verifier_and_not_the_passphrase(): void
+    {
+        $admin = User::factory()->admin()->create(['primary_team_id' => null]);
+        $project = Project::factory()->create();
+
+        $this->actingAs($admin)
+            ->post(route('admin.projects.passphrase.store', $project), [
+                'passphrase' => self::PASSPHRASE,
+                'passphrase_confirmation' => self::PASSPHRASE,
+            ])
+            ->assertRedirect();
+
+        $this->assertTrue($project->refresh()->hasPasswordPassphrase());
 
         $row = (array) DB::table('projects')->where('id', $project->id)->first();
 

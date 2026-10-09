@@ -156,37 +156,6 @@ defineOptions({
                             <InputError :message="errors.estimation_required" />
                         </div>
                     </div>
-                    <FormField
-                        label="Project passphrase"
-                        html-for="passphrase"
-                        :error="errors.passphrase"
-                        required
-                        hint="Shared by everyone who should read this project's passwords. It is not stored and cannot be recovered."
-                    >
-                        <Input
-                            id="passphrase"
-                            name="passphrase"
-                            type="password"
-                            autocomplete="new-password"
-                            required
-                            minlength="12"
-                        />
-                    </FormField>
-                    <FormField
-                        label="Confirm passphrase"
-                        html-for="passphrase_confirmation"
-                        :error="errors.passphrase_confirmation"
-                        required
-                    >
-                        <Input
-                            id="passphrase_confirmation"
-                            name="passphrase_confirmation"
-                            type="password"
-                            autocomplete="new-password"
-                            required
-                            minlength="12"
-                        />
-                    </FormField>
                 </div>
             </GlassCard>
 

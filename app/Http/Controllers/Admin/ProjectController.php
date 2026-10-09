@@ -10,7 +10,6 @@ use App\Models\CaseStudy;
 use App\Models\Project;
 use App\Models\Team;
 use App\Models\User;
-use App\Support\ProjectPasswordCipher;
 use App\Support\ProjectShowPayloadBuilder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -176,15 +175,9 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function store(StoreProjectRequest $request, ProjectPasswordCipher $cipher): RedirectResponse
+    public function store(StoreProjectRequest $request): RedirectResponse
     {
         $payload = $request->validated();
-        $passphrase = $payload['passphrase'];
-        unset($payload['passphrase']);
-
-        if (! is_string($passphrase)) {
-            abort(422);
-        }
         $teamIds = $this->normalizedTeamIds($payload);
 
         $project = Project::query()->create($payload);
@@ -197,8 +190,6 @@ class ProjectController extends Controller
                 $project->update(['lead_user_id' => $defaultLeadId]);
             }
         }
-
-        $cipher->seal($project, $passphrase);
 
         return to_route('admin.projects.index')->with('toast', 'Project created.');
     }
