@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JobApplicationPublicController;
 use App\Http\Controllers\JobPostingPublicController;
 use App\Http\Controllers\TeamSelectionController;
@@ -22,7 +23,7 @@ Route::middleware('auth')->group(function (): void {
 });
 
 Route::middleware(['auth', 'verified', EnsureHasPrimaryTeam::class])->group(function () {
-    Route::inertia('dashboard', 'Dashboard')->name('dashboard');
+    Route::get('dashboard', DashboardController::class)->name('dashboard');
 });
 
 require __DIR__.'/settings.php';
