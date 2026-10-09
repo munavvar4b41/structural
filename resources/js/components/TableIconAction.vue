@@ -6,6 +6,7 @@ import {
     ArrowRight,
     BookOpen,
     Calculator,
+    KeyRound,
     Check,
     CheckCircle,
     ChevronsUp,
@@ -53,7 +54,8 @@ type IconName =
     | 'chevrons-up'
     | 'clipboard-list'
     | 'file-check'
-    | 'book-open';
+    | 'book-open'
+    | 'key-round';
 
 type ActionTone =
     | 'view'
@@ -118,6 +120,7 @@ const iconMap: Record<IconName, Component> = {
     'clipboard-list': ClipboardList,
     'file-check': FileCheck,
     'book-open': BookOpen,
+    'key-round': KeyRound,
 };
 
 const toneByIcon: Record<IconName, ActionTone> = {
@@ -143,6 +146,7 @@ const toneByIcon: Record<IconName, ActionTone> = {
     'clipboard-list': 'navigate',
     'file-check': 'advance',
     'book-open': 'estimate',
+    'key-round': 'navigate',
 };
 
 const toneClasses: Record<ActionTone, string> = {
