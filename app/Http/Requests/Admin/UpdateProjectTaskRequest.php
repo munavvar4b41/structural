@@ -4,7 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Enums\ProjectTaskStatus;
 use App\Models\ProjectTask;
-use App\Models\TaskPriority;
+use App\Models\TaskTag;
 use App\Models\User;
 use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\ProjectTaskAssigneeCapabilities;
@@ -23,10 +23,14 @@ class UpdateProjectTaskRequest extends FormRequest
     {
         $merge = [];
 
-        foreach (['assignee_user_id', 'project_requirement_id', 'parent_project_task_id', 'estimated_minutes', 'display_after_at', 'notify_at', 'phase', 'task_priority_id'] as $key) {
+        foreach (['assignee_user_id', 'project_requirement_id', 'parent_project_task_id', 'estimated_minutes', 'display_after_at', 'notify_at', 'phase'] as $key) {
             if ($this->has($key) && $this->input($key) === '') {
                 $merge[$key] = null;
             }
+        }
+
+        if ($this->has('task_tag_ids')) {
+            $merge['task_tag_ids'] = TaskTag::normalizeIdsInput($this->input('task_tag_ids'));
         }
 
         $desc = $this->input('description');
@@ -96,7 +100,7 @@ class UpdateProjectTaskRequest extends FormRequest
                 'parent_project_task_id' => ['prohibited'],
                 'assignee_user_id' => ['prohibited'],
                 'status' => ['sometimes', Rule::enum(ProjectTaskStatus::class)],
-                'task_priority_id' => ['prohibited'],
+                'task_tag_ids' => ['prohibited'],
                 'estimated_minutes' => $estimationRules,
                 'display_after_at' => ['prohibited'],
                 'notify_at' => ['prohibited'],
@@ -121,7 +125,8 @@ class UpdateProjectTaskRequest extends FormRequest
                 },
             ],
             'status' => ['sometimes', 'required', Rule::enum(ProjectTaskStatus::class)],
-            'task_priority_id' => ['nullable', 'integer', Rule::exists(TaskPriority::class, 'id')],
+            'task_tag_ids' => ['nullable', 'array'],
+            'task_tag_ids.*' => ['integer', 'distinct', Rule::exists(TaskTag::class, 'id')],
             'assignee_user_id' => [
                 'nullable',
                 'integer',

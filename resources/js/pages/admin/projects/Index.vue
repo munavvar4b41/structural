@@ -23,6 +23,8 @@ import {
     index as projectsIndex,
     show as projectsShow,
 } from '@/routes/admin/projects/index';
+import { index as projectNotesIndex } from '@/routes/admin/projects/notes/index';
+import { index as projectPasswordsIndex } from '@/routes/admin/projects/passwords/index';
 import { index as projectRequirementsIndex } from '@/routes/admin/projects/requirements/index';
 import { index as projectTasksIndex } from '@/routes/admin/projects/tasks/index';
 
@@ -66,6 +68,7 @@ type Props = {
     };
     show_lead_filter: boolean;
     can_view_case_studies: boolean;
+    can_view_notes: boolean;
 };
 
 defineOptions({
@@ -76,19 +79,7 @@ defineOptions({
 
 const props = defineProps<Props>();
 
-const projectTableColspan = computed(() => {
-    let columns = 6;
-
-    if (props.can_view_case_studies) {
-        columns += 1;
-    }
-
-    if (props.canManageProjects) {
-        columns += 1;
-    }
-
-    return columns;
-});
+const projectTableColspan = 5;
 
 const deleteDialogOpen = ref(false);
 const projectPendingDelete = ref<ProjectRow | null>(null);
@@ -217,10 +208,7 @@ const deleteProjectDescription = computed(() => {
                     <DataTableTh>Code</DataTableTh>
                     <DataTableTh>Client</DataTableTh>
                     <DataTableTh>Teams</DataTableTh>
-                    <DataTableTh>Requirements</DataTableTh>
-                    <DataTableTh>Tasks</DataTableTh>
-                    <DataTableTh v-if="can_view_case_studies">Case studies</DataTableTh>
-                    <DataTableTh v-if="canManageProjects" class="text-right">Actions</DataTableTh>
+                    <DataTableTh class="text-right">Actions</DataTableTh>
                 </tr>
             </thead>
             <tbody>
@@ -245,38 +233,48 @@ const deleteProjectDescription = computed(() => {
                     <DataTableTd label="Teams">
                         {{ project.teams_count }}
                     </DataTableTd>
-                    <DataTableTd label="Requirements">
-                        <TableIconAction
-                            variant="link"
-                            icon="eye"
-                            label="View requirements"
-                            :href="projectRequirementsIndex.url(project.id)"
-                        />
-                    </DataTableTd>
-                    <DataTableTd label="Tasks">
-                        <TableIconAction
-                            variant="link"
-                            icon="eye"
-                            label="View tasks"
-                            :href="projectTasksIndex.url(project.id)"
-                        />
-                    </DataTableTd>
-                    <DataTableTd v-if="can_view_case_studies" label="Case studies">
-                        <TableIconAction
-                            variant="link"
-                            icon="eye"
-                            label="View case studies"
-                            :href="projectCaseStudiesIndex.url(project.id)"
-                        />
-                    </DataTableTd>
-                    <DataTableTd v-if="canManageProjects" label="Actions" class="text-left md:text-right">
-                        <div class="flex gap-1 justify-start md:justify-end">
+                    <DataTableTd label="Actions" class="text-left md:text-right">
+                        <div class="flex flex-wrap gap-1 justify-start md:justify-end">
                             <TableIconAction
+                                icon="eye"
+                                label="View project"
+                                :href="projectsShow.url(project.id)"
+                            />
+                            <TableIconAction
+                                icon="file-text"
+                                label="Requirements"
+                                :href="projectRequirementsIndex.url(project.id)"
+                            />
+                            <TableIconAction
+                                icon="clipboard-list"
+                                label="Tasks"
+                                :href="projectTasksIndex.url(project.id)"
+                            />
+                            <TableIconAction
+                                v-if="can_view_case_studies"
+                                icon="book-open"
+                                label="Case studies"
+                                :href="projectCaseStudiesIndex.url(project.id)"
+                            />
+                            <TableIconAction
+                                v-if="can_view_notes"
+                                icon="list"
+                                label="Notes"
+                                :href="projectNotesIndex.url(project.id)"
+                            />
+                            <TableIconAction
+                                icon="key-round"
+                                label="Passwords"
+                                :href="projectPasswordsIndex.url(project.id)"
+                            />
+                            <TableIconAction
+                                v-if="canManageProjects"
                                 icon="pencil"
                                 label="Edit"
                                 :href="projectsEdit.url(project.id)"
                             />
                             <TableIconAction
+                                v-if="canManageProjects"
                                 icon="trash"
                                 label="Delete"
                                 destructive

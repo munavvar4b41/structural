@@ -8,7 +8,7 @@ use App\Models\User;
 class DashboardTaskPreferences
 {
     /**
-     * @return array{enabled: bool, statuses: list<string>, priorities: list<string>, project_ids: list<int>}
+     * @return array{enabled: bool, statuses: list<string>, tags: list<string>, project_ids: list<int>}
      */
     public function forUser(User $user): array
     {
@@ -26,20 +26,20 @@ class DashboardTaskPreferences
         return [
             'enabled' => array_key_exists('enabled', $stored) ? (bool) $stored['enabled'] : true,
             'statuses' => array_values(array_intersect($this->stringList($stored['statuses'] ?? []), $allowedStatuses)),
-            'priorities' => $this->stringList($stored['priorities'] ?? []),
+            'tags' => $this->stringList($stored['tags'] ?? $stored['priorities'] ?? []),
             'project_ids' => $this->intList($stored['project_ids'] ?? []),
         ];
     }
 
     /**
-     * @param  array{enabled: bool, statuses: list<string>, priorities: list<string>, project_ids: list<int>}  $preferences
+     * @param  array{enabled: bool, statuses: list<string>, tags: list<string>, project_ids: list<int>}  $preferences
      */
     public function store(User $user, array $preferences): void
     {
         $user->dashboard_task_preferences = [
             'enabled' => $preferences['enabled'],
             'statuses' => array_values($preferences['statuses']),
-            'priorities' => array_values($preferences['priorities']),
+            'tags' => array_values($preferences['tags']),
             'project_ids' => array_values($preferences['project_ids']),
         ];
 
@@ -47,14 +47,14 @@ class DashboardTaskPreferences
     }
 
     /**
-     * @return array{enabled: bool, statuses: list<string>, priorities: list<string>, project_ids: list<int>}
+     * @return array{enabled: bool, statuses: list<string>, tags: list<string>, project_ids: list<int>}
      */
     public function defaults(): array
     {
         return [
             'enabled' => true,
             'statuses' => [],
-            'priorities' => [],
+            'tags' => [],
             'project_ids' => [],
         ];
     }

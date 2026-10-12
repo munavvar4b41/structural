@@ -6,6 +6,7 @@ use App\Enums\ProjectTaskStatus;
 use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectTask;
+use App\Models\TaskTag;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -61,5 +62,12 @@ class ProjectTaskFactory extends Factory
             'project_requirement_id' => $parent->project_requirement_id,
             'parent_project_task_id' => $parent->id,
         ]);
+    }
+
+    public function withTags(TaskTag ...$tags): static
+    {
+        return $this->afterCreating(function (ProjectTask $task) use ($tags): void {
+            $task->tags()->attach(array_map(static fn (TaskTag $tag): int => $tag->id, $tags));
+        });
     }
 }

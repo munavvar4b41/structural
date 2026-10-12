@@ -2,15 +2,15 @@
 
 namespace Database\Factories;
 
-use App\Enums\TaskPriorityColor;
-use App\Enums\TaskPriorityShade;
-use App\Models\TaskPriority;
+use App\Enums\TaskTagColor;
+use App\Enums\TaskTagShade;
+use App\Models\TaskTag;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<TaskPriority>
+ * @extends Factory<TaskTag>
  */
-class TaskPriorityFactory extends Factory
+class TaskTagFactory extends Factory
 {
     /**
      * @return array<string, mixed>
@@ -19,8 +19,8 @@ class TaskPriorityFactory extends Factory
     {
         return [
             'name' => fake()->unique()->words(2, true),
-            'color' => fake()->randomElement(TaskPriorityColor::cases()),
-            'shade' => TaskPriorityShade::Light,
+            'color' => fake()->randomElement(TaskTagColor::cases()),
+            'shade' => TaskTagShade::Light,
             'sort_order' => fake()->numberBetween(0, 20),
         ];
     }

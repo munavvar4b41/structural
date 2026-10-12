@@ -18,16 +18,16 @@ class ProjectNoteTest extends TestCase
     {
         [$staff, $project] = $this->staffOnProject();
 
-        $this->actingAs($staff)
+        $response = $this->actingAs($staff)
             ->post(route('admin.projects.notes.store', $project), [
                 'title' => '  Kickoff ideas  ',
                 'body' => "  Capture the billing rules.\nAsk about tax.  ",
                 'created_by_user_id' => User::factory()->create()->id,
             ])
-            ->assertRedirect()
             ->assertSessionHas('toast');
 
         $note = ProjectNote::query()->where('project_id', $project->id)->firstOrFail();
+        $response->assertRedirect(route('admin.projects.notes.show', [$project, $note]));
         $this->assertSame('Kickoff ideas', $note->title);
         $this->assertSame("Capture the billing rules.\nAsk about tax.", $note->body);
         $this->assertSame($staff->id, $note->created_by_user_id);
@@ -38,10 +38,12 @@ class ProjectNoteTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('admin/projects/Show')
                 ->where('can_create_notes', true)
+                ->where('can_view_notes', true)
+                ->where('notes_total', 1)
                 ->has('notes', 1)
                 ->where('notes.0.id', $note->id)
                 ->where('notes.0.title', 'Kickoff ideas')
-                ->where('notes.0.body', "Capture the billing rules.\nAsk about tax.")
+                ->where('notes.0.body_preview', "Capture the billing rules.\nAsk about tax.")
                 ->where('notes.0.creator.id', $staff->id)
                 ->where('notes.0.creator.name', $staff->name)
                 ->where('notes.0.can_update', true)
@@ -63,7 +65,7 @@ class ProjectNoteTest extends TestCase
                 'title' => 'Revised',
                 'body' => 'Second draft.',
             ])
-            ->assertRedirect()
+            ->assertRedirect(route('admin.projects.notes.show', [$project, $note]))
             ->assertSessionHas('toast');
 
         $this->assertDatabaseHas('project_notes', [
@@ -75,7 +77,7 @@ class ProjectNoteTest extends TestCase
 
         $this->actingAs($staff)
             ->delete(route('admin.projects.notes.destroy', [$project, $note]))
-            ->assertRedirect()
+            ->assertRedirect(route('admin.projects.notes.index', $project))
             ->assertSessionHas('toast');
 
         $this->assertDatabaseMissing('project_notes', ['id' => $note->id]);
@@ -196,7 +198,25 @@ class ProjectNoteTest extends TestCase
             ->assertDontSee('Do not show this to the client.')
             ->assertInertia(fn (Assert $page) => $page
                 ->where('can_create_notes', false)
+                ->where('can_view_notes', false)
+                ->where('notes_total', 0)
                 ->has('notes', 0));
+
+        $this->actingAs($client)
+            ->get(route('admin.projects.notes.index', $project))
+            ->assertForbidden();
+
+        $this->actingAs($client)
+            ->get(route('admin.projects.notes.create', $project))
+            ->assertForbidden();
+
+        $this->actingAs($client)
+            ->get(route('admin.projects.notes.show', [$project, $note]))
+            ->assertForbidden();
+
+        $this->actingAs($client)
+            ->get(route('admin.projects.notes.edit', [$project, $note]))
+            ->assertForbidden();
 
         $this->actingAs($client)
             ->post(route('admin.projects.notes.store', $project), [
@@ -237,7 +257,146 @@ class ProjectNoteTest extends TestCase
             ])
             ->assertForbidden();
 
+        $this->actingAs($staff)
+            ->get(route('admin.projects.notes.index', $project))
+            ->assertForbidden();
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.notes.create', $project))
+            ->assertForbidden();
+
         $this->assertDatabaseCount('project_notes', 0);
+    }
+
+    public function test_staff_outside_the_project_cannot_view_a_note(): void
+    {
+        $staff = User::factory()->withPrimaryTeam(Team::factory()->create())->create();
+        $project = Project::factory()->create();
+        $project->teams()->sync([Team::factory()->create()->id]);
+        $note = ProjectNote::factory()->create(['project_id' => $project->id]);
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.notes.show', [$project, $note]))
+            ->assertForbidden();
+    }
+
+    public function test_index_lists_project_notes_with_search_and_pagination(): void
+    {
+        [$staff, $project] = $this->staffOnProject();
+        ProjectNote::factory()->count(16)->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $staff->id,
+            'title' => 'Routine note',
+            'body' => 'Nothing special.',
+        ]);
+        $match = ProjectNote::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $staff->id,
+            'title' => 'Payment gateway',
+            'body' => 'Use Stripe for invoices.',
+        ]);
+        ProjectNote::factory()->create(['title' => 'Payment elsewhere']);
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.notes.index', $project))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/projects/notes/Index')
+                ->where('project.id', $project->id)
+                ->where('can_create', true)
+                ->where('filters.search', '')
+                ->has('notes.data', 15)
+                ->where('notes.total', 17));
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.notes.index', [$project, 'search' => 'stripe']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.search', 'stripe')
+                ->has('notes.data', 1)
+                ->where('notes.data.0.id', $match->id)
+                ->where('notes.data.0.body_preview', 'Use Stripe for invoices.')
+                ->where('notes.data.0.can_update', true)
+                ->where('notes.data.0.can_delete', true));
+    }
+
+    public function test_create_show_and_edit_pages_render_for_the_author(): void
+    {
+        [$staff, $project] = $this->staffOnProject();
+        $note = ProjectNote::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $staff->id,
+            'title' => 'Release plan',
+            'body' => "Ship on Friday.\nNotify the client.",
+        ]);
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.notes.create', $project))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/projects/notes/Create')
+                ->where('project.id', $project->id));
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.notes.show', [$project, $note]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/projects/notes/Show')
+                ->where('note.id', $note->id)
+                ->where('note.title', 'Release plan')
+                ->where('note.body', "Ship on Friday.\nNotify the client.")
+                ->where('note.creator.id', $staff->id)
+                ->where('can_update', true)
+                ->where('can_delete', true));
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.notes.edit', [$project, $note]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/projects/notes/Edit')
+                ->where('note.id', $note->id)
+                ->where('note.title', 'Release plan')
+                ->where('note.body', "Ship on Friday.\nNotify the client."));
+    }
+
+    public function test_other_staff_can_view_but_not_edit_someone_elses_note(): void
+    {
+        $team = Team::factory()->create();
+        $author = User::factory()->withPrimaryTeam($team)->create();
+        $otherStaff = User::factory()->withPrimaryTeam($team)->create();
+        $project = Project::factory()->create();
+        $project->teams()->sync([$team->id]);
+        $note = ProjectNote::factory()->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $author->id,
+        ]);
+
+        $this->actingAs($otherStaff)
+            ->get(route('admin.projects.notes.show', [$project, $note]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('can_update', false)
+                ->where('can_delete', false));
+
+        $this->actingAs($otherStaff)
+            ->get(route('admin.projects.notes.edit', [$project, $note]))
+            ->assertForbidden();
+    }
+
+    public function test_project_show_page_caps_notes_at_the_list_limit(): void
+    {
+        [$staff, $project] = $this->staffOnProject();
+        ProjectNote::factory()->count(17)->create([
+            'project_id' => $project->id,
+            'created_by_user_id' => $staff->id,
+        ]);
+
+        $this->actingAs($staff)
+            ->get(route('admin.projects.show', $project))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('notes', 15)
+                ->where('notes_total', 17));
     }
 
     public function test_note_from_another_project_is_not_found(): void
@@ -255,6 +414,14 @@ class ProjectNoteTest extends TestCase
 
         $this->actingAs($admin)
             ->delete(route('admin.projects.notes.destroy', [$project, $otherNote]))
+            ->assertNotFound();
+
+        $this->actingAs($admin)
+            ->get(route('admin.projects.notes.show', [$project, $otherNote]))
+            ->assertNotFound();
+
+        $this->actingAs($admin)
+            ->get(route('admin.projects.notes.edit', [$project, $otherNote]))
             ->assertNotFound();
 
         $this->assertDatabaseHas('project_notes', ['id' => $otherNote->id]);

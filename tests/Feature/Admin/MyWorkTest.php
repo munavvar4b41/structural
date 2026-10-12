@@ -3,10 +3,10 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\ProjectTaskStatus;
-use App\Enums\TaskPriorityColor;
+use App\Enums\TaskTagColor;
 use App\Models\Project;
 use App\Models\ProjectTask;
-use App\Models\TaskPriority;
+use App\Models\TaskTag;
 use App\Models\TaskTimeEntry;
 use App\Models\Team;
 use App\Models\User;
@@ -376,7 +376,7 @@ class MyWorkTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_my_work_filters_by_priority_including_none(): void
+    public function test_my_work_filters_by_tags_including_none(): void
     {
         $team = Team::factory()->create();
         $head = User::factory()->teamHead()->withPrimaryTeam($team)->create();
@@ -384,17 +384,16 @@ class MyWorkTest extends TestCase
         $client = User::factory()->client()->create();
         $project = Project::factory()->create(['client_user_id' => $client->id]);
         $project->teams()->sync([$team->id]);
-        $high = TaskPriority::factory()->create([
+        $high = TaskTag::factory()->create([
             'name' => 'High',
-            'color' => TaskPriorityColor::Red,
+            'color' => TaskTagColor::Red,
         ]);
 
-        ProjectTask::factory()->forProject($project)->create([
+        ProjectTask::factory()->forProject($project)->withTags($high)->create([
             'created_by_user_id' => $head->id,
             'assignee_user_id' => $staff->id,
             'status' => ProjectTaskStatus::ToDo,
             'title' => 'Urgent task',
-            'task_priority_id' => $high->id,
         ]);
         ProjectTask::factory()->forProject($project)->create([
             'created_by_user_id' => $head->id,
@@ -407,19 +406,20 @@ class MyWorkTest extends TestCase
         $this->assertNotFalse($toDoIndex);
 
         $this->actingAs($staff)
-            ->get(route('admin.my-work.index', ['priority' => [$high->id]]))
+            ->get(route('admin.my-work.index', ['tags' => [$high->id]]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('columns.'.$toDoIndex.'.tasks', 1)
                 ->where('columns.'.$toDoIndex.'.tasks.0.title', 'Urgent task')
-                ->where('columns.'.$toDoIndex.'.tasks.0.priority.name', 'High'));
+                ->where('columns.'.$toDoIndex.'.tasks.0.tags.0.name', 'High')
+                ->where('filters.tags', [(string) $high->id]));
 
         $this->actingAs($staff)
-            ->get(route('admin.my-work.index', ['priority' => ['none']]))
+            ->get(route('admin.my-work.index', ['tags' => ['none']]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('columns.'.$toDoIndex.'.tasks', 1)
                 ->where('columns.'.$toDoIndex.'.tasks.0.title', 'Plain task')
-                ->where('columns.'.$toDoIndex.'.tasks.0.priority', null));
+                ->where('columns.'.$toDoIndex.'.tasks.0.tags', []));
     }
 }

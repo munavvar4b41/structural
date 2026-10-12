@@ -3,10 +3,10 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\ProjectTaskStatus;
-use App\Enums\TaskPriorityColor;
+use App\Enums\TaskTagColor;
 use App\Models\Project;
 use App\Models\ProjectTask;
-use App\Models\TaskPriority;
+use App\Models\TaskTag;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -187,21 +187,33 @@ class TaskIndexTest extends TestCase
         ]);
     }
 
-    public function test_global_tasks_index_filters_by_priority_including_none(): void
+    public function test_global_tasks_index_filters_by_tags_including_none(): void
     {
         extract($this->projectWithTeamHead());
-        $high = TaskPriority::factory()->create([
+        $high = TaskTag::factory()->create([
             'name' => 'High',
-            'color' => TaskPriorityColor::Amber,
+            'color' => TaskTagColor::Amber,
+            'sort_order' => 1,
         ]);
+        $backend = TaskTag::factory()->create(['name' => 'Backend', 'sort_order' => 2]);
+        $design = TaskTag::factory()->create(['name' => 'Design']);
 
         ProjectTask::factory()
             ->forProject($project)
+            ->withTags($high, $backend)
             ->create([
                 'created_by_user_id' => $head->id,
                 'status' => ProjectTaskStatus::ToDo,
                 'title' => 'Urgent task',
-                'task_priority_id' => $high->id,
+            ]);
+
+        ProjectTask::factory()
+            ->forProject($project)
+            ->withTags($design)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+                'title' => 'Design task',
             ]);
 
         $plain = ProjectTask::factory()
@@ -213,20 +225,34 @@ class TaskIndexTest extends TestCase
             ]);
 
         $this->actingAs($head)
-            ->get(route('admin.tasks.index', ['priority' => [$high->id]]))
+            ->get(route('admin.tasks.index', ['tags' => [$high->id]]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('tasks', 1)
                 ->where('tasks.0.title', 'Urgent task')
-                ->where('tasks.0.priority.name', 'High')
-                ->where('tasks.0.priority.color', TaskPriorityColor::Amber->value));
+                ->has('tasks.0.tags', 2)
+                ->where('tasks.0.tags.0.name', 'High')
+                ->where('tasks.0.tags.0.color', TaskTagColor::Amber->value)
+                ->where('tasks.0.tags.1.name', 'Backend'));
 
         $this->actingAs($head)
-            ->get(route('admin.tasks.index', ['priority' => ['none']]))
+            ->get(route('admin.tasks.index', ['tags' => [$backend->id, $design->id]]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('tasks', 2));
+
+        $this->actingAs($head)
+            ->get(route('admin.tasks.index', ['tags' => ['none']]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('tasks', 1)
                 ->where('tasks.0.id', $plain->id)
-                ->where('tasks.0.priority', null));
+                ->where('tasks.0.tags', []));
+
+        $this->actingAs($head)
+            ->get(route('admin.tasks.index', ['tags' => ['none', $design->id]]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('tasks', 2));
     }
 }

@@ -16,8 +16,8 @@ import FormSelect from '@/components/FormSelect.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
 import MyWorkSectionHeader from '@/components/my-work/MyWorkSectionHeader.vue';
 import TableIconAction from '@/components/TableIconAction.vue';
-import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge.vue';
-import type { TaskPriorityBadgeData } from '@/components/tasks/TaskPriorityBadge.vue';
+import TaskTagBadges from '@/components/tasks/TaskTagBadges.vue';
+import type { TaskTagBadgeData } from '@/components/tasks/TaskTagBadges.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
@@ -51,7 +51,7 @@ type TaskRow = {
     description: string | null;
     status: string;
     status_label: string;
-    priority: TaskPriorityBadgeData | null;
+    tags: TaskTagBadgeData[];
     assignee_user_id: number | null;
     assignee: UserBrief;
     project_requirement_id: number | null;
@@ -113,7 +113,7 @@ const props = defineProps<{
         status: string[];
         estimation_source: string;
         phase: string;
-        priority: string[];
+        tags: string[];
     };
     show_phase_filter: boolean;
     phase_filter_options: Option[];
@@ -124,7 +124,7 @@ const props = defineProps<{
     can_manage_project: boolean;
     can_filter_estimation_source: boolean;
     estimation_source_options: Option[];
-    priority_filter_options: Option[];
+    tag_filter_options: Option[];
 }>();
 
 const assigneeFilter = ref(props.filters.assignee_id);
@@ -253,7 +253,7 @@ function indexReturnOptions(): {
             assignee_id: explicitAssignee(props.filters.assignee_id),
             status: explicitStatus(props.filters.status),
             phase: props.filters.phase,
-            priority: props.filters.priority,
+            tags: props.filters.tags,
         }),
     };
 }
@@ -280,7 +280,7 @@ function reloadTasks(overrides: Record<string, unknown> = {}): void {
         status: props.filters.status,
         estimation_source: props.filters.estimation_source,
         phase: props.filters.phase,
-        priority: props.filters.priority,
+        tags: props.filters.tags,
         ...overrides,
     };
 
@@ -306,7 +306,7 @@ function reloadTasks(overrides: Record<string, unknown> = {}): void {
             'can_manage_project',
             'can_filter_estimation_source',
             'estimation_source_options',
-            'priority_filter_options',
+            'tag_filter_options',
             'project',
         ],
     );
@@ -356,8 +356,8 @@ function onStatusFilter(status: string[]): void {
     reloadTasks({ status });
 }
 
-function onPriorityFilter(priority: string[]): void {
-    reloadTasks({ priority });
+function onTagFilter(tags: string[]): void {
+    reloadTasks({ tags });
 }
 
 defineOptions({
@@ -702,17 +702,17 @@ onMounted(() => {
                             <div class="grid gap-1">
                                 <Label
                                     class="text-xs text-muted-foreground"
-                                    for="filter-priority"
-                                    >Priority</Label
+                                    for="filter-tags"
+                                    >Tags</Label
                                 >
                                 <FormMultiSelect
-                                    id="filter-priority"
-                                    :model-value="filters.priority"
-                                    :options="priority_filter_options"
-                                    placeholder="All priorities"
-                                    menu-label="Priorities"
+                                    id="filter-tags"
+                                    :model-value="filters.tags"
+                                    :options="tag_filter_options"
+                                    placeholder="All tags"
+                                    menu-label="Tags"
                                     class="min-w-[12rem]"
-                                    @update:model-value="onPriorityFilter"
+                                    @update:model-value="onTagFilter"
                                 />
                             </div>
                             <div
@@ -865,9 +865,9 @@ onMounted(() => {
                                             >
                                                 New task
                                             </span>
-                                            <TaskPriorityBadge
+                                            <TaskTagBadges
                                                 class="mb-1"
-                                                :priority="task.priority"
+                                                :tags="task.tags"
                                             />
                                             <Button
                                                 variant="link"

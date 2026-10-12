@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Enums\ProjectTaskStatus;
 use App\Models\Project;
 use App\Models\ProjectTask;
-use App\Models\TaskPriority;
+use App\Models\TaskTag;
 use App\Models\Team;
 use App\Models\User;
 use App\Support\DashboardTasksBuilder;
@@ -85,46 +85,49 @@ class DashboardTaskTest extends TestCase
                 ->has('dashboard_tasks.tasks', 2));
     }
 
-    public function test_status_priority_and_project_filters_narrow_dashboard_tasks(): void
+    public function test_status_tag_and_project_filters_narrow_dashboard_tasks(): void
     {
         ['head' => $head, 'staff' => $staff, 'project' => $project] = $this->staffProject();
         $otherProject = Project::factory()->create();
         $otherProject->teams()->sync([$staff->primary_team_id]);
-        $priority = TaskPriority::factory()->create(['name' => 'Urgent']);
+        $tag = TaskTag::factory()->create(['name' => 'Urgent']);
+        $otherTag = TaskTag::factory()->create(['name' => 'Later']);
 
-        ProjectTask::factory()->forProject($project)->create([
+        ProjectTask::factory()->forProject($project)->withTags($tag, $otherTag)->create([
             'created_by_user_id' => $head->id,
             'assignee_user_id' => $staff->id,
             'status' => ProjectTaskStatus::InProgress,
-            'task_priority_id' => $priority->id,
             'title' => 'Matching task',
         ]);
-        ProjectTask::factory()->forProject($project)->create([
+        ProjectTask::factory()->forProject($project)->withTags($tag)->create([
             'created_by_user_id' => $head->id,
             'assignee_user_id' => $staff->id,
             'status' => ProjectTaskStatus::ToDo,
-            'task_priority_id' => $priority->id,
             'title' => 'Wrong status',
+        ]);
+        ProjectTask::factory()->forProject($project)->withTags($otherTag)->create([
+            'created_by_user_id' => $head->id,
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::InProgress,
+            'title' => 'Other tag',
         ]);
         ProjectTask::factory()->forProject($project)->create([
             'created_by_user_id' => $head->id,
             'assignee_user_id' => $staff->id,
             'status' => ProjectTaskStatus::InProgress,
-            'task_priority_id' => null,
-            'title' => 'No priority',
+            'title' => 'No tags',
         ]);
-        ProjectTask::factory()->forProject($otherProject)->create([
+        ProjectTask::factory()->forProject($otherProject)->withTags($tag)->create([
             'created_by_user_id' => $head->id,
             'assignee_user_id' => $staff->id,
             'status' => ProjectTaskStatus::InProgress,
-            'task_priority_id' => $priority->id,
             'title' => 'Other project',
         ]);
 
         $staff->dashboard_task_preferences = [
             'enabled' => true,
             'statuses' => [ProjectTaskStatus::InProgress->value],
-            'priorities' => [(string) $priority->id],
+            'tags' => [(string) $tag->id],
             'project_ids' => [$project->id],
         ];
         $staff->save();
@@ -134,33 +137,32 @@ class DashboardTaskTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('dashboard_tasks.tasks', 1)
-                ->where('dashboard_tasks.tasks.0.title', 'Matching task'));
+                ->where('dashboard_tasks.tasks.0.title', 'Matching task')
+                ->has('dashboard_tasks.tasks.0.tags', 2));
     }
 
-    public function test_no_priority_filter_shows_tasks_without_a_priority(): void
+    public function test_legacy_priorities_preference_is_read_as_tags(): void
     {
         ['head' => $head, 'staff' => $staff, 'project' => $project] = $this->staffProject();
-        $priority = TaskPriority::factory()->create();
+        $tag = TaskTag::factory()->create();
 
-        ProjectTask::factory()->forProject($project)->create([
+        ProjectTask::factory()->forProject($project)->withTags($tag)->create([
             'created_by_user_id' => $head->id,
             'assignee_user_id' => $staff->id,
             'status' => ProjectTaskStatus::ToDo,
-            'task_priority_id' => null,
-            'title' => 'Unprioritized',
+            'title' => 'Tagged',
         ]);
         ProjectTask::factory()->forProject($project)->create([
             'created_by_user_id' => $head->id,
             'assignee_user_id' => $staff->id,
             'status' => ProjectTaskStatus::ToDo,
-            'task_priority_id' => $priority->id,
-            'title' => 'Prioritized',
+            'title' => 'Untagged',
         ]);
 
         $staff->dashboard_task_preferences = [
             'enabled' => true,
             'statuses' => [],
-            'priorities' => [TaskPriority::NONE_FILTER],
+            'priorities' => [(string) $tag->id],
             'project_ids' => [],
         ];
         $staff->save();
@@ -170,7 +172,41 @@ class DashboardTaskTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('dashboard_tasks.tasks', 1)
-                ->where('dashboard_tasks.tasks.0.title', 'Unprioritized'));
+                ->where('dashboard_tasks.tasks.0.title', 'Tagged'));
+    }
+
+    public function test_no_tags_filter_shows_tasks_without_tags(): void
+    {
+        ['head' => $head, 'staff' => $staff, 'project' => $project] = $this->staffProject();
+        $tag = TaskTag::factory()->create();
+
+        ProjectTask::factory()->forProject($project)->create([
+            'created_by_user_id' => $head->id,
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+            'title' => 'Untagged',
+        ]);
+        ProjectTask::factory()->forProject($project)->withTags($tag)->create([
+            'created_by_user_id' => $head->id,
+            'assignee_user_id' => $staff->id,
+            'status' => ProjectTaskStatus::ToDo,
+            'title' => 'Tagged',
+        ]);
+
+        $staff->dashboard_task_preferences = [
+            'enabled' => true,
+            'statuses' => [],
+            'tags' => [TaskTag::NONE_FILTER],
+            'project_ids' => [],
+        ];
+        $staff->save();
+
+        $this->actingAs($staff)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('dashboard_tasks.tasks', 1)
+                ->where('dashboard_tasks.tasks.0.title', 'Untagged'));
     }
 
     public function test_turning_dashboard_tasks_off_hides_them_for_that_user_only(): void
@@ -195,7 +231,7 @@ class DashboardTaskTest extends TestCase
             ->patch(route('dashboard-tasks.update'), [
                 'enabled' => false,
                 'statuses' => [ProjectTaskStatus::ToDo->value],
-                'priorities' => [],
+                'tags' => [],
                 'project_ids' => [$project->id],
             ])
             ->assertRedirect(route('dashboard-tasks.edit'));
@@ -244,7 +280,7 @@ class DashboardTaskTest extends TestCase
             ->patch(route('dashboard-tasks.update'), [
                 'enabled' => true,
                 'statuses' => [],
-                'priorities' => [],
+                'tags' => [],
                 'project_ids' => [$project->id, $hiddenProject->id],
             ])
             ->assertRedirect(route('dashboard-tasks.edit'));

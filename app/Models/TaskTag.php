@@ -2,21 +2,24 @@
 
 namespace App\Models;
 
-use App\Enums\TaskPriorityColor;
-use App\Enums\TaskPriorityShade;
-use Database\Factories\TaskPriorityFactory;
+use App\Enums\TaskTagColor;
+use App\Enums\TaskTagShade;
+use Database\Factories\TaskTagFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Collection;
 
 #[Fillable(['name', 'color', 'shade', 'sort_order'])]
-class TaskPriority extends Model
+class TaskTag extends Model
 {
-    /** @use HasFactory<TaskPriorityFactory> */
+    /** @use HasFactory<TaskTagFactory> */
     use HasFactory;
+
+    public const NONE_FILTER = 'none';
 
     /**
      * @return array<string, string>
@@ -24,23 +27,23 @@ class TaskPriority extends Model
     protected function casts(): array
     {
         return [
-            'color' => TaskPriorityColor::class,
-            'shade' => TaskPriorityShade::class,
+            'color' => TaskTagColor::class,
+            'shade' => TaskTagShade::class,
             'sort_order' => 'integer',
         ];
     }
 
     /**
-     * @return HasMany<ProjectTask, $this>
+     * @return BelongsToMany<ProjectTask, $this>
      */
-    public function tasks(): HasMany
+    public function tasks(): BelongsToMany
     {
-        return $this->hasMany(ProjectTask::class);
+        return $this->belongsToMany(ProjectTask::class, 'project_task_task_tag')->withTimestamps();
     }
 
     /**
-     * @param  EloquentBuilder<TaskPriority>  $query
-     * @return EloquentBuilder<TaskPriority>
+     * @param  EloquentBuilder<TaskTag>  $query
+     * @return EloquentBuilder<TaskTag>
      */
     public function scopeOrdered(EloquentBuilder $query): EloquentBuilder
     {
@@ -60,7 +63,36 @@ class TaskPriority extends Model
         ];
     }
 
-    public const NONE_FILTER = 'none';
+    /**
+     * @param  iterable<TaskTag>  $tags
+     * @return list<array{id: int, name: string, color: string, shade: string}>
+     */
+    public static function badgeList(iterable $tags): array
+    {
+        return Collection::make($tags)
+            ->map(static fn (self $tag): array => $tag->toBadgeArray())
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Drop blank entries (forms send an empty marker so "no tags" can be submitted).
+     */
+    public static function normalizeIdsInput(mixed $raw): mixed
+    {
+        if ($raw === null || $raw === '') {
+            return [];
+        }
+
+        if (! is_array($raw)) {
+            return $raw;
+        }
+
+        return array_values(array_filter(
+            $raw,
+            static fn (mixed $value): bool => $value !== null && $value !== '',
+        ));
+    }
 
     /**
      * @return list<array{value: string, label: string}>
@@ -70,9 +102,9 @@ class TaskPriority extends Model
         return self::query()
             ->ordered()
             ->get()
-            ->map(static fn (self $priority): array => [
-                'value' => (string) $priority->id,
-                'label' => $priority->name,
+            ->map(static fn (self $tag): array => [
+                'value' => (string) $tag->id,
+                'label' => $tag->name,
             ])
             ->all();
     }
@@ -83,7 +115,7 @@ class TaskPriority extends Model
     public static function filterOptions(): array
     {
         return [
-            ['value' => self::NONE_FILTER, 'label' => __('No priority')],
+            ['value' => self::NONE_FILTER, 'label' => __('No tags')],
             ...self::formOptions(),
         ];
     }
@@ -139,28 +171,33 @@ class TaskPriority extends Model
     }
 
     /**
+     * Restrict a project task query to tasks having any of the selected tags (or no tags at all).
+     *
      * @param  EloquentBuilder<ProjectTask>|QueryBuilder  $query
      * @param  array{ids: list<int>, include_none: bool}  $filter
      */
-    public static function applyFilter(EloquentBuilder|QueryBuilder $query, array $filter): void
+    public static function applyFilter(EloquentBuilder|QueryBuilder $query, array $filter, string $taskIdColumn = 'project_tasks.id'): void
     {
         if ($filter['ids'] === [] && ! $filter['include_none']) {
             return;
         }
 
-        $query->where(function (EloquentBuilder|QueryBuilder $query) use ($filter): void {
+        $query->where(function (EloquentBuilder|QueryBuilder $query) use ($filter, $taskIdColumn): void {
             if ($filter['ids'] !== []) {
-                $query->whereIn('task_priority_id', $filter['ids']);
+                $query->whereExists(function (QueryBuilder $sub) use ($filter, $taskIdColumn): void {
+                    $sub->selectRaw('1')
+                        ->from('project_task_task_tag')
+                        ->whereColumn('project_task_task_tag.project_task_id', $taskIdColumn)
+                        ->whereIn('project_task_task_tag.task_tag_id', $filter['ids']);
+                });
             }
 
-            if (! $filter['include_none']) {
-                return;
-            }
-
-            if ($filter['ids'] !== []) {
-                $query->orWhereNull('task_priority_id');
-            } else {
-                $query->whereNull('task_priority_id');
+            if ($filter['include_none']) {
+                $query->whereNotExists(function (QueryBuilder $sub) use ($taskIdColumn): void {
+                    $sub->selectRaw('1')
+                        ->from('project_task_task_tag')
+                        ->whereColumn('project_task_task_tag.project_task_id', $taskIdColumn);
+                }, $filter['ids'] !== [] ? 'or' : 'and');
             }
         });
     }

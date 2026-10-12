@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-enum TaskPriorityColor: string
+enum TaskTagColor: string
 {
     case Red = 'red';
     case Orange = 'orange';

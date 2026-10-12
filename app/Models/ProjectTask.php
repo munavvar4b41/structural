@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
@@ -18,7 +19,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'title',
     'description',
     'status',
-    'task_priority_id',
     'assignee_user_id',
     'created_by_user_id',
     'estimated_minutes',
@@ -77,9 +77,15 @@ class ProjectTask extends Model
         return $this->hasMany(ProjectTask::class, 'parent_project_task_id');
     }
 
-    public function priority(): BelongsTo
+    /**
+     * @return BelongsToMany<TaskTag, $this>
+     */
+    public function tags(): BelongsToMany
     {
-        return $this->belongsTo(TaskPriority::class, 'task_priority_id');
+        return $this->belongsToMany(TaskTag::class, 'project_task_task_tag')
+            ->withTimestamps()
+            ->orderBy('task_tags.sort_order')
+            ->orderBy('task_tags.name');
     }
 
     public function assignee(): BelongsTo

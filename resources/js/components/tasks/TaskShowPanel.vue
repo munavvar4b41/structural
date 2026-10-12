@@ -14,7 +14,7 @@ import FormSelect from '@/components/FormSelect.vue';
 import InputError from '@/components/InputError.vue';
 import RichTextViewer from '@/components/RichTextViewer.vue';
 import TableIconAction from '@/components/TableIconAction.vue';
-import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge.vue';
+import TaskTagBadges from '@/components/tasks/TaskTagBadges.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -879,9 +879,9 @@ function onChecklistAddSuccess(): void {
                     <span>{{ task.status_label }}</span>
                 </div>
                 <div class="grid gap-1">
-                    <span class="text-xs font-medium text-muted-foreground">Priority</span>
-                    <TaskPriorityBadge :priority="task.priority" />
-                    <span v-if="task.priority === null" class="text-muted-foreground">—</span>
+                    <span class="text-xs font-medium text-muted-foreground">Tags</span>
+                    <TaskTagBadges :tags="task.tags" />
+                    <span v-if="task.tags.length === 0" class="text-muted-foreground">—</span>
                 </div>
                 <div class="grid gap-1">
                     <span class="text-xs font-medium text-muted-foreground">Assignee</span>
@@ -1208,7 +1208,7 @@ function onChecklistAddSuccess(): void {
                                                 {{ sub.title }}
                                             </Link>
                                         </Button>
-                                        <TaskPriorityBadge class="mt-1" :priority="sub.priority" />
+                                        <TaskTagBadges class="mt-1" :tags="sub.tags" />
                                         <span v-if="sub.children_count > 0"
                                             class="mt-0.5 block text-xs text-muted-foreground">
                                             ({{ sub.children_count }} subtasks)

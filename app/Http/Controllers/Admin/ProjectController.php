@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\StoreProjectRequest;
 use App\Http\Requests\Admin\UpdateProjectRequest;
 use App\Models\CaseStudy;
 use App\Models\Project;
+use App\Models\ProjectNote;
 use App\Models\Team;
 use App\Models\User;
 use App\Support\ProjectShowPayloadBuilder;
@@ -151,6 +152,7 @@ class ProjectController extends Controller
             ],
             'show_lead_filter' => $actor->role->canViewAllProjects(),
             'can_view_case_studies' => $actor->can('viewAny', CaseStudy::class),
+            'can_view_notes' => $actor->can('viewAny', ProjectNote::class),
         ]);
     }
 

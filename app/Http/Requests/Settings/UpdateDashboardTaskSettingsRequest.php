@@ -4,7 +4,7 @@ namespace App\Http\Requests\Settings;
 
 use App\Enums\ProjectTaskStatus;
 use App\Models\Project;
-use App\Models\TaskPriority;
+use App\Models\TaskTag;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -20,15 +20,15 @@ class UpdateDashboardTaskSettingsRequest extends FormRequest
             'enabled' => ['required', 'boolean'],
             'statuses' => ['sometimes', 'array'],
             'statuses.*' => ['string', Rule::enum(ProjectTaskStatus::class)],
-            'priorities' => ['sometimes', 'array'],
-            'priorities.*' => ['string'],
+            'tags' => ['sometimes', 'array'],
+            'tags.*' => ['string'],
             'project_ids' => ['sometimes', 'array'],
             'project_ids.*' => ['integer'],
         ];
     }
 
     /**
-     * @return array{enabled: bool, statuses: list<string>, priorities: list<string>, project_ids: list<int>}
+     * @return array{enabled: bool, statuses: list<string>, tags: list<string>, project_ids: list<int>}
      */
     public function preferences(): array
     {
@@ -57,7 +57,7 @@ class UpdateDashboardTaskSettingsRequest extends FormRequest
         return [
             'enabled' => $this->boolean('enabled'),
             'statuses' => $statuses,
-            'priorities' => TaskPriority::filterValues(TaskPriority::parseFilter($validated['priorities'] ?? [])),
+            'tags' => TaskTag::filterValues(TaskTag::parseFilter($validated['tags'] ?? [])),
             'project_ids' => array_values(array_unique($visibleProjectIds)),
         ];
     }

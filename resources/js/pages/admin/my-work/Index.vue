@@ -16,8 +16,8 @@ import FormSelect from '@/components/FormSelect.vue';
 import MyWorkSectionHeader from '@/components/my-work/MyWorkSectionHeader.vue';
 import MyWorkTaskCard from '@/components/my-work/MyWorkTaskCard.vue';
 import type { MyWorkTaskCardData } from '@/components/my-work/MyWorkTaskCard.vue';
-import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge.vue';
 import TaskShowPanel from '@/components/tasks/TaskShowPanel.vue';
+import TaskTagBadges from '@/components/tasks/TaskTagBadges.vue';
 import TaskTimerButton from '@/components/TaskTimerButton.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -67,8 +67,8 @@ const props = defineProps<{
     columns: Column[];
     status_options: StatusOption[];
     project_options: ProjectOption[];
-    priority_filter_options: StatusOption[];
-    filters: { project_id: number | null; priority: string[] };
+    tag_filter_options: StatusOption[];
+    filters: { project_id: number | null; tags: string[] };
     task_preview?: TaskShowPayload | null;
 }>();
 
@@ -217,8 +217,8 @@ function boardQuery(extra: Record<string, string | number | string[]> = {}): Rec
         query.project_id = props.filters.project_id;
     }
 
-    if (props.filters.priority.length > 0 && !('priority' in query)) {
-        query.priority = props.filters.priority;
+    if (props.filters.tags.length > 0 && !('tags' in query)) {
+        query.tags = props.filters.tags;
     }
 
     const url = new URL(page.url, window.location.origin);
@@ -284,32 +284,32 @@ function applyProjectFilter(value: string): void {
         query.project_id = Number(value);
     }
 
-    if (props.filters.priority.length > 0) {
-        query.priority = props.filters.priority;
+    if (props.filters.tags.length > 0) {
+        query.tags = props.filters.tags;
     }
 
     router.get(myWorkIndex.url(), query, {
         preserveState: true,
         preserveScroll: true,
-        only: ['columns', 'filters', 'project_options', 'priority_filter_options'],
+        only: ['columns', 'filters', 'project_options', 'tag_filter_options'],
     });
 }
 
-function applyPriorityFilter(priority: string[]): void {
+function applyTagFilter(tags: string[]): void {
     const query: Record<string, string | number | string[]> = {};
 
     if (projectValue.value !== '') {
         query.project_id = Number(projectValue.value);
     }
 
-    if (priority.length > 0) {
-        query.priority = priority;
+    if (tags.length > 0) {
+        query.tags = tags;
     }
 
     router.get(myWorkIndex.url(), query, {
         preserveState: true,
         preserveScroll: true,
-        only: ['columns', 'filters', 'project_options', 'priority_filter_options'],
+        only: ['columns', 'filters', 'project_options', 'tag_filter_options'],
     });
 }
 
@@ -522,12 +522,12 @@ onMounted(() => {
                     none-label="All projects" exclude-from-submit @update:model-value="applyProjectFilter" />
             </div>
             <div class="grid gap-1">
-                <Label class="text-xs text-muted-foreground" for="my-work-priority-filter">
-                    Priority
+                <Label class="text-xs text-muted-foreground" for="my-work-tags-filter">
+                    Tags
                 </Label>
-                <FormMultiSelect id="my-work-priority-filter" :model-value="filters.priority"
-                    :options="priority_filter_options" placeholder="All priorities" menu-label="Priorities"
-                    class="min-w-[12rem]" @update:model-value="applyPriorityFilter" />
+                <FormMultiSelect id="my-work-tags-filter" :model-value="filters.tags"
+                    :options="tag_filter_options" placeholder="All tags" menu-label="Tags"
+                    class="min-w-[12rem]" @update:model-value="applyTagFilter" />
             </div>
 
             <div class="inline-flex rounded-lg border border-border/80 bg-muted/30 p-0.5" role="group"
@@ -589,7 +589,7 @@ onMounted(() => {
                                         @click="openTaskPreview(task)">
                                         {{ task.title }}
                                     </button>
-                                    <TaskPriorityBadge class="mt-1" :priority="task.priority" />
+                                    <TaskTagBadges class="mt-1" :tags="task.tags" />
                                 </DataTableTd>
                                 <DataTableTd label="Project" class="align-top text-muted-foreground">
                                     {{ task.project.name }}
