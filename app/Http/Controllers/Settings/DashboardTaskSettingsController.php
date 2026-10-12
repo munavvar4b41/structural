@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\UpdateDashboardTaskSettingsRequest;
-use App\Models\TaskPriority;
+use App\Models\TaskTag;
 use App\Support\DashboardTaskPreferences;
 use App\Support\DashboardTasksBuilder;
 use Illuminate\Http\RedirectResponse;
@@ -35,11 +35,11 @@ class DashboardTaskSettingsController extends Controller
             'preferences' => [
                 'enabled' => $stored['enabled'],
                 'statuses' => $stored['statuses'],
-                'priorities' => TaskPriority::filterValues(TaskPriority::parseFilter($stored['priorities'])),
+                'tags' => TaskTag::filterValues(TaskTag::parseFilter($stored['tags'])),
                 'project_ids' => array_values(array_intersect($storedProjectIds, $visibleProjectIds)),
             ],
             'status_options' => $tasks->statusOptions(),
-            'priority_options' => TaskPriority::filterOptions(),
+            'tag_options' => TaskTag::filterOptions(),
             'project_options' => $projectOptions,
         ]);
     }

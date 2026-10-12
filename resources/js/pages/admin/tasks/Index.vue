@@ -8,8 +8,8 @@ import TableRow from '@/components/dashboard/TableRow.vue';
 import FormMultiSelect from '@/components/FormMultiSelect.vue';
 import FormSelect from '@/components/FormSelect.vue';
 import ListToolbar from '@/components/ListToolbar.vue';
-import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge.vue';
-import type { TaskPriorityBadgeData } from '@/components/tasks/TaskPriorityBadge.vue';
+import TaskTagBadges from '@/components/tasks/TaskTagBadges.vue';
+import type { TaskTagBadgeData } from '@/components/tasks/TaskTagBadges.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { routerReloadOnly, stripFilterParams } from '@/composables/useServerFilters';
@@ -45,7 +45,7 @@ type TaskRow = {
     description: string | null;
     status: string;
     status_label: string;
-    priority: TaskPriorityBadgeData | null;
+    tags: TaskTagBadgeData[];
     assignee_user_id: number | null;
     assignee: UserBrief;
     project_requirement_id: number | null;
@@ -76,10 +76,10 @@ const props = defineProps<{
         search: string;
         assignee_id: string;
         status: string[];
-        priority: string[];
+        tags: string[];
     };
     status_options: { value: string; label: string }[];
-    priority_filter_options: { value: string; label: string }[];
+    tag_filter_options: { value: string; label: string }[];
     assignable_users: Option[];
     requirements: Option[];
     parent_tasks: Option[];
@@ -117,7 +117,7 @@ function reloadTasks(overrides: Record<string, unknown> = {}): void {
                 search: props.filters.search,
                 assignee_id: props.filters.assignee_id,
                 status: props.filters.status,
-                priority: props.filters.priority,
+                tags: props.filters.tags,
                 ...overrides,
             }),
         }),
@@ -128,7 +128,7 @@ function reloadTasks(overrides: Record<string, unknown> = {}): void {
             'task_filter',
             'filters',
             'status_options',
-            'priority_filter_options',
+            'tag_filter_options',
             'assignable_users',
             'requirements',
             'parent_tasks',
@@ -153,8 +153,8 @@ function onStatusFilter(status: string[]): void {
     reloadTasks({ status });
 }
 
-function onPriorityFilter(priority: string[]): void {
-    reloadTasks({ priority });
+function onTagFilter(tags: string[]): void {
+    reloadTasks({ tags });
 }
 
 function setFilter(filter: string): void {
@@ -229,10 +229,10 @@ function formatProjectLabel(task: TaskRow): string {
                             @update:model-value="onStatusFilter" />
                     </div>
                     <div class="grid gap-1">
-                        <Label class="text-xs text-muted-foreground" for="filter-priority">Priority</Label>
-                        <FormMultiSelect id="filter-priority" :model-value="filters.priority"
-                            :options="priority_filter_options" placeholder="All priorities" menu-label="Priorities"
-                            class="min-w-[12rem]" @update:model-value="onPriorityFilter" />
+                        <Label class="text-xs text-muted-foreground" for="filter-tags">Tags</Label>
+                        <FormMultiSelect id="filter-tags" :model-value="filters.tags"
+                            :options="tag_filter_options" placeholder="All tags" menu-label="Tags"
+                            class="min-w-[12rem]" @update:model-value="onTagFilter" />
                     </div>
                 </div>
             </template>
@@ -272,7 +272,7 @@ function formatProjectLabel(task: TaskRow): string {
                                             {{ task.title }}
                                         </Link>
                                     </Button>
-                                    <TaskPriorityBadge class="mt-1" :priority="task.priority" />
+                                    <TaskTagBadges class="mt-1" :tags="task.tags" />
                                 </div>
                             </div>
                         </td>

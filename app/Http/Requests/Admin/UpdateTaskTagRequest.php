@@ -2,25 +2,25 @@
 
 namespace App\Http\Requests\Admin;
 
-use App\Enums\TaskPriorityColor;
-use App\Enums\TaskPriorityShade;
-use App\Models\TaskPriority;
+use App\Enums\TaskTagColor;
+use App\Enums\TaskTagShade;
+use App\Models\TaskTag;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class UpdateTaskPriorityRequest extends FormRequest
+class UpdateTaskTagRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        /** @var TaskPriority|null $taskPriority */
-        $taskPriority = $this->route('task_priority');
+        /** @var TaskTag|null $taskTag */
+        $taskTag = $this->route('task_tag');
 
-        if (! $taskPriority instanceof TaskPriority) {
+        if (! $taskTag instanceof TaskTag) {
             return false;
         }
 
-        return $this->user()?->can('update', $taskPriority) ?? false;
+        return $this->user()?->can('update', $taskTag) ?? false;
     }
 
     /**
@@ -28,13 +28,13 @@ class UpdateTaskPriorityRequest extends FormRequest
      */
     public function rules(): array
     {
-        /** @var TaskPriority $taskPriority */
-        $taskPriority = $this->route('task_priority');
+        /** @var TaskTag $taskTag */
+        $taskTag = $this->route('task_tag');
 
         return [
-            'name' => ['required', 'string', 'max:255', Rule::unique(TaskPriority::class)->ignore($taskPriority->id)],
-            'color' => ['required', Rule::enum(TaskPriorityColor::class)],
-            'shade' => ['required', Rule::enum(TaskPriorityShade::class)],
+            'name' => ['required', 'string', 'max:255', Rule::unique(TaskTag::class)->ignore($taskTag->id)],
+            'color' => ['required', Rule::enum(TaskTagColor::class)],
+            'shade' => ['required', Rule::enum(TaskTagShade::class)],
             'sort_order' => ['required', 'integer', 'min:0', 'max:65535'],
         ];
     }

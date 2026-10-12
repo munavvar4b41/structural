@@ -15,11 +15,11 @@ const props = defineProps<{
     preferences: {
         enabled: boolean;
         statuses: string[];
-        priorities: string[];
+        tags: string[];
         project_ids: string[];
     };
     status_options: Option[];
-    priority_options: Option[];
+    tag_options: Option[];
     project_options: Option[];
 }>();
 
@@ -36,7 +36,7 @@ defineOptions({
 
 const enabled = ref(props.preferences.enabled);
 const statuses = ref<string[]>([...props.preferences.statuses]);
-const priorities = ref<string[]>([...props.preferences.priorities]);
+const tags = ref<string[]>([...props.preferences.tags]);
 const projectIds = ref<string[]>([...props.preferences.project_ids]);
 
 function fieldError(
@@ -96,18 +96,18 @@ function fieldError(
             </FormField>
 
             <FormField
-                label="Priority"
-                html-for="dashboard-task-priorities"
-                :error="fieldError(errors, 'priorities')"
-                hint="Leave empty to include every priority."
+                label="Tags"
+                html-for="dashboard-task-tags"
+                :error="fieldError(errors, 'tags')"
+                hint="Leave empty to include every tag. Tasks with any selected tag are shown."
             >
                 <FormMultiSelect
-                    id="dashboard-task-priorities"
-                    name="priorities"
-                    v-model="priorities"
-                    :options="priority_options"
-                    placeholder="All priorities"
-                    menu-label="Priorities"
+                    id="dashboard-task-tags"
+                    name="tags"
+                    v-model="tags"
+                    :options="tag_options"
+                    placeholder="All tags"
+                    menu-label="Tags"
                 />
             </FormField>
 

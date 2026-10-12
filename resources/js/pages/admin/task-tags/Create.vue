@@ -1,59 +1,59 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
-import TaskPriorityController from '@/actions/App/Http/Controllers/Admin/TaskPriorityController';
+import TaskTagController from '@/actions/App/Http/Controllers/Admin/TaskTagController';
 import FormField from '@/components/dashboard/FormField.vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import FormSelect from '@/components/FormSelect.vue';
-import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge.vue';
-import type { TaskPriorityColor, TaskPriorityShade } from '@/components/tasks/TaskPriorityBadge.vue';
+import TaskTagBadges from '@/components/tasks/TaskTagBadges.vue';
+import type { TaskTagColor, TaskTagShade } from '@/components/tasks/TaskTagBadges.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-    create as taskPrioritiesCreate,
-    index as taskPrioritiesIndex,
-} from '@/routes/admin/task-priorities/index';
+    create as taskTagsCreate,
+    index as taskTagsIndex,
+} from '@/routes/admin/task-tags/index';
 
 type ColorOption = {
-    value: TaskPriorityColor;
+    value: TaskTagColor;
     label: string;
 };
 
 defineProps<{
     color_options: ColorOption[];
-    shade_options: { value: TaskPriorityShade; label: string }[];
+    shade_options: { value: TaskTagShade; label: string }[];
 }>();
 
 const name = ref('');
 const color = ref<ColorOption['value'] | ''>('');
-const shade = ref<TaskPriorityShade>('light');
+const shade = ref<TaskTagShade>('light');
 const sortOrder = ref('0');
 
 defineOptions({
     layout: {
         breadcrumbs: [
-            { title: 'Task priorities', href: taskPrioritiesIndex() },
-            { title: 'Add priority', href: taskPrioritiesCreate() },
+            { title: 'Task tags', href: taskTagsIndex() },
+            { title: 'Add tag', href: taskTagsCreate() },
         ],
     },
 });
 </script>
 
 <template>
-    <Head title="Add priority" />
+    <Head title="Add tag" />
 
     <div class="flex flex-col gap-8">
-        <PageHeader title="Add priority" description="Create a badge used on task listings" />
+        <PageHeader title="Add tag" description="Create a badge used on task listings" />
 
         <Form
-            v-bind="TaskPriorityController.store.form()"
+            v-bind="TaskTagController.store.form()"
             class="flex max-w-xl flex-col gap-8"
             v-slot="{ errors, processing }"
         >
             <GlassCard class="p-6">
                 <div class="mb-6 space-y-1">
-                    <h2 class="text-lg font-semibold">Priority details</h2>
+                    <h2 class="text-lg font-semibold">Tag details</h2>
                     <p class="text-sm text-muted-foreground">
                         Name, an allowed color, and the order it appears in filters
                     </p>
@@ -94,15 +94,15 @@ defineOptions({
                     </FormField>
                     <div v-if="name.trim() !== '' && color !== ''" class="flex items-center gap-3">
                         <span class="text-sm text-muted-foreground">Preview</span>
-                        <TaskPriorityBadge :priority="{ id: 0, name: name.trim(), color, shade }" />
+                        <TaskTagBadges :tags="[{ id: 0, name: name.trim(), color, shade }]" />
                     </div>
                 </div>
             </GlassCard>
 
             <div class="flex items-center gap-4">
-                <Button type="submit" :disabled="processing">Create priority</Button>
+                <Button type="submit" :disabled="processing">Create tag</Button>
                 <Button variant="outline" as-child>
-                    <Link :href="taskPrioritiesIndex()">Cancel</Link>
+                    <Link :href="taskTagsIndex()">Cancel</Link>
                 </Button>
             </div>
         </Form>

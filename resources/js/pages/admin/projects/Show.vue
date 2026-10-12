@@ -19,8 +19,8 @@ import FormSelect from '@/components/FormSelect.vue';
 import InputError from '@/components/InputError.vue';
 import RichTextEditor from '@/components/RichTextEditor.vue';
 import TableIconAction from '@/components/TableIconAction.vue';
-import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge.vue';
-import type { TaskPriorityBadgeData } from '@/components/tasks/TaskPriorityBadge.vue';
+import TaskTagBadges from '@/components/tasks/TaskTagBadges.vue';
+import type { TaskTagBadgeData } from '@/components/tasks/TaskTagBadges.vue';
 import TypeaheadInput from '@/components/TypeaheadInput.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -138,7 +138,7 @@ type TaskRow = {
     description: string | null;
     status: string;
     status_label: string;
-    priority: TaskPriorityBadgeData | null;
+    tags: TaskTagBadgeData[];
     assignee_user_id: number | null;
     assignee: UserBrief;
     project_requirement_id: number | null;
@@ -895,7 +895,7 @@ watch(timeEntryOpen, (open) => {
                                 <CornerDownRight v-if="row.tree_depth > 0"
                                     class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                                 <span>{{ row.title }}</span>
-                                <TaskPriorityBadge :priority="row.priority" />
+                                <TaskTagBadges :tags="row.tags" />
                             </div>
                             <p v-if="row.requirement_title" class="mt-1 text-xs text-muted-foreground">
                                 {{ row.requirement_title }}

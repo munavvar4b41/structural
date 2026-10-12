@@ -11,8 +11,8 @@ import { computed } from 'vue';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
 import StatCard from '@/components/dashboard/StatCard.vue';
-import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge.vue';
-import type { TaskPriorityBadgeData } from '@/components/tasks/TaskPriorityBadge.vue';
+import TaskTagBadges from '@/components/tasks/TaskTagBadges.vue';
+import type { TaskTagBadgeData } from '@/components/tasks/TaskTagBadges.vue';
 import { dashboard } from '@/routes';
 import { index as adminMyWorkIndex } from '@/routes/admin/my-work/index';
 import { index as adminProjectsIndex } from '@/routes/admin/projects/index';
@@ -25,7 +25,7 @@ type DashboardTask = {
     title: string;
     status: string;
     status_label: string;
-    priority: TaskPriorityBadgeData | null;
+    tags: TaskTagBadgeData[];
     project: { id: number; name: string; code: string | null };
     task_show_url: string;
 };
@@ -173,7 +173,7 @@ const quickLinks = computed(() => {
                                 · {{ task.status_label }}
                             </p>
                         </div>
-                        <TaskPriorityBadge :priority="task.priority" />
+                        <TaskTagBadges :tags="task.tags" />
                     </GlassCard>
                 </Link>
 

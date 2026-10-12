@@ -2,29 +2,29 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\TaskPriorityColor;
-use App\Enums\TaskPriorityShade;
+use App\Enums\TaskTagColor;
+use App\Enums\TaskTagShade;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreTaskPriorityRequest;
-use App\Http\Requests\Admin\UpdateTaskPriorityRequest;
-use App\Models\TaskPriority;
+use App\Http\Requests\Admin\StoreTaskTagRequest;
+use App\Http\Requests\Admin\UpdateTaskTagRequest;
+use App\Models\TaskTag;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class TaskPriorityController extends Controller
+class TaskTagController extends Controller
 {
     use AuthorizesRequests;
 
     public function index(Request $request): Response
     {
-        $this->authorize('viewAny', TaskPriority::class);
+        $this->authorize('viewAny', TaskTag::class);
 
         $search = trim((string) $request->query('search', ''));
 
-        $priorities = TaskPriority::query()
+        $tags = TaskTag::query()
             ->withCount('tasks')
             ->when($search !== '', static function ($query) use ($search): void {
                 $term = '%'.addcslashes($search, '%_\\').'%';
@@ -33,17 +33,17 @@ class TaskPriorityController extends Controller
             ->ordered()
             ->paginate(15)
             ->withQueryString()
-            ->through(static fn (TaskPriority $priority): array => [
-                'id' => $priority->id,
-                'name' => $priority->name,
-                'color' => $priority->color->value,
-                'shade' => $priority->shade->value,
-                'sort_order' => $priority->sort_order,
-                'tasks_count' => $priority->tasks_count,
+            ->through(static fn (TaskTag $tag): array => [
+                'id' => $tag->id,
+                'name' => $tag->name,
+                'color' => $tag->color->value,
+                'shade' => $tag->shade->value,
+                'sort_order' => $tag->sort_order,
+                'tasks_count' => $tag->tasks_count,
             ]);
 
-        return Inertia::render('admin/task-priorities/Index', [
-            'priorities' => $priorities,
+        return Inertia::render('admin/task-tags/Index', [
+            'tags' => $tags,
             'filters' => [
                 'search' => $search,
             ],
@@ -52,57 +52,57 @@ class TaskPriorityController extends Controller
 
     public function create(): Response
     {
-        $this->authorize('create', TaskPriority::class);
+        $this->authorize('create', TaskTag::class);
 
-        return Inertia::render('admin/task-priorities/Create', [
-            'color_options' => TaskPriorityColor::options(),
-            'shade_options' => TaskPriorityShade::options(),
+        return Inertia::render('admin/task-tags/Create', [
+            'color_options' => TaskTagColor::options(),
+            'shade_options' => TaskTagShade::options(),
         ]);
     }
 
-    public function store(StoreTaskPriorityRequest $request): RedirectResponse
+    public function store(StoreTaskTagRequest $request): RedirectResponse
     {
-        TaskPriority::query()->create($request->validated());
+        TaskTag::query()->create($request->validated());
 
-        return to_route('admin.task-priorities.index')->with('toast', 'Priority created.');
+        return to_route('admin.task-tags.index')->with('toast', 'Tag created.');
     }
 
-    public function edit(TaskPriority $taskPriority): Response
+    public function edit(TaskTag $taskTag): Response
     {
-        $this->authorize('update', $taskPriority);
+        $this->authorize('update', $taskTag);
 
-        return Inertia::render('admin/task-priorities/Edit', [
-            'priority' => [
-                'id' => $taskPriority->id,
-                'name' => $taskPriority->name,
-                'color' => $taskPriority->color->value,
-                'shade' => $taskPriority->shade->value,
-                'sort_order' => $taskPriority->sort_order,
+        return Inertia::render('admin/task-tags/Edit', [
+            'tag' => [
+                'id' => $taskTag->id,
+                'name' => $taskTag->name,
+                'color' => $taskTag->color->value,
+                'shade' => $taskTag->shade->value,
+                'sort_order' => $taskTag->sort_order,
             ],
-            'color_options' => TaskPriorityColor::options(),
-            'shade_options' => TaskPriorityShade::options(),
+            'color_options' => TaskTagColor::options(),
+            'shade_options' => TaskTagShade::options(),
         ]);
     }
 
-    public function update(UpdateTaskPriorityRequest $request, TaskPriority $taskPriority): RedirectResponse
+    public function update(UpdateTaskTagRequest $request, TaskTag $taskTag): RedirectResponse
     {
-        $taskPriority->update($request->validated());
+        $taskTag->update($request->validated());
 
-        return to_route('admin.task-priorities.index')->with('toast', 'Priority updated.');
+        return to_route('admin.task-tags.index')->with('toast', 'Tag updated.');
     }
 
-    public function destroy(TaskPriority $taskPriority): RedirectResponse
+    public function destroy(TaskTag $taskTag): RedirectResponse
     {
-        $this->authorize('delete', $taskPriority);
+        $this->authorize('delete', $taskTag);
 
-        if ($taskPriority->tasks()->exists()) {
+        if ($taskTag->tasks()->exists()) {
             return back()->withErrors([
-                'priority' => __('This priority cannot be deleted because tasks still use it.'),
+                'tag' => __('This tag cannot be deleted because tasks still use it.'),
             ]);
         }
 
-        $taskPriority->delete();
+        $taskTag->delete();
 
-        return to_route('admin.task-priorities.index')->with('toast', 'Priority deleted.');
+        return to_route('admin.task-tags.index')->with('toast', 'Tag deleted.');
     }
 }

@@ -42,9 +42,9 @@ import { index as adminMyWorkIndex } from '@/routes/admin/my-work/index';
 import { index as adminProjectsIndex } from '@/routes/admin/projects/index';
 import { index as adminProposalsIndex } from '@/routes/admin/proposals/index';
 import { index as adminRequirementsIndex } from '@/routes/admin/requirements/index';
-import { index as adminTaskPrioritiesIndex } from '@/routes/admin/task-priorities/index';
 import { index as adminTaskRatingsReportIndex } from '@/routes/admin/task-ratings-report/index';
 import { index as adminTaskReviewsIndex } from '@/routes/admin/task-reviews/index';
+import { index as adminTaskTagsIndex } from '@/routes/admin/task-tags/index';
 import { index as adminTasksIndex } from '@/routes/admin/tasks/index';
 import { index as adminTeamsIndex } from '@/routes/admin/teams/index';
 import { index as adminTimeReportIndex } from '@/routes/admin/time-report/index';
@@ -247,8 +247,8 @@ const navGroups = computed((): NavGroup[] => {
                 activeMatch: 'prefix',
             },
             {
-                title: 'Task priorities',
-                href: adminTaskPrioritiesIndex(),
+                title: 'Task tags',
+                href: adminTaskTagsIndex(),
                 icon: Tags,
                 activeMatch: 'prefix',
             },

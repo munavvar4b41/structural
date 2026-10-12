@@ -3,11 +3,11 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\ProjectTaskStatus;
-use App\Enums\TaskPriorityColor;
+use App\Enums\TaskTagColor;
 use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectTask;
-use App\Models\TaskPriority;
+use App\Models\TaskTag;
 use App\Models\TaskTimeEntry;
 use App\Models\Team;
 use App\Models\User;
@@ -1097,59 +1097,161 @@ class ProjectTaskTest extends TestCase
                 ->where('tasks.0.phase', 1));
     }
 
-    public function test_team_head_can_store_task_with_priority(): void
+    public function test_team_head_can_store_task_with_multiple_tags(): void
     {
         extract($this->projectWithTeamHead());
-        $priority = TaskPriority::factory()->create([
-            'name' => 'High',
-            'color' => TaskPriorityColor::Red,
-        ]);
+        $urgent = TaskTag::factory()->create(['name' => 'Urgent', 'color' => TaskTagColor::Red]);
+        $backend = TaskTag::factory()->create(['name' => 'Backend', 'color' => TaskTagColor::Blue]);
 
         $this->actingAs($head)
             ->from(route('admin.projects.tasks.index', $project))
             ->post(route('admin.projects.tasks.store', $project), [
-                'title' => 'Urgent task',
+                'title' => 'Tagged task',
                 'description' => null,
                 'status' => ProjectTaskStatus::ToDo->value,
-                'task_priority_id' => $priority->id,
+                'task_tag_ids' => ['', (string) $urgent->id, (string) $backend->id],
                 'assignee_user_id' => null,
                 'project_requirement_id' => null,
                 'parent_project_task_id' => null,
                 'estimated_minutes' => null,
             ])
+            ->assertSessionHasNoErrors()
             ->assertRedirect(route('admin.projects.tasks.index', $project));
 
-        $this->assertDatabaseHas('project_tasks', [
-            'project_id' => $project->id,
-            'title' => 'Urgent task',
-            'task_priority_id' => $priority->id,
-        ]);
+        $task = ProjectTask::query()->where('title', 'Tagged task')->firstOrFail();
+
+        $this->assertEqualsCanonicalizing(
+            [$urgent->id, $backend->id],
+            $task->tags()->pluck('task_tags.id')->all(),
+        );
     }
 
-    public function test_store_rejects_unknown_priority(): void
+    public function test_store_without_tags_creates_untagged_task(): void
     {
         extract($this->projectWithTeamHead());
 
         $this->actingAs($head)
             ->from(route('admin.projects.tasks.index', $project))
             ->post(route('admin.projects.tasks.store', $project), [
-                'title' => 'Bad priority',
+                'title' => 'Plain task',
+                'status' => ProjectTaskStatus::ToDo->value,
+                'task_tag_ids' => [''],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $task = ProjectTask::query()->where('title', 'Plain task')->firstOrFail();
+
+        $this->assertSame(0, $task->tags()->count());
+    }
+
+    public function test_store_rejects_unknown_tag(): void
+    {
+        extract($this->projectWithTeamHead());
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->post(route('admin.projects.tasks.store', $project), [
+                'title' => 'Bad tag',
                 'description' => null,
                 'status' => ProjectTaskStatus::ToDo->value,
-                'task_priority_id' => 999_999,
+                'task_tag_ids' => [999_999],
                 'assignee_user_id' => null,
                 'project_requirement_id' => null,
                 'parent_project_task_id' => null,
                 'estimated_minutes' => null,
             ])
-            ->assertSessionHasErrors('task_priority_id');
+            ->assertSessionHasErrors('task_tag_ids.0');
+
+        $this->assertDatabaseMissing('project_tasks', ['title' => 'Bad tag']);
     }
 
-    public function test_staff_assignee_cannot_change_priority(): void
+    public function test_team_head_can_replace_and_clear_task_tags(): void
+    {
+        extract($this->projectWithTeamHead());
+        $urgent = TaskTag::factory()->create();
+        $backend = TaskTag::factory()->create();
+        $frontend = TaskTag::factory()->create();
+
+        $task = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+        $task->tags()->attach([$urgent->id, $backend->id]);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->patch(route('admin.projects.tasks.update', [$project, $task]), [
+                'task_tag_ids' => ['', (string) $backend->id, (string) $frontend->id],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertEqualsCanonicalizing(
+            [$backend->id, $frontend->id],
+            $task->tags()->pluck('task_tags.id')->all(),
+        );
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->patch(route('admin.projects.tasks.update', [$project, $task]), [
+                'task_tag_ids' => [''],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(0, $task->tags()->count());
+    }
+
+    public function test_update_without_tag_field_keeps_existing_tags(): void
+    {
+        extract($this->projectWithTeamHead());
+        $urgent = TaskTag::factory()->create();
+
+        $task = ProjectTask::factory()
+            ->forProject($project)
+            ->create([
+                'created_by_user_id' => $head->id,
+                'status' => ProjectTaskStatus::ToDo,
+            ]);
+        $task->tags()->attach($urgent);
+
+        $this->actingAs($head)
+            ->from(route('admin.projects.tasks.index', $project))
+            ->patch(route('admin.projects.tasks.update', [$project, $task]), [
+                'status' => ProjectTaskStatus::InProgress->value,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame([$urgent->id], $task->tags()->pluck('task_tags.id')->all());
+    }
+
+    public function test_edit_page_includes_selected_tags(): void
+    {
+        extract($this->projectWithTeamHead());
+        $urgent = TaskTag::factory()->create(['name' => 'Urgent', 'sort_order' => 1]);
+        $backend = TaskTag::factory()->create(['name' => 'Backend', 'sort_order' => 2]);
+
+        $task = ProjectTask::factory()
+            ->forProject($project)
+            ->create(['created_by_user_id' => $head->id]);
+        $task->tags()->attach([$backend->id, $urgent->id]);
+
+        $this->actingAs($head)
+            ->get(route('admin.projects.tasks.edit', [$project, $task]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/projects/tasks/Edit')
+                ->where('task.task_tag_ids', [(string) $urgent->id, (string) $backend->id])
+                ->where('task.tags.0.name', 'Urgent')
+                ->where('task.tags.1.name', 'Backend')
+                ->has('tag_options', 2));
+    }
+
+    public function test_staff_assignee_cannot_change_tags(): void
     {
         extract($this->projectWithTeamHead());
         $staff = User::factory()->withPrimaryTeam($team)->create();
-        $priority = TaskPriority::factory()->create();
+        $tag = TaskTag::factory()->create();
 
         $task = ProjectTask::factory()
             ->forProject($project)
@@ -1164,17 +1266,19 @@ class ProjectTaskTest extends TestCase
             ->from(route('admin.projects.tasks.index', $project))
             ->patch(route('admin.projects.tasks.update', [$project, $task]), [
                 'status' => ProjectTaskStatus::InProgress->value,
-                'task_priority_id' => $priority->id,
+                'task_tag_ids' => [$tag->id],
             ])
-            ->assertSessionHasErrors('task_priority_id');
+            ->assertSessionHasErrors('task_tag_ids');
 
-        $this->assertNull($task->fresh()->task_priority_id);
+        $this->assertSame(0, $task->tags()->count());
     }
 
-    public function test_project_tasks_index_filters_by_priority_and_keeps_ancestors(): void
+    public function test_project_tasks_index_filters_by_any_selected_tag_and_keeps_ancestors(): void
     {
         extract($this->projectWithTeamHead());
-        $high = TaskPriority::factory()->create(['name' => 'High', 'color' => TaskPriorityColor::Red]);
+        $high = TaskTag::factory()->create(['name' => 'High', 'color' => TaskTagColor::Red, 'sort_order' => 1]);
+        $backend = TaskTag::factory()->create(['name' => 'Backend', 'color' => TaskTagColor::Blue, 'sort_order' => 2]);
+        $design = TaskTag::factory()->create(['name' => 'Design']);
 
         $parent = ProjectTask::factory()
             ->forProject($project)
@@ -1191,36 +1295,40 @@ class ProjectTaskTest extends TestCase
                 'created_by_user_id' => $head->id,
                 'title' => 'Child urgent',
                 'status' => ProjectTaskStatus::ToDo,
-                'task_priority_id' => $high->id,
             ]);
+        $child->tags()->attach([$high->id, $backend->id]);
 
-        ProjectTask::factory()
+        $designOnly = ProjectTask::factory()
             ->forProject($project)
             ->create([
                 'created_by_user_id' => $head->id,
-                'title' => 'Unrelated',
+                'title' => 'Design only',
                 'status' => ProjectTaskStatus::ToDo,
             ]);
+        $designOnly->tags()->attach($design);
 
         $this->actingAs($head)
             ->get(route('admin.projects.tasks.index', [
                 'project' => $project,
-                'priority' => [$high->id],
+                'tags' => [$backend->id, 'unknown'],
             ]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('tasks', 2)
                 ->where('tasks.0.id', $parent->id)
-                ->where('tasks.0.priority', null)
+                ->where('tasks.0.tags', [])
                 ->where('tasks.1.id', $child->id)
-                ->where('tasks.1.priority.name', 'High')
-                ->where('tasks.1.priority.color', TaskPriorityColor::Red->value));
+                ->has('tasks.1.tags', 2)
+                ->where('tasks.1.tags.0.name', 'High')
+                ->where('tasks.1.tags.0.color', TaskTagColor::Red->value)
+                ->where('tasks.1.tags.1.name', 'Backend')
+                ->where('filters.tags', [(string) $backend->id]));
     }
 
-    public function test_project_tasks_index_can_filter_tasks_with_no_priority(): void
+    public function test_project_tasks_index_can_filter_tasks_with_no_tags(): void
     {
         extract($this->projectWithTeamHead());
-        $high = TaskPriority::factory()->create();
+        $high = TaskTag::factory()->create();
 
         $plain = ProjectTask::factory()
             ->forProject($project)
@@ -1236,18 +1344,19 @@ class ProjectTaskTest extends TestCase
                 'created_by_user_id' => $head->id,
                 'title' => 'Has badge',
                 'status' => ProjectTaskStatus::ToDo,
-                'task_priority_id' => $high->id,
-            ]);
+            ])
+            ->tags()
+            ->attach($high);
 
         $this->actingAs($head)
             ->get(route('admin.projects.tasks.index', [
                 'project' => $project,
-                'priority' => ['none'],
+                'tags' => ['none'],
             ]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('tasks', 1)
                 ->where('tasks.0.id', $plain->id)
-                ->where('tasks.0.priority', null));
+                ->where('tasks.0.tags', []));
     }
 }

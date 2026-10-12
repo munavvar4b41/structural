@@ -2,17 +2,17 @@
 
 namespace App\Policies;
 
-use App\Models\TaskPriority;
+use App\Models\TaskTag;
 use App\Models\User;
 
-class TaskPriorityPolicy
+class TaskTagPolicy
 {
     public function viewAny(User $actor): bool
     {
         return $actor->canManageCompanySettings();
     }
 
-    public function view(User $actor, TaskPriority $taskPriority): bool
+    public function view(User $actor, TaskTag $taskTag): bool
     {
         return $actor->canManageCompanySettings();
     }
@@ -22,12 +22,12 @@ class TaskPriorityPolicy
         return $actor->canManageCompanySettings();
     }
 
-    public function update(User $actor, TaskPriority $taskPriority): bool
+    public function update(User $actor, TaskTag $taskTag): bool
     {
         return $actor->canManageCompanySettings();
     }
 
-    public function delete(User $actor, TaskPriority $taskPriority): bool
+    public function delete(User $actor, TaskTag $taskTag): bool
     {
         return $actor->canManageCompanySettings();
     }
