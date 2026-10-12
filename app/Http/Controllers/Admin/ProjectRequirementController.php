@@ -15,6 +15,7 @@ use App\Models\ProjectProposal;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectRequirementMessage;
 use App\Models\ProjectTask;
+use App\Models\TaskTag;
 use App\Models\User;
 use App\Support\AssignmentNotificationDispatcher;
 use App\Support\ProjectRequirementAssignableUsers;
@@ -357,7 +358,7 @@ class ProjectRequirementController extends Controller
     private function requirementTaskSummaries(ProjectRequirement $requirement, User $actor): array
     {
         $tasks = $requirement->tasks()
-            ->with(['assignee:id,name,email', 'priority:id,name,color,shade'])
+            ->with(['assignee:id,name,email', 'tags'])
             ->withCount('children')
             ->get();
 
@@ -369,7 +370,7 @@ class ProjectRequirementController extends Controller
                 'description' => $task->description,
                 'status' => $task->status->value,
                 'status_label' => $task->status->label(),
-                'priority' => $task->priority?->toBadgeArray(),
+                'tags' => TaskTag::badgeList($task->tags),
                 'assignee_user_id' => $task->assignee_user_id,
                 'assignee' => $this->userBrief($task->assignee),
                 'project_requirement_id' => $task->project_requirement_id,

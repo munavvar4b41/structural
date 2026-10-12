@@ -5,7 +5,7 @@ namespace App\Http\Requests\Admin;
 use App\Enums\ProjectTaskStatus;
 use App\Models\Project;
 use App\Models\ProjectTask;
-use App\Models\TaskPriority;
+use App\Models\TaskTag;
 use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\TipTapDocument;
 use App\Support\ValidatesLinkedTaskPhase;
@@ -22,10 +22,14 @@ class StoreProjectTaskRequest extends FormRequest
     {
         $merge = [];
 
-        foreach (['assignee_user_id', 'project_requirement_id', 'parent_project_task_id', 'estimated_minutes', 'display_after_at', 'notify_at', 'phase', 'task_priority_id'] as $key) {
+        foreach (['assignee_user_id', 'project_requirement_id', 'parent_project_task_id', 'estimated_minutes', 'display_after_at', 'notify_at', 'phase'] as $key) {
             if ($this->has($key) && $this->input($key) === '') {
                 $merge[$key] = null;
             }
+        }
+
+        if ($this->has('task_tag_ids')) {
+            $merge['task_tag_ids'] = TaskTag::normalizeIdsInput($this->input('task_tag_ids'));
         }
 
         $desc = $this->input('description');
@@ -90,7 +94,8 @@ class StoreProjectTaskRequest extends FormRequest
                 },
             ],
             'status' => ['required', Rule::enum(ProjectTaskStatus::class)],
-            'task_priority_id' => ['nullable', 'integer', Rule::exists(TaskPriority::class, 'id')],
+            'task_tag_ids' => ['nullable', 'array'],
+            'task_tag_ids.*' => ['integer', 'distinct', Rule::exists(TaskTag::class, 'id')],
             'assignee_user_id' => [
                 'nullable',
                 'integer',

@@ -10,7 +10,7 @@ use App\Http\Requests\Admin\UpdateProjectTaskRequest;
 use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectTask;
-use App\Models\TaskPriority;
+use App\Models\TaskTag;
 use App\Models\User;
 use App\Support\AssignmentNotificationDispatcher;
 use App\Support\ProjectRequirementAssignableUsers;
@@ -80,7 +80,7 @@ class ProjectTaskController extends Controller
             static fn (array $option): int => (int) $option['value'],
             $phaseFilterPayload['options'],
         );
-        $priorityFilter = TaskPriority::parseFilter($request->query('priority'));
+        $tagFilter = TaskTag::parseFilter($request->query('tags'));
 
         $phaseQuery = $request->query('phase');
         $phase = null;
@@ -129,7 +129,7 @@ class ProjectTaskController extends Controller
             })
             ->when($phase !== null, static fn ($query) => $query->where('phase', $phase));
 
-        TaskPriority::applyFilter($matchQuery, $priorityFilter);
+        TaskTag::applyFilter($matchQuery, $tagFilter);
 
         $matchingIds = $matchQuery->pluck('id')->all();
 
@@ -140,7 +140,7 @@ class ProjectTaskController extends Controller
 
             $tasksCollection = $project->tasks()
                 ->whereIn('id', $expandedIds)
-                ->with(['assignee:id,name,email', 'requirement:id,title', 'priority:id,name,color,shade'])
+                ->with(['assignee:id,name,email', 'requirement:id,title', 'tags'])
                 ->withCount('children')
                 ->get();
         }
@@ -154,7 +154,7 @@ class ProjectTaskController extends Controller
             static fn (array $row): ProjectTask => $row['task'],
             $visibleRows,
         ));
-        $visibleTasks->load(['assignee:id,name,email', 'requirement:id,title', 'priority:id,name,color,shade'])
+        $visibleTasks->load(['assignee:id,name,email', 'requirement:id,title', 'tags'])
             ->loadCount('children');
 
         $transferredRequirementIds = $visibleTasks
@@ -194,9 +194,9 @@ class ProjectTaskController extends Controller
                 'status' => $statuses,
                 'estimation_source' => $estimationSource,
                 'phase' => $phase !== null ? (string) $phase : '',
-                'priority' => TaskPriority::filterValues($priorityFilter),
+                'tags' => TaskTag::filterValues($tagFilter),
             ],
-            'priority_filter_options' => TaskPriority::filterOptions(),
+            'tag_filter_options' => TaskTag::filterOptions(),
             'show_phase_filter' => $phaseFilterPayload['show_filter'],
             'phase_filter_options' => array_map(
                 static fn (array $option): array => [
@@ -404,6 +404,8 @@ class ProjectTaskController extends Controller
         abort_if(! $actor instanceof User, 403);
 
         $data = $request->validated();
+        $tagIds = $data['task_tag_ids'] ?? [];
+        unset($data['task_tag_ids']);
         $data['project_id'] = $project->id;
         $data['created_by_user_id'] = $actor->id;
         $data['sort_order'] = ProjectTaskSortOrder::nextForCreate(
@@ -413,6 +415,7 @@ class ProjectTaskController extends Controller
         );
 
         $task = ProjectTask::query()->create($data);
+        $task->tags()->sync($tagIds);
 
         if ($task->assignee_user_id !== null) {
             $this->assignmentNotificationDispatcher->sendTaskAssigned($task, $actor);
@@ -447,6 +450,14 @@ class ProjectTaskController extends Controller
             }
         }
 
+        $tagsChanged = false;
+
+        if (array_key_exists('task_tag_ids', $payload)) {
+            $tagChanges = $task->tags()->sync($payload['task_tag_ids'] ?? []);
+            $tagsChanged = $tagChanges['attached'] !== [] || $tagChanges['detached'] !== [];
+            unset($payload['task_tag_ids']);
+        }
+
         $task->update($payload);
 
         if ($task->wasChanged('status')
@@ -459,7 +470,7 @@ class ProjectTaskController extends Controller
 
         if ($assigneeChanged && $task->assignee_user_id !== null) {
             $this->assignmentNotificationDispatcher->sendTaskAssigned($task, $actor);
-        } elseif ($task->wasChanged()) {
+        } elseif ($task->wasChanged() || $tagsChanged) {
             $this->assignmentNotificationDispatcher->sendTaskUpdated($task, $actor);
         }
 
@@ -524,7 +535,7 @@ class ProjectTaskController extends Controller
     {
         return [
             'status_options' => $this->statusOptions(),
-            'priority_options' => TaskPriority::formOptions(),
+            'tag_options' => TaskTag::formOptions(),
             'assignable_users' => $this->assignableUserOptions($project),
             'requirements' => $project->requirements()->orderBy('title')->get(['id', 'title', 'max_generated_phase'])->map(static fn (ProjectRequirement $r): array => [
                 'value' => $r->id,
@@ -674,7 +685,8 @@ class ProjectTaskController extends Controller
             'title' => $task->title,
             'description' => $task->description,
             'status' => $task->status->value,
-            'task_priority_id' => $task->task_priority_id !== null ? (string) $task->task_priority_id : '',
+            'task_tag_ids' => $task->tags->map(static fn (TaskTag $tag): string => (string) $tag->id)->values()->all(),
+            'tags' => TaskTag::badgeList($task->tags),
             'assignee_user_id' => $task->assignee_user_id,
             'project_requirement_id' => $task->project_requirement_id,
             'parent_project_task_id' => $task->parent_project_task_id,
@@ -729,7 +741,7 @@ class ProjectTaskController extends Controller
             'description' => $task->description,
             'status' => $task->status->value,
             'status_label' => $task->status->label(),
-            'priority' => $task->priority?->toBadgeArray(),
+            'tags' => TaskTag::badgeList($task->tags),
             'assignee_user_id' => $task->assignee_user_id,
             'assignee' => $this->userBrief($task->assignee),
             'project_requirement_id' => $task->project_requirement_id,

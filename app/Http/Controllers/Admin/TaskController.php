@@ -7,7 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectTask;
-use App\Models\TaskPriority;
+use App\Models\TaskTag;
 use App\Models\User;
 use App\Support\ProjectRequirementAssignableUsers;
 use App\Support\ProjectTaskAssigneeCapabilities;
@@ -74,7 +74,7 @@ class TaskController extends Controller
             $taskFilter = 'all';
         }
 
-        $priorityFilter = TaskPriority::parseFilter($request->query('priority'));
+        $tagFilter = TaskTag::parseFilter($request->query('tags'));
 
         $taskQuery = ProjectTask::query()
             ->whereIn('project_id', $visibleProjectIds);
@@ -100,13 +100,13 @@ class TaskController extends Controller
             ->when($statuses !== [], static fn ($query) => $query->whereIn('status', $statuses))
             ->when($assigneeId !== null, static fn ($query) => $query->where('assignee_user_id', $assigneeId));
 
-        TaskPriority::applyFilter($taskQuery, $priorityFilter);
+        TaskTag::applyFilter($taskQuery, $tagFilter);
 
         $tasksCollection = $taskQuery
             ->with([
                 'assignee:id,name,email',
                 'requirement:id,title',
-                'priority:id,name,color,shade',
+                'tags',
                 'project:id,name,code,estimation_required',
             ])
             ->withCount('children')
@@ -138,9 +138,9 @@ class TaskController extends Controller
                 'search' => $search,
                 'assignee_id' => $assigneeId !== null ? (string) $assigneeId : '',
                 'status' => $statuses,
-                'priority' => TaskPriority::filterValues($priorityFilter),
+                'tags' => TaskTag::filterValues($tagFilter),
             ],
-            'priority_filter_options' => TaskPriority::filterOptions(),
+            'tag_filter_options' => TaskTag::filterOptions(),
             'status_options' => collect(ProjectTaskStatus::cases())
                 ->map(static fn (ProjectTaskStatus $status): array => [
                     'value' => $status->value,
@@ -264,7 +264,7 @@ class TaskController extends Controller
             'description' => $task->description,
             'status' => $task->status->value,
             'status_label' => $task->status->label(),
-            'priority' => $task->priority?->toBadgeArray(),
+            'tags' => TaskTag::badgeList($task->tags),
             'assignee_user_id' => $task->assignee_user_id,
             'assignee' => $task->assignee === null ? null : [
                 'id' => $task->assignee->id,

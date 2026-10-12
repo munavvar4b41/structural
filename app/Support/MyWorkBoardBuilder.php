@@ -5,7 +5,7 @@ namespace App\Support;
 use App\Enums\ProjectTaskStatus;
 use App\Models\Project;
 use App\Models\ProjectTask;
-use App\Models\TaskPriority;
+use App\Models\TaskTag;
 use App\Models\TaskTimeEntry;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -22,8 +22,8 @@ class MyWorkBoardBuilder
      *     columns: list<array{status: string, label: string, tasks: list<array<string, mixed>>, meta: array{total: int, current_page: int, last_page: int, per_page: int}}>,
      *     status_options: list<array{value: string, label: string}>,
      *     project_options: list<array{value: int, label: string}>,
-     *     priority_filter_options: list<array{value: string, label: string}>,
-     *     filters: array{project_id: int|null, priority: list<string>}
+     *     tag_filter_options: list<array{value: string, label: string}>,
+     *     filters: array{project_id: int|null, tags: list<string>}
      * }
      */
     public function build(User $actor, ?Request $request = null): array
@@ -32,7 +32,7 @@ class MyWorkBoardBuilder
             ? (int) $request->input('project_id')
             : null;
 
-        $priorityFilter = TaskPriority::parseFilter($request?->query('priority'));
+        $tagFilter = TaskTag::parseFilter($request?->query('tags'));
 
         $visibleProjectsQuery = Project::query()->visibleToUser($actor);
 
@@ -49,7 +49,7 @@ class MyWorkBoardBuilder
             $baseQuery->where('project_id', $projectId);
         }
 
-        TaskPriority::applyFilter($baseQuery, $priorityFilter);
+        TaskTag::applyFilter($baseQuery, $tagFilter);
 
         $activeEntry = TaskTimeEntry::activeSessionForUser($actor->id);
 
@@ -75,7 +75,7 @@ class MyWorkBoardBuilder
             $tasks = (clone $baseQuery)
                 ->where('status', $status)
                 ->withCount('children')
-                ->with(['project:id,name,code,lead_user_id', 'requirement:id,title', 'priority:id,name,color,shade'])
+                ->with(['project:id,name,code,lead_user_id', 'requirement:id,title', 'tags'])
                 ->orderBy('phase')
                 ->orderBy('sort_order')
                 ->orderBy('id')
@@ -149,10 +149,10 @@ class MyWorkBoardBuilder
                         : $p->name,
                 ])
                 ->all(),
-            'priority_filter_options' => TaskPriority::filterOptions(),
+            'tag_filter_options' => TaskTag::filterOptions(),
             'filters' => [
                 'project_id' => $projectId,
-                'priority' => TaskPriority::filterValues($priorityFilter),
+                'tags' => TaskTag::filterValues($tagFilter),
             ],
         ];
     }
@@ -185,7 +185,7 @@ class MyWorkBoardBuilder
             'id' => $task->id,
             'project_id' => $project->id,
             'title' => $task->title,
-            'priority' => $task->priority?->toBadgeArray(),
+            'tags' => TaskTag::badgeList($task->tags),
             'status' => $task->status->value,
             'estimated_minutes' => $task->estimated_minutes,
             'children_count' => (int) ($task->children_count ?? 0),

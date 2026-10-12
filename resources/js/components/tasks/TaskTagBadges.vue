@@ -1,5 +1,5 @@
 <script setup lang="ts">
-export type TaskPriorityColor =
+export type TaskTagColor =
     | 'red'
     | 'orange'
     | 'amber'
@@ -15,16 +15,16 @@ export type TaskPriorityColor =
     | 'rose'
     | 'gray';
 
-export type TaskPriorityShade = 'light' | 'dark';
+export type TaskTagShade = 'light' | 'dark';
 
-export type TaskPriorityBadgeData = {
+export type TaskTagBadgeData = {
     id: number;
     name: string;
-    color: TaskPriorityColor;
-    shade: TaskPriorityShade;
+    color: TaskTagColor;
+    shade: TaskTagShade;
 };
 
-const lightClasses: Record<TaskPriorityColor, string> = {
+const lightClasses: Record<TaskTagColor, string> = {
     red: 'border-red-500/25 bg-red-500/15 text-red-700 dark:text-red-300',
     orange: 'border-orange-500/25 bg-orange-500/15 text-orange-700 dark:text-orange-300',
     amber: 'border-amber-500/25 bg-amber-500/15 text-amber-700 dark:text-amber-300',
@@ -41,7 +41,7 @@ const lightClasses: Record<TaskPriorityColor, string> = {
     gray: 'border-gray-500/25 bg-gray-500/15 text-gray-700 dark:text-gray-300',
 };
 
-const darkClasses: Record<TaskPriorityColor, string> = {
+const darkClasses: Record<TaskTagColor, string> = {
     red: 'border-transparent bg-red-600 text-white dark:bg-red-500',
     orange: 'border-transparent bg-orange-600 text-white dark:bg-orange-500',
     amber: 'border-transparent bg-amber-600 text-white dark:bg-amber-500',
@@ -58,22 +58,25 @@ const darkClasses: Record<TaskPriorityColor, string> = {
     gray: 'border-transparent bg-gray-700 text-white dark:bg-gray-500',
 };
 
-const colorClasses: Record<TaskPriorityShade, Record<TaskPriorityColor, string>> = {
+const colorClasses: Record<TaskTagShade, Record<TaskTagColor, string>> = {
     light: lightClasses,
     dark: darkClasses,
 };
 
 defineProps<{
-    priority: TaskPriorityBadgeData | null;
+    tags: TaskTagBadgeData[];
 }>();
 </script>
 
 <template>
-    <span
-        v-if="priority !== null"
-        class="inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap"
-        :class="colorClasses[priority.shade][priority.color]"
-    >
-        {{ priority.name }}
+    <span v-if="tags.length > 0" class="flex flex-wrap items-center gap-1">
+        <span
+            v-for="tag in tags"
+            :key="tag.id"
+            class="inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap"
+            :class="colorClasses[tag.shade][tag.color]"
+        >
+            {{ tag.name }}
+        </span>
     </span>
 </template>

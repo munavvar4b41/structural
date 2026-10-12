@@ -11,11 +11,13 @@ use App\Models\ProjectProposal;
 use App\Models\ProjectRequirement;
 use App\Models\ProjectTag;
 use App\Models\ProjectTask;
+use App\Models\TaskTag;
 use App\Models\TaskTimeEntry;
 use App\Models\User;
 use App\Settings\CompanySettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class ProjectShowPayloadBuilder
 {
@@ -47,6 +49,7 @@ class ProjectShowPayloadBuilder
             ->all();
 
         $canViewCaseStudies = $actor->can('viewAny', CaseStudy::class);
+        $canViewNotes = $actor->can('viewAny', ProjectNote::class);
 
         $caseStudies = $canViewCaseStudies
             ? $project->caseStudies()
@@ -59,7 +62,7 @@ class ProjectShowPayloadBuilder
             : [];
 
         $tasksCollection = $project->tasks()
-            ->with(['assignee:id,name,email', 'requirement:id,title', 'priority:id,name,color,shade'])
+            ->with(['assignee:id,name,email', 'requirement:id,title', 'tags'])
             ->withCount('children')
             ->limit(self::LIST_LIMIT)
             ->get();
@@ -114,7 +117,9 @@ class ProjectShowPayloadBuilder
                 ],
             )->all(),
             'notes' => $this->noteRows($project, $actor),
+            'notes_total' => $canViewNotes ? $project->notes()->count() : 0,
             'can_create_notes' => $actor->can('create', [ProjectNote::class, $project]),
+            'can_view_notes' => $canViewNotes,
             'requirements' => $requirements,
             'requirements_total' => $project->requirements()->count(),
             'proposals' => $proposals,
@@ -196,12 +201,13 @@ class ProjectShowPayloadBuilder
             ->with('creator')
             ->orderByDesc('created_at')
             ->orderByDesc('id')
+            ->limit(self::LIST_LIMIT)
             ->get()
             ->each(fn (ProjectNote $note) => $note->setRelation('project', $project))
             ->map(fn (ProjectNote $note): array => [
                 'id' => $note->id,
                 'title' => $note->title,
-                'body' => $note->body,
+                'body_preview' => Str::limit($note->body, 160),
                 'created_at' => $note->created_at?->toIso8601String(),
                 'creator' => $this->userBrief($note->creator),
                 'can_update' => $actor->can('update', $note),
@@ -278,7 +284,7 @@ class ProjectShowPayloadBuilder
             'description' => $task->description,
             'status' => $task->status->value,
             'status_label' => $task->status->label(),
-            'priority' => $task->priority?->toBadgeArray(),
+            'tags' => TaskTag::badgeList($task->tags),
             'assignee_user_id' => $task->assignee_user_id,
             'assignee' => $this->userBrief($task->assignee),
             'project_requirement_id' => $task->project_requirement_id,

@@ -1,4 +1,4 @@
-import type { TaskPriorityBadgeData } from '@/components/tasks/TaskPriorityBadge.vue';
+import type { TaskTagBadgeData } from '@/components/tasks/TaskTagBadges.vue';
 
 export type UserBrief = {
     id: number;
@@ -16,7 +16,7 @@ export type SubtaskRow = {
     title: string;
     status: string;
     status_label: string;
-    priority: TaskPriorityBadgeData | null;
+    tags: TaskTagBadgeData[];
     assignee_user_id: number | null;
     assignee: UserBrief;
     project_requirement_id: number | null;
@@ -37,7 +37,7 @@ export type TaskDetail = {
     description: string | null;
     status: string;
     status_label: string;
-    priority: TaskPriorityBadgeData | null;
+    tags: TaskTagBadgeData[];
     assignee_user_id: number | null;
     assignee: UserBrief;
     project_requirement_id: number | null;

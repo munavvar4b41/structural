@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import FormMultiSelect from '@/components/FormMultiSelect.vue';
 import FormSelect from '@/components/FormSelect.vue';
 import InputError from '@/components/InputError.vue';
 import RichTextEditor from '@/components/RichTextEditor.vue';
@@ -58,7 +59,7 @@ type Defaults = {
 const props = defineProps<{
     project: ProjectSummary;
     status_options: Option[];
-    priority_options: Option[];
+    tag_options: Option[];
     assignable_users: AssignableUser[];
     requirements: RequirementOption[];
     parent_tasks: ParentTaskOption[];
@@ -69,7 +70,7 @@ const props = defineProps<{
 const descriptionJson = ref(emptyTipTapDocumentJson());
 const createTitle = ref('');
 const createStatus = ref(props.defaults.status || 'to_do');
-const createPriority = ref('');
+const createTags = ref<string[]>([]);
 const createAssignee = ref(props.defaults.assignee_user_id);
 const createRequirement = ref(props.defaults.project_requirement_id);
 const createPhase = ref('1');
@@ -81,9 +82,14 @@ const statusSelectOptions = computed(() =>
     props.status_options.map((o) => ({ value: o.value, label: o.label })),
 );
 
-const prioritySelectOptions = computed(() =>
-    props.priority_options.map((option) => ({ value: option.value, label: option.label })),
+const tagSelectOptions = computed(() =>
+    props.tag_options.map((option) => ({ value: option.value, label: option.label })),
 );
+
+function tagErrors(errors: Record<string, string>): string | undefined {
+    return errors.task_tag_ids
+        ?? Object.entries(errors).find(([key]) => key.startsWith('task_tag_ids.'))?.[1];
+}
 
 const assigneeSelectOptions = computed(() =>
     props.assignable_users.map((u) => ({ value: String(u.value), label: u.label })),
@@ -175,6 +181,21 @@ defineOptions({
                             required />
                         <InputError :message="errors.title" />
                     </div>
+                    <div class="grid gap-6 sm:grid-cols-2">
+                        <div class="grid gap-2">
+                            <Label for="create-status">Status</Label>
+                            <FormSelect id="create-status" name="status" v-model="createStatus" required
+                                placeholder="Status" :options="statusSelectOptions" />
+                            <InputError :message="errors.status" />
+                        </div>
+                        <div class="grid gap-2">
+                            <Label for="create-tags">Tags</Label>
+                            <input type="hidden" name="task_tag_ids[]" value="" />
+                            <FormMultiSelect id="create-tags" name="task_tag_ids" v-model="createTags"
+                                :options="tagSelectOptions" placeholder="No tags" menu-label="Tags" />
+                            <InputError :message="tagErrors(errors)" />
+                        </div>
+                    </div>
                     <div class="grid gap-2">
                         <Label for="create-description">Description</Label>
                         <RichTextEditor id="create-description" v-model="descriptionJson" input-name="description" />
@@ -188,18 +209,6 @@ defineOptions({
                     <h2 class="text-lg font-semibold">Assignment & scheduling</h2>
                 </div>
                 <div class="grid gap-6">
-                    <div class="grid gap-2">
-                        <Label for="create-status">Status</Label>
-                        <FormSelect id="create-status" name="status" v-model="createStatus" required
-                            placeholder="Status" :options="statusSelectOptions" />
-                        <InputError :message="errors.status" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="create-priority">Priority</Label>
-                        <FormSelect id="create-priority" name="task_priority_id" v-model="createPriority"
-                            none-label="None" placeholder="None" :options="prioritySelectOptions" />
-                        <InputError :message="errors.task_priority_id" />
-                    </div>
                     <div class="grid gap-2">
                         <Label for="create-assignee">Assignee</Label>
                         <FormSelect id="create-assignee" name="assignee_user_id" v-model="createAssignee"

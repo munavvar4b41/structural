@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-enum TaskPriorityShade: string
+enum TaskTagShade: string
 {
     case Light = 'light';
     case Dark = 'dark';

@@ -4,10 +4,13 @@ import { computed, ref, watch } from 'vue';
 import ProjectTaskController from '@/actions/App/Http/Controllers/Admin/ProjectTaskController';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
 import PageHeader from '@/components/dashboard/PageHeader.vue';
+import FormMultiSelect from '@/components/FormMultiSelect.vue';
 import FormSelect from '@/components/FormSelect.vue';
 import InputError from '@/components/InputError.vue';
 import RichTextEditor from '@/components/RichTextEditor.vue';
 import RichTextViewer from '@/components/RichTextViewer.vue';
+import TaskTagBadges from '@/components/tasks/TaskTagBadges.vue';
+import type { TaskTagBadgeData } from '@/components/tasks/TaskTagBadges.vue';
 import TypeaheadInput from '@/components/TypeaheadInput.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,7 +58,8 @@ type TaskForm = {
     title: string;
     description: string | null;
     status: string;
-    task_priority_id: string;
+    task_tag_ids: string[];
+    tags: TaskTagBadgeData[];
     assignee_user_id: number | null;
     project_requirement_id: number | null;
     parent_project_task_id: number | null;
@@ -69,7 +73,7 @@ const props = defineProps<{
     project: ProjectSummary;
     task: TaskForm;
     status_options: Option[];
-    priority_options: Option[];
+    tag_options: Option[];
     assignable_users: AssignableUser[];
     requirements: RequirementOption[];
     parent_tasks: ParentTaskOption[];
@@ -96,7 +100,7 @@ function toDatetimeLocalValue(value: string | null): string {
 const descriptionJson = ref(props.task.description ?? emptyTipTapDocumentJson());
 const editTitle = ref(props.task.title);
 const editStatus = ref(props.task.status);
-const editPriority = ref(props.task.task_priority_id);
+const editTags = ref<string[]>([...props.task.task_tag_ids]);
 const editAssignee = ref(
     props.task.assignee_user_id !== null ? String(props.task.assignee_user_id) : '',
 );
@@ -110,9 +114,14 @@ const editParent = ref(
 const editDisplayAfterAt = ref(toDatetimeLocalValue(props.task.display_after_at));
 const editNotifyAt = ref(toDatetimeLocalValue(props.task.notify_at));
 
-const prioritySelectOptions = computed(() =>
-    props.priority_options.map((option) => ({ value: option.value, label: option.label })),
+const tagSelectOptions = computed(() =>
+    props.tag_options.map((option) => ({ value: option.value, label: option.label })),
 );
+
+function tagErrors(errors: Record<string, string>): string | undefined {
+    return errors.task_tag_ids
+        ?? Object.entries(errors).find(([key]) => key.startsWith('task_tag_ids.'))?.[1];
+}
 
 const statusSelectOptions = computed(() => {
     const base = props.status_options.map((o) => ({ value: o.value, label: o.label }));
@@ -227,6 +236,21 @@ defineOptions({
                                 required />
                             <InputError :message="errors.title" />
                         </div>
+                        <div class="grid gap-6 sm:grid-cols-2">
+                            <div class="grid gap-2">
+                                <Label for="edit-status">Status</Label>
+                                <FormSelect id="edit-status" name="status" v-model="editStatus" required
+                                    placeholder="Status" :options="statusSelectOptions" />
+                                <InputError :message="errors.status" />
+                            </div>
+                            <div class="grid gap-2">
+                                <Label for="edit-tags">Tags</Label>
+                                <input type="hidden" name="task_tag_ids[]" value="" />
+                                <FormMultiSelect id="edit-tags" name="task_tag_ids" v-model="editTags"
+                                    :options="tagSelectOptions" placeholder="No tags" menu-label="Tags" />
+                                <InputError :message="tagErrors(errors)" />
+                            </div>
+                        </div>
                         <div class="grid gap-2">
                             <Label for="edit-description">Description</Label>
                             <RichTextEditor id="edit-description" v-model="descriptionJson" input-name="description" />
@@ -247,6 +271,19 @@ defineOptions({
                             <span class="text-xs font-medium text-muted-foreground">Title</span>
                             <p>{{ task.title }}</p>
                         </div>
+                        <div class="grid gap-6 sm:grid-cols-2">
+                            <div class="grid gap-2">
+                                <Label for="edit-status">Status</Label>
+                                <FormSelect id="edit-status" name="status" v-model="editStatus" required
+                                    placeholder="Status" :options="statusSelectOptions" />
+                                <InputError :message="errors.status" />
+                            </div>
+                            <div class="grid gap-1">
+                                <span class="text-xs font-medium text-muted-foreground">Tags</span>
+                                <TaskTagBadges :tags="task.tags" />
+                                <span v-if="task.tags.length === 0" class="text-sm text-muted-foreground">—</span>
+                            </div>
+                        </div>
                         <div v-if="task.description" class="grid gap-1">
                             <span class="text-xs font-medium text-muted-foreground">Description</span>
                             <RichTextViewer :json="task.description" class="text-muted-foreground" />
@@ -261,19 +298,7 @@ defineOptions({
                         </h2>
                     </div>
                     <div class="grid gap-6">
-                        <div class="grid gap-2">
-                            <Label for="edit-status">Status</Label>
-                            <FormSelect id="edit-status" name="status" v-model="editStatus" required
-                                placeholder="Status" :options="statusSelectOptions" />
-                            <InputError :message="errors.status" />
-                        </div>
                         <template v-if="!is_assignee_only_limited">
-                            <div class="grid gap-2">
-                                <Label for="edit-priority">Priority</Label>
-                                <FormSelect id="edit-priority" name="task_priority_id" v-model="editPriority"
-                                    none-label="None" placeholder="None" :options="prioritySelectOptions" />
-                                <InputError :message="errors.task_priority_id" />
-                            </div>
                             <div class="grid gap-2">
                                 <Label for="edit-assignee">Assignee</Label>
                                 <FormSelect id="edit-assignee" name="assignee_user_id" v-model="editAssignee"

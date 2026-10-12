@@ -5,7 +5,7 @@ namespace App\Support;
 use App\Enums\ProjectTaskStatus;
 use App\Models\Project;
 use App\Models\ProjectTask;
-use App\Models\TaskPriority;
+use App\Models\TaskTag;
 use App\Models\User;
 
 class DashboardTasksBuilder
@@ -22,7 +22,7 @@ class DashboardTasksBuilder
      *         title: string,
      *         status: string,
      *         status_label: string,
-     *         priority: array{id: int, name: string, color: string, shade: string}|null,
+     *         tags: list<array{id: int, name: string, color: string, shade: string}>,
      *         project: array{id: int, name: string, code: string|null},
      *         task_show_url: string
      *     }>,
@@ -60,14 +60,14 @@ class DashboardTasksBuilder
             $query->whereIn('project_id', $preferences['project_ids']);
         }
 
-        TaskPriority::applyFilter($query, TaskPriority::parseFilter($preferences['priorities']));
+        TaskTag::applyFilter($query, TaskTag::parseFilter($preferences['tags']));
 
         $total = (clone $query)->count();
 
         $tasks = (clone $query)
             ->with([
                 'project:id,name,code',
-                'priority:id,name,color,shade',
+                'tags',
             ])
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
@@ -81,7 +81,7 @@ class DashboardTasksBuilder
                     'title' => $task->title,
                     'status' => $task->status->value,
                     'status_label' => $task->status->label(),
-                    'priority' => $task->priority?->toBadgeArray(),
+                    'tags' => TaskTag::badgeList($task->tags),
                     'project' => [
                         'id' => $project->id,
                         'name' => $project->name,
