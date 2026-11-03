@@ -31,7 +31,7 @@ class PwaTest extends TestCase
         $this->assertSame('Structural', $manifest['name']);
         $this->assertSame('Structural', $manifest['short_name']);
         $this->assertSame('standalone', $manifest['display']);
-        $this->assertSame('/', $manifest['start_url']);
+        $this->assertSame('/dashboard', $manifest['start_url']);
         $this->assertSame('#e07a4c', $manifest['theme_color']);
         $this->assertNotEmpty($manifest['icons']);
         $this->assertTrue(
