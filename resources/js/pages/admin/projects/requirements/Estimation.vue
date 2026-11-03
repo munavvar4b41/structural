@@ -117,9 +117,41 @@ const props = defineProps<{
         from: { id: number; version: number };
         to: { id: number; version: number };
         diff: {
-            added: Array<Record<string, unknown>>;
-            removed: Array<Record<string, unknown>>;
-            modified: Array<Record<string, unknown>>;
+            added: Array<{
+                id: number;
+                title: string;
+                description: string | null;
+                estimated_minutes: number | null;
+                phase: number | null;
+                sort_order: number;
+            }>;
+            removed: Array<{
+                id: number;
+                title: string;
+                description: string | null;
+                estimated_minutes: number | null;
+                phase: number | null;
+                sort_order: number;
+            }>;
+            modified: Array<{
+                from: {
+                    id: number;
+                    title: string;
+                    description: string | null;
+                    estimated_minutes: number | null;
+                    phase: number | null;
+                    sort_order: number;
+                };
+                to: {
+                    id: number;
+                    title: string;
+                    description: string | null;
+                    estimated_minutes: number | null;
+                    phase: number | null;
+                    sort_order: number;
+                };
+                changes: Record<string, { from: unknown; to: unknown }>;
+            }>;
             summary: {
                 added_count: number;
                 removed_count: number;

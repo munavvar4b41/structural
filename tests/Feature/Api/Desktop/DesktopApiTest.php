@@ -283,7 +283,7 @@ class DesktopApiTest extends TestCase
                 'project_options',
                 'filters' => ['project_id'],
             ])
-            ->assertJsonPath("columns.{$toDoIndex}.meta.per_page", 20)
+            ->assertJsonPath("columns.{$toDoIndex}.meta.per_page", 5)
             ->assertJsonPath("columns.{$toDoIndex}.tasks.0.timer_state", 'idle')
             ->assertJsonStructure([
                 'columns' => [

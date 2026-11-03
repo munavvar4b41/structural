@@ -899,11 +899,11 @@ class ProjectTaskTest extends TestCase
             ->get(route('admin.projects.tasks.index', $query))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->has('tasks', 40)
+                ->has('tasks', 10)
                 ->where('status_meta.to_do.total', 25)
                 ->where('status_meta.to_do.current_page', 1)
-                ->where('status_meta.to_do.last_page', 2)
-                ->where('status_meta.to_do.per_page', 20)
+                ->where('status_meta.to_do.last_page', 5)
+                ->where('status_meta.to_do.per_page', 5)
                 ->where('status_meta.in_progress.total', 22)
                 ->where('status_meta.backlog.total', 0)
                 ->where('status_meta.backlog.last_page', 1));
@@ -912,8 +912,8 @@ class ProjectTaskTest extends TestCase
             ->get(route('admin.projects.tasks.index', [...$query, 'page_to_do' => 2]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('tasks', fn ($tasks) => $countByStatus(collect($tasks)->all(), ProjectTaskStatus::ToDo) === 25
-                    && $countByStatus(collect($tasks)->all(), ProjectTaskStatus::InProgress) === 20)
+                ->where('tasks', fn ($tasks) => $countByStatus(collect($tasks)->all(), ProjectTaskStatus::ToDo) === 10
+                    && $countByStatus(collect($tasks)->all(), ProjectTaskStatus::InProgress) === 5)
                 ->where('status_meta.to_do.current_page', 2)
                 ->where('status_meta.in_progress.current_page', 1));
 
@@ -921,7 +921,7 @@ class ProjectTaskTest extends TestCase
             ->get(route('admin.projects.tasks.index', [...$query, 'page_to_do' => 99]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('status_meta.to_do.current_page', 2)
+                ->where('status_meta.to_do.current_page', 5)
                 ->where('tasks', fn ($tasks) => $countByStatus(collect($tasks)->all(), ProjectTaskStatus::ToDo) === 25));
     }
 

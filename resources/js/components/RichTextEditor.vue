@@ -29,6 +29,7 @@ const editor = useEditor({
     extensions: [
         StarterKit.configure({
             heading: { levels: [2, 3] },
+            link: false,
         }),
         Link.configure({
             openOnClick: false,

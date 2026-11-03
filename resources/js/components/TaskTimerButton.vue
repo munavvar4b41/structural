@@ -80,7 +80,6 @@ function timerMutationOptions(): {
 
             router.reload({
                 only: props.reloadPropsOnMutation,
-                preserveScroll: true,
             });
         },
     };

@@ -70,8 +70,7 @@ defineOptions({
 
 function onSearch(search: string): void {
     routerReloadOnly(
-        projectCaseStudiesIndex.url({
-            project: props.project.id,
+        projectCaseStudiesIndex.url(props.project.id, {
             query: { search, page: 1 },
         }),
         ['project', 'case_studies', 'can_create', 'filters'],

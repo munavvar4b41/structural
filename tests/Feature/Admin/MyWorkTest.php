@@ -91,10 +91,11 @@ class MyWorkTest extends TestCase
             ->get(route('admin.my-work.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->has("columns.{$toDoIndex}.tasks", 20)
+                ->has("columns.{$toDoIndex}.tasks", 5)
                 ->where("columns.{$toDoIndex}.meta.total", 25)
                 ->where("columns.{$toDoIndex}.meta.current_page", 1)
-                ->where("columns.{$toDoIndex}.meta.last_page", 2)
+                ->where("columns.{$toDoIndex}.meta.last_page", 5)
+                ->where("columns.{$toDoIndex}.meta.per_page", 5)
                 ->has("columns.{$inProgressIndex}.tasks", 3)
                 ->where("columns.{$inProgressIndex}.meta.last_page", 1));
 
@@ -102,7 +103,7 @@ class MyWorkTest extends TestCase
             ->get(route('admin.my-work.index', ['page_to_do' => 2]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->has("columns.{$toDoIndex}.tasks", 25)
+                ->has("columns.{$toDoIndex}.tasks", 10)
                 ->where("columns.{$toDoIndex}.meta.current_page", 2)
                 ->has("columns.{$inProgressIndex}.tasks", 3));
 
@@ -111,7 +112,7 @@ class MyWorkTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has("columns.{$toDoIndex}.tasks", 25)
-                ->where("columns.{$toDoIndex}.meta.current_page", 2));
+                ->where("columns.{$toDoIndex}.meta.current_page", 5));
     }
 
     public function test_project_filter_limits_board_to_one_project(): void
