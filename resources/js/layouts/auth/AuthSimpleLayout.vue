@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import PwaInstallPrompt from '@/components/PwaInstallPrompt.vue';
 import { home } from '@/routes';
 
 defineProps<{
@@ -13,6 +14,7 @@ defineProps<{
     <div
         class="page-gradient flex min-h-svh flex-col items-center justify-center p-6 md:p-10"
     >
+        <PwaInstallPrompt />
         <div class="glass-panel w-full max-w-md rounded-3xl p-8 md:p-10">
             <div class="flex flex-col gap-8">
                 <div class="flex flex-col items-center gap-4">

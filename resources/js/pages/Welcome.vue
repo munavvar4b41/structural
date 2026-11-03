@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import GlassCard from '@/components/dashboard/GlassCard.vue';
+import PwaInstallPrompt from '@/components/PwaInstallPrompt.vue';
 import { Button } from '@/components/ui/button';
 import { dashboard, login, register } from '@/routes';
 import { index as careersIndex } from '@/routes/careers/index';
@@ -20,6 +21,7 @@ withDefaults(
     <Head title="Welcome" />
 
     <div class="page-gradient flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
+        <PwaInstallPrompt />
         <header class="absolute right-6 top-6 flex items-center gap-2 md:right-10 md:top-10">
             <Button variant="ghost" as-child>
                 <Link :href="careersIndex()">Careers</Link>

@@ -5,6 +5,7 @@ import AppShell from '@/components/AppShell.vue';
 import AppSidebar from '@/components/AppSidebar.vue';
 import AppSidebarHeader from '@/components/AppSidebarHeader.vue';
 import FlashToast from '@/components/FlashToast.vue';
+import PwaInstallPrompt from '@/components/PwaInstallPrompt.vue';
 import type { BreadcrumbItem } from '@/types';
 
 const page = usePage();
@@ -21,6 +22,7 @@ withDefaults(defineProps<Props>(), {
 <template>
     <AppShell variant="sidebar">
         <FlashToast />
+        <PwaInstallPrompt />
         <AppSidebar />
         <AppContent variant="sidebar" class="page-gradient overflow-x-hidden">
             <AppSidebarHeader :breadcrumbs="breadcrumbs" />

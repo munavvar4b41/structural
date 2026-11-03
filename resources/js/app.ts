@@ -33,3 +33,11 @@ createInertiaApp({
 
 // This will set light / dark mode on page load...
 initializeTheme();
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {
+            // Manifest still enables install UI if registration fails.
+        });
+    });
+}
